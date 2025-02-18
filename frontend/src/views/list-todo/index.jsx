@@ -113,7 +113,7 @@ const ListTodo = () => {
       <br />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey={(record, index) => index}
           dataSource={quizMessages}
           pagination={false}

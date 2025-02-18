@@ -149,7 +149,7 @@ const AppraisalForm = () => {
       <br />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={appraisalForms}
           pagination={false}

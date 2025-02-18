@@ -190,7 +190,7 @@ const ResultExercise = () => {
       <br />
       <Card>
         <Table
-          bordered
+          variant
           rowKey={(record) => record.id}
           dataSource={exercise.filter(
             (record) => record.student_answers !== null

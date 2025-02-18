@@ -6,7 +6,7 @@ import { getQuestions, getQuestionByIdPaged } from "@/api/question";
 import { getRPS } from "@/api/rps";
 import TypingCard from "@/components/TypingCard";
 import { getQuestionsByRPS } from "../../api/question";
-import { useHistory, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   getExerciseAttemptById,
   getQuestionsFromStudentAnswers,
@@ -62,7 +62,7 @@ const StudentExerciseReview = () => {
       <TypingCard title="Review Ujian" source={cardContent} />
       <br />
       <Card title={title}>
-        <Table bordered rowKey="id" dataSource={exercise} pagination={false}>
+        <Table variant rowKey="id" dataSource={exercise} pagination={false}>
           <Column
             title="Soal"
             dataIndex="student_answers"

@@ -10,16 +10,17 @@ import {
   Col,
   Divider,
   Modal,
-  Input,
-  Spin,
 } from "antd";
+import {
+  UploadOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
 import { getACP, deleteACP, editACP, addACP } from "@/api/acp";
 import TypingCard from "@/components/TypingCard";
 import EditACPForm from "./forms/edit-acp-form";
 import AddACPForm from "./forms/add-acp-form";
 import { read, utils } from "xlsx";
-
-const { Column } = Table;
 
 const ACP = () => {
   const [jadwalPelajaran, setJadwalPelajaran] = useState([]);
@@ -34,20 +35,21 @@ const ACP = () => {
   const [uploading, setUploading] = useState(false);
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [columnMapping, setColumnMapping] = useState({});
-  const [searchKeyword, setSearchKeyword] = useState("");
   const [tableLoading, setTableLoading] = useState(false);
 
   const editACPFormRef = useRef();
   const addACPFormRef = useRef();
 
+  useEffect(() => {
+    fetchACP();
+  }, []);
+
   const fetchACP = async () => {
     setTableLoading(true);
     try {
       const result = await getACP();
-      const { content, statusCode } = result.data;
-
-      if (statusCode === 200) {
-        setJadwalPelajaran(content);
+      if (result.data.statusCode === 200) {
+        setJadwalPelajaran(result.data.content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -65,45 +67,21 @@ const ACP = () => {
 
   const handleDeleteACP = async (row) => {
     const { id } = row;
-    if (id === "admin") {
-      message.error("Tidak dapat menghapus Admin!");
-      return;
-    }
-
-    try {
-      await deleteACP({ id });
-      message.success("Berhasil dihapus");
-      fetchACP();
-    } catch (error) {
-      message.error("Gagal menghapus: " + error.message);
-    }
-  };
-
-  const handleEditACPOk = () => {
-    const form = editACPFormRef.current?.props.form;
-    form.validateFields((err, values) => {
-      if (err) {
-        message.error("Harap isi semua field yang diperlukan");
-        return;
-      }
-
-      setEditACPModalLoading(true);
-      editACP(values, values.id)
-        .then((response) => {
-          if (response.data.statusCode === 200) {
-            form.resetFields();
-            setEditACPModalVisible(false);
-            setEditACPModalLoading(false);
-            message.success("Berhasil diubah!");
-            fetchACP();
-          } else {
-            throw new Error(response.data.message);
-          }
-        })
-        .catch((error) => {
-          setEditACPModalLoading(false);
-          message.error("Gagal mengubah: " + error.message);
-        });
+    Modal.confirm({
+      title: "Konfirmasi",
+      content: "Apakah Anda yakin ingin menghapus data ini?",
+      okText: "Ya",
+      okType: "danger",
+      cancelText: "Tidak",
+      onOk: async () => {
+        try {
+          await deleteACP({ id });
+          message.success("Berhasil dihapus");
+          fetchACP();
+        } catch (error) {
+          message.error("Gagal menghapus: " + error.message);
+        }
+      },
     });
   };
 
@@ -114,34 +92,6 @@ const ACP = () => {
 
   const handleAddACP = () => {
     setAddACPModalVisible(true);
-  };
-
-  const handleAddACPOk = () => {
-    const form = addACPFormRef.current?.props.form;
-    form.validateFields((err, values) => {
-      if (err) {
-        message.error("Harap isi semua field yang diperlukan");
-        return;
-      }
-
-      setAddACPModalLoading(true);
-      addACP(values)
-        .then((response) => {
-          if (response.data.statusCode === 200) {
-            form.resetFields();
-            setAddACPModalVisible(false);
-            setAddACPModalLoading(false);
-            message.success("Berhasil ditambahkan!");
-            fetchACP();
-          } else {
-            throw new Error(response.data.message);
-          }
-        })
-        .catch((error) => {
-          setAddACPModalLoading(false);
-          message.error("Gagal menambahkan: " + error.message);
-        });
-    });
   };
 
   const handleFileImport = (file) => {
@@ -158,34 +108,32 @@ const ACP = () => {
           return;
         }
 
-        const newImportedData = jsonData.slice(1);
-        const newColumnTitles = jsonData[0];
-        const newFileName = file.name.toLowerCase();
+        setImportedData(jsonData.slice(1)); // Data tanpa header
+        setColumnTitles(jsonData[0]); // Header kolom
+        setFileName(file.name.toLowerCase());
 
         const newColumnMapping = {};
-        newColumnTitles.forEach((title, index) => {
+        jsonData[0].forEach((title, index) => {
           newColumnMapping[title] = index;
         });
 
-        setImportedData(newImportedData);
-        setColumnTitles(newColumnTitles);
-        setFileName(newFileName);
         setColumnMapping(newColumnMapping);
       } catch (error) {
         message.error("Gagal membaca file: " + error.message);
       }
     };
-    reader.onerror = () => {
-      message.error("Gagal membaca file");
-    };
     reader.readAsArrayBuffer(file);
-
     return false;
   };
 
-  const saveImportedData = async (columnMapping) => {
+  const handleUpload = async () => {
+    if (importedData.length === 0) {
+      message.error("Tidak ada data untuk diimpor");
+      return;
+    }
+
+    setUploading(true);
     let errorCount = 0;
-    const successRecords = [];
 
     try {
       for (const row of importedData) {
@@ -211,199 +159,146 @@ const ACP = () => {
         try {
           if (existingACPIndex > -1) {
             await editACP(dataToSave, dataToSave.id);
-            successRecords.push(dataToSave);
           } else {
             await addACP(dataToSave);
-            successRecords.push(dataToSave);
           }
         } catch (error) {
           errorCount++;
-          console.error("Gagal menyimpan data:", error);
         }
       }
 
-      if (errorCount === 0) {
-        message.success(`${successRecords.length} data berhasil disimpan.`);
-      } else {
-        message.warning(
-          `${successRecords.length} data berhasil disimpan. ${errorCount} data gagal disimpan.`
-        );
+      message.success(
+        `${importedData.length - errorCount} data berhasil diunggah.`
+      );
+      if (errorCount > 0) {
+        message.warning(`${errorCount} data gagal diunggah.`);
       }
 
-      if (successRecords.length > 0) {
-        fetchACP();
-      }
+      fetchACP();
     } catch (error) {
-      console.error("Gagal memproses data:", error);
-      message.error("Terjadi kesalahan saat memproses data");
+      message.error("Terjadi kesalahan saat mengunggah data.");
     } finally {
+      setUploading(false);
+      setImportModalVisible(false);
       setImportedData([]);
       setColumnTitles([]);
       setColumnMapping({});
     }
   };
 
-  const handleUpload = () => {
-    if (importedData.length === 0) {
-      message.error("Tidak ada data untuk diimpor");
-      return;
-    }
-
-    setUploading(true);
-    saveImportedData(columnMapping)
-      .then(() => {
-        setUploading(false);
-        setImportModalVisible(false);
-      })
-      .catch((error) => {
-        console.error("Gagal mengunggah data:", error);
-        setUploading(false);
-        message.error("Gagal mengunggah data, harap coba lagi.");
-      });
-  };
-
-  useEffect(() => {
-    fetchACP();
-  }, []);
-
-  const title = (
-    <Row gutter={[16, 16]} justify="start" style={{ paddingLeft: 9 }}>
-      <Col xs={24} sm={12} md={8} lg={6} xl={6}>
-        <Button type="primary" onClick={handleAddACP}>
-          Tambahkan Analisa Capaian Pembelajaran
-        </Button>
-      </Col>
-      <Col xs={30} sm={20} md={20} lg={20} xl={20}>
-        <Button onClick={() => setImportModalVisible(true)}>Import File</Button>
-      </Col>
-    </Row>
-  );
-
-  const cardContent = `Di sini, Anda dapat mengelola Analisa Capaian Pembelajaran di sistem, seperti menambahkan Analisa Capaian Pembelajaran baru, atau mengubah Analisa Capaian Pembelajaran yang sudah ada di sistem.`;
+  const renderColumns = () => [
+    {
+      title: "Kode",
+      dataIndex: ["lecture", "name"],
+      key: "lecture.name",
+      align: "center",
+    },
+    {
+      title: "Tahun Ajaran",
+      dataIndex: "jabatan",
+      key: "jabatan",
+      align: "center",
+    },
+    {
+      title: "Jurusan",
+      dataIndex: ["mapel", "name"],
+      key: "mapel.name",
+      align: "center",
+    },
+    {
+      title: "Kelas",
+      dataIndex: "jmlJam",
+      key: "jmlJam",
+      align: "center",
+    },
+    {
+      title: "Operasi",
+      key: "action",
+      align: "center",
+      render: (_, row) => (
+        <span>
+          <Button
+            type="primary"
+            shape="circle"
+            icon={<EditOutlined />}
+            onClick={() => handleEditACP(row)}
+          />
+          <Divider type="vertical" />
+          <Button
+            type="primary"
+            danger
+            shape="circle"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteACP(row)}
+          />
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="app-container">
       <TypingCard
         title="Manajemen Analisa Capaian Pembelajaran"
-        source={cardContent}
+        source="Di sini, Anda dapat mengelola ACP di sistem."
       />
       <br />
-      <Card title={title}>
+      <Card
+        title={
+          <Row gutter={[16, 16]}>
+            <Col>
+              <Button type="primary" onClick={handleAddACP}>
+                Tambahkan ACP
+              </Button>
+            </Col>
+            <Col>
+              <Button
+                icon={<UploadOutlined />}
+                onClick={() => setImportModalVisible(true)}
+              >
+                Import File
+              </Button>
+            </Col>
+          </Row>
+        }
+      >
         <Table
-          bordered
           rowKey="id"
           dataSource={jadwalPelajaran}
+          columns={renderColumns()}
           pagination={{ pageSize: 10 }}
           loading={tableLoading}
-        >
-          <Column
-            title="Kode"
-            dataIndex="lecture.name"
-            key="lecture.name"
-            align="center"
-          />
-          <Column
-            title="Tahun Ajaran"
-            dataIndex="jabatan"
-            key="jabatan"
-            align="center"
-          />
-          <Column
-            title="Jurusan"
-            dataIndex="mapel.name"
-            key="mapel.name"
-            align="center"
-          />
-          <Column
-            title="Kelas"
-            dataIndex="jmlJam"
-            key="jmlJam"
-            align="center"
-          />
-          <Column
-            title="Semester"
-            dataIndex="jmlJam"
-            key="jmlJam"
-            align="center"
-          />
-          <Column
-            title="Mapel"
-            dataIndex="jmlJam"
-            key="jmlJam"
-            align="center"
-          />
-          <Column
-            title="Capaian Pembelajaran"
-            dataIndex="jmlJam"
-            key="jmlJam"
-            align="center"
-          />
-          <Column
-            title="Operasi"
-            key="action"
-            width={195}
-            align="center"
-            render={(text, row) => (
-              <span>
-                <Button
-                  type="primary"
-                  shape="circle"
-                  icon="edit"
-                  title="mengedit"
-                  onClick={() => handleEditACP(row)}
-                />
-                <Divider type="vertical" />
-                <Button
-                  type="primary"
-                  shape="circle"
-                  icon="delete"
-                  title="menghapus"
-                  onClick={() => handleDeleteACP(row)}
-                />
-              </span>
-            )}
-          />
-        </Table>
+        />
       </Card>
 
       <EditACPForm
-        currentRowData={currentRowData}
-        wrappedComponentRef={editACPFormRef}
         visible={editACPModalVisible}
         confirmLoading={editACPModalLoading}
         onCancel={handleCancel}
-        onOk={handleEditACPOk}
       />
-
       <AddACPForm
-        wrappedComponentRef={addACPFormRef}
         visible={addACPModalVisible}
         confirmLoading={addACPModalLoading}
         onCancel={handleCancel}
-        onOk={handleAddACPOk}
       />
 
       <Modal
         title="Import File"
-        visible={importModalVisible}
+        open={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setImportModalVisible(false)}>
-            Cancel
-          </Button>,
-          <Button
-            key="upload"
-            type="primary"
-            loading={uploading}
-            onClick={handleUpload}
-          >
-            Upload
-          </Button>,
-        ]}
+        footer={null}
       >
         <Upload beforeUpload={handleFileImport} accept=".xlsx,.xls">
           <Button>Pilih File</Button>
         </Upload>
+        <Button
+          type="primary"
+          loading={uploading}
+          onClick={handleUpload}
+          style={{ marginTop: 16 }}
+        >
+          Upload
+        </Button>
       </Modal>
     </div>
   );

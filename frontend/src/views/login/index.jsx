@@ -1,51 +1,52 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from "react";
+/* eslint-disable react/prop-types */
+import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Form, Input, Button, message, Spin } from "antd";
-import { UserOutlined, LockOutlined } from "@ant-design/icons";
-import { useDispatch, useSelector } from "react-redux";
+import { connect } from "react-redux";
 import DocumentTitle from "react-document-title";
-import { login, getUserInfo } from "@/store/actions";
 import "./index.less";
+import { login, getUserInfo } from "@/store/actions";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
 
-const Login = () => {
+const Login = (props) => {
+  const { token, login, getUserInfo } = props;
+
   const [loading, setLoading] = useState(false);
-  const [form] = Form.useForm();
-  const dispatch = useDispatch();
-  const token = useSelector((state) => state.user.token);
+  const [form] = Form.useForm(); // Gunakan hook Form
 
-  const handleLogin = async (values) => {
-    const { username, password } = values;
+  const handleLogin = (usernameOrEmail, password) => {
     setLoading(true);
-
-    try {
-      const data = await dispatch(login(username, password));
-      message.success("Selamat Datang di Website Kampus");
-      await handleUserInfo(data.accessToken);
-    } catch (error) {
-      message.error(
-        "Gagal Login, mohon di cek kembali username dan password nya"
-      );
-    } finally {
-      setLoading(false);
-    }
+    login(usernameOrEmail, password)
+      .then((data) => {
+        message.success("Login berhasil");
+        handleUserInfo(data.accessToken);
+      })
+      .catch((_error) => {
+        setLoading(false);
+        message.error("Username atau password salah");
+      });
   };
 
-  const handleUserInfo = async (token) => {
-    try {
-      await dispatch(getUserInfo(token));
-    } catch (error) {
-      message.error(error);
-    }
+  // Mengambil informasi pengguna
+  const handleUserInfo = (token) => {
+    getUserInfo(token)
+      .then((_data) => {})
+      .catch((error) => {
+        message.error(error);
+      });
   };
 
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      await handleLogin(values);
-    } catch (error) {
-      console.error("Validation failed:", error);
-    }
+  const handleSubmit = () => {
+    form
+      .validateFields()
+      .then((values) => {
+        const { usernameOrEmail, password } = values;
+        handleLogin(usernameOrEmail, password);
+      })
+      .catch((errorInfo) => {
+        console.log("Validasi gagal:", errorInfo);
+      });
   };
 
   if (token) {
@@ -53,29 +54,21 @@ const Login = () => {
   }
 
   return (
-    <DocumentTitle title="Login Pengguna">
+    <DocumentTitle title={"Login Pengguna"}>
       <div className="login-container">
-        <Form
-          form={form}
-          onFinish={handleSubmit}
-          className="content"
-          initialValues={{
-            username: "",
-            password: "",
-          }}
-        >
+        <Form form={form} onFinish={handleSubmit} className="content">
           <div className="title">
             <h2>Login Pengguna</h2>
           </div>
-
-          <Spin spinning={loading} tip="Mohon tunggu...">
+          <Spin spinning={loading} tip="Sedang masuk...">
             <Form.Item
-              name="username"
+              name="usernameOrEmail"
+              // initialValue="admin"
               rules={[
                 {
                   required: true,
                   whitespace: true,
-                  message: "Username wajib diisi!",
+                  message: "Masukkan username",
                 },
               ]}
             >
@@ -84,29 +77,28 @@ const Login = () => {
                 placeholder="Username"
               />
             </Form.Item>
-
             <Form.Item
               name="password"
+              // initialValue="password"
               rules={[
                 {
                   required: true,
                   whitespace: true,
-                  message: "Kata sandi wajib diisi!",
+                  message: "Masukkan password",
                 },
               ]}
             >
-              <Input.Password
+              <Input
                 prefix={<LockOutlined style={{ color: "rgba(0,0,0,.25)" }} />}
-                placeholder="Kata sandi"
+                type="password"
+                placeholder="Password"
               />
             </Form.Item>
-
             <Form.Item>
               <Button
                 type="primary"
                 htmlType="submit"
                 className="login-form-button"
-                loading={loading}
               >
                 Masuk
               </Button>
@@ -118,4 +110,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default connect((state) => state.user, { login, getUserInfo })(Login);

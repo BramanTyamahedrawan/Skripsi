@@ -157,7 +157,7 @@ const AssessmentCriteria = () => {
       <br />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={assessmentCriterias}
           pagination={false}

@@ -255,7 +255,7 @@ const Season = () => {
         }
       >
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={season}
           pagination={{ pageSize: 10 }}

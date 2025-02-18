@@ -1,148 +1,99 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
+/* eslint-disable react/prop-types */
+import { useState, useEffect, useCallback } from "react";
 import { Menu } from "antd";
-import { useLocation, Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Scrollbars } from "react-custom-scrollbars-2";
-import { useDispatch, useSelector } from "react-redux";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { useSelector, useDispatch } from "react-redux";
 import { addTag } from "@/store/actions";
 import { getMenuItemInMenuListByProperty } from "@/utils";
 import menuList from "@/config/menuConfig";
 import "./index.less";
 
-const { SubMenu } = Menu;
-
-// Reorder array helper
-const reorder = (list, startIndex, endIndex) => {
-  const result = Array.from(list);
-  const [removed] = result.splice(startIndex, 1);
-  result.splice(endIndex, 0, removed);
-  return result;
-};
-
-const MenuComponent = () => {
-  const [menuTreeNode, setMenuTreeNode] = useState([]);
-  const [openKey, setOpenKey] = useState([]);
-
+const SidebarMenu = () => {
   const location = useLocation();
   const dispatch = useDispatch();
-  const { role } = useSelector((state) => state.user);
+  const role = useSelector((state) => state.user.role);
+  const navigate = useNavigate();
 
-  const filterMenuItem = (item) => {
-    const { roles } = item;
-    if (role === "admin" || !roles || roles.includes(role)) {
-      return true;
-    }
-    if (item.children) {
-      return !!item.children.find((child) => roles.includes(child.role));
-    }
-    return false;
-  };
+  const [menuItems, setMenuItems] = useState([]);
+  const [openKeys, setOpenKeys] = useState([]);
 
-  const getMenuNodes = (menuItems) => {
-    const path = location.pathname;
-
-    return menuItems.reduce((acc, item) => {
-      if (!filterMenuItem(item)) return acc;
-
-      if (!item.children) {
-        acc.push(
-          <Menu.Item key={item.path}>
-            <Link to={item.path}>
-              {item.icon}
-              <span>{item.title}</span>
-            </Link>
-          </Menu.Item>
-        );
-      } else {
-        const cItem = item.children.find(
-          (child) => path.indexOf(child.path) === 0
-        );
-
-        if (cItem) {
-          setOpenKey((prev) => [...prev, item.path]);
-        }
-
-        acc.push(
-          <SubMenu
-            key={item.path}
-            title={
-              <span>
-                {item.icon}
-                <span>{item.title}</span>
-              </span>
-            }
-          >
-            {getMenuNodes(item.children)}
-          </SubMenu>
-        );
+  // Filter menu berdasarkan peran pengguna
+  const filterMenuItem = useCallback(
+    (item) => {
+      if (!item.roles || item.roles.includes(role) || role === "admin") {
+        return true;
       }
-      return acc;
-    }, []);
-  };
+      return item.children?.some((child) => child.roles?.includes(role));
+    },
+    [role]
+  );
 
-  const handleDragEnd = (result) => {
-    if (!result.destination) return;
+  // Membuat menu berdasarkan menuList
+  const generateMenuItems = useCallback(
+    (menuList) => {
+      return menuList.filter(filterMenuItem).map((item) => ({
+        key: item.path,
+        label: (
+          <Link
+            to={item.path}
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            {item.title}
+          </Link>
+        ),
+        icon: item.icon ? <item.icon /> : null,
+        children: item.children ? generateMenuItems(item.children) : undefined,
+      }));
+    },
+    [filterMenuItem]
+  );
 
-    const items = reorder(
-      menuTreeNode,
-      result.source.index,
-      result.destination.index
-    );
-    setMenuTreeNode(items);
-  };
-
-  const handleMenuSelect = ({ key = "/dashboard" }) => {
+  // Handle seleksi menu
+  const handleMenuSelect = ({ key }) => {
     const menuItem = getMenuItemInMenuListByProperty(menuList, "path", key);
-    dispatch(addTag(menuItem));
+    if (menuItem) {
+      dispatch(addTag(menuItem));
+    }
   };
 
+  // Inisialisasi menu items
   useEffect(() => {
-    const nodes = getMenuNodes(menuList);
-    setMenuTreeNode(nodes);
-    handleMenuSelect({ key: openKey[0] });
-  }, []);
+    setMenuItems(generateMenuItems(menuList));
+  }, [generateMenuItems]);
+
+  // Menangani state menu yang terbuka
+  useEffect(() => {
+    const path = location.pathname;
+    const openPaths = menuList
+      .filter((item) =>
+        item.children?.some((child) => path.startsWith(child.path))
+      )
+      .map((item) => item.path);
+
+    setOpenKeys(openPaths);
+  }, [location.pathname]);
+
+  const onOpenChange = (keys) => {
+    setOpenKeys(keys);
+  };
 
   return (
     <div className="sidebar-menu-container">
       <Scrollbars autoHide autoHideTimeout={1000} autoHideDuration={200}>
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="droppable">
-            {(provided) => (
-              <div {...provided.droppableProps} ref={provided.innerRef}>
-                {menuTreeNode.map((item, index) => (
-                  <Draggable
-                    key={item.key}
-                    draggableId={item.key}
-                    index={index}
-                  >
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                      >
-                        <Menu
-                          mode="inline"
-                          theme="dark"
-                          onSelect={handleMenuSelect}
-                          selectedKeys={[location.pathname]}
-                          defaultOpenKeys={openKey}
-                        >
-                          {item}
-                        </Menu>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+        <Menu
+          mode="inline"
+          theme="dark"
+          onSelect={handleMenuSelect}
+          selectedKeys={[location.pathname]}
+          openKeys={openKeys}
+          onOpenChange={onOpenChange}
+          items={menuItems}
+        />
       </Scrollbars>
     </div>
   );
 };
 
-export default MenuComponent;
+export default SidebarMenu;

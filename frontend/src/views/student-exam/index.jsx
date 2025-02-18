@@ -4,7 +4,7 @@ import { Card, Button, Table, Modal } from "antd";
 import { getExam } from "@/api/exam";
 import { getQuestions, getQuestionsByRPS } from "@/api/question";
 import { getRPS } from "@/api/rps";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import TypingCard from "@/components/TypingCard";
 import { getAttemptExamByUserID } from "../../api/attemptExam";
@@ -18,7 +18,7 @@ const StudentExam = () => {
   const [questions, setQuestions] = useState([]);
   const [rps, setRps] = useState([]);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const idUser = useSelector((state) => state.user.idUser);
 
@@ -91,7 +91,7 @@ const StudentExam = () => {
       okText: "OK",
       cancelText: "Batal",
       onOk: () => {
-        history.push(`/exam/do/${row.id}`);
+        navigate.push(`/exam/do/${row.id}`);
       },
     });
   };
@@ -110,7 +110,7 @@ const StudentExam = () => {
       <TypingCard title="Ujian" source={cardContent} />
       <br />
       <Card title={title}>
-        <Table bordered rowKey="id" dataSource={exam} pagination={false}>
+        <Table variant rowKey="id" dataSource={exam} pagination={false}>
           <Column
             title="RPS"
             dataIndex="rps.name"

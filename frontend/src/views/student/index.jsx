@@ -154,7 +154,7 @@ const Student = () => {
           </Button>
         }
       >
-        <Table bordered rowKey="id" dataSource={students} pagination={false}>
+        <Table variant rowKey="id" dataSource={students} pagination={false}>
           <Column title="NISN" dataIndex="nisn" key="nisn" align="center" />
           <Column title="Nama" dataIndex="name" key="name" align="center" />
           <Column

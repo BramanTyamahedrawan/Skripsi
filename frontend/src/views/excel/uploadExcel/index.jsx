@@ -18,7 +18,7 @@ class UploadExcel extends Component {
         <UploadExcelComponent uploadSuccess={this.handleSuccess} />
         <br />
         <Table
-          bordered
+          variant
           columns={this.state.tableHeader.map((item) => ({
             title: item,
             dataIndex: item,

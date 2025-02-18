@@ -187,7 +187,7 @@ const QuizGenerate = () => {
               pagination={false}
               rowKey="id"
               loading={loading}
-              bordered
+              variant
               scroll={{ x: true }}
             >
               <Column

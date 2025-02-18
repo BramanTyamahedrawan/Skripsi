@@ -291,7 +291,7 @@ const ATP = () => {
       <br />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={jadwalPelajaran}
           pagination={{ pageSize: 10 }}
@@ -385,7 +385,7 @@ const ATP = () => {
 
       <Modal
         title="Import File"
-        visible={importModalVisible}
+        open={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
         footer={[
           <Button key="cancel" onClick={() => setImportModalVisible(false)}>

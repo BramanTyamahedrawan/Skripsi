@@ -1,47 +1,42 @@
-import React from "react";
-import PropTypes from "prop-types";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
+/* eslint-disable react/prop-types */
+import React, { Suspense, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { connect } from "react-redux";
 import { getUserInfo } from "@/store/actions";
+import Loading from "@/components/Loading";
 import Layout from "@/views/layout";
 import Login from "@/views/login";
 
-const ProtectedRoute = ({ children }) => {
-  const dispatch = useDispatch();
-  const { token, role } = useSelector((state) => state.user);
-
-  React.useEffect(() => {
+const Router = ({ token, role, getUserInfo }) => {
+  useEffect(() => {
     if (token && !role) {
-      dispatch(getUserInfo(token));
+      getUserInfo(token);
     }
-  }, [token, role, dispatch]);
+  }, [token, role, getUserInfo]);
 
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
-};
-ProtectedRoute.propTypes = {
-  children: PropTypes.node.isRequired,
-};
-
-const Router = () => {
   return (
-    <HashRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/*"
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
-    </HashRouter>
+    <BrowserRouter>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/*"
+            element={
+              token ? (
+                role ? (
+                  <Layout />
+                ) : (
+                  <div>Loading...</div>
+                )
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
   );
 };
 
-export default Router;
+export default connect((state) => state.user, { getUserInfo })(Router);

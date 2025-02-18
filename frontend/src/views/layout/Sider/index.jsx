@@ -1,29 +1,35 @@
-/* eslint-disable no-unused-vars */
-import React from "react";
-import { useSelector } from "react-redux";
-import { Layout } from "antd";
-import Logo from "./Logo";
-import Menu from "./Menu";
+/* eslint-disable react/prop-types */
+import { useSelector } from 'react-redux'
+import { Layout } from 'antd'
+import Logo from './Logo'
+import SidebarMenu from './Menu'
 
-const { Sider } = Layout;
+const { Sider } = Layout
 
 const LayoutSider = () => {
   const { sidebarCollapsed, sidebarLogo } = useSelector((state) => ({
-    ...state.app,
-    ...state.settings,
-  }));
+    sidebarCollapsed: state.app.sidebarCollapsed,
+    sidebarLogo: state.settings.sidebarLogo,
+  }))
 
   return (
     <Sider
       collapsible
       collapsed={sidebarCollapsed}
       trigger={null}
-      style={{ zIndex: "10" }}
+      style={{
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 10,
+        height: '100vh',
+      }}
     >
       {sidebarLogo && <Logo />}
-      <Menu />
+      <SidebarMenu />
     </Sider>
-  );
-};
+  )
+}
 
-export default LayoutSider;
+export default LayoutSider

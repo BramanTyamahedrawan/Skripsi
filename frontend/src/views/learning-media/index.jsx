@@ -141,7 +141,7 @@ const LearningMedia = () => {
       <br />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={learningMedias}
           pagination={false}

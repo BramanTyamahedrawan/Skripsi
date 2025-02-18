@@ -1,6 +1,7 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { Card, Button, Modal, Row, Col, Radio, message } from "antd";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { getExamByID } from "@/api/exam";
 import { addAttemptExam } from "@/api/attemptExam";
@@ -18,7 +19,7 @@ const DoStudentExam = () => {
 
   const hadoopURL = "http://hadoop-primary:9870/";
   const { id } = useParams();
-  const history = useHistory();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const { idUser } = useSelector((state) => state.user);
 
@@ -113,7 +114,7 @@ const DoStudentExam = () => {
           try {
             await addAttemptExam(values);
             message.success("Berhasil menyimpan data!");
-            history.push("/exam");
+            navigate.push("/exam");
           } catch (e) {
             message.error("Gagal menyimpan data!");
           }

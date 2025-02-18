@@ -1,10 +1,11 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { Card, Button, Modal, Row, Col, Radio, message } from "antd";
 import { getQuizByID } from "@/api/quiz";
 import { addAttemptQuiz } from "@/api/attemptQuiz";
 import { getStudentByUser } from "@/api/student";
 import { getAnswers } from "@/api/answer";
-import { useHistory, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { getUserInfo } from "../../store/actions/user";
 
@@ -19,7 +20,7 @@ const DoStudentQuiz = () => {
     useState(false);
 
   const hadoopURL = "http://hadoop-primary:9870/";
-  const history = useHistory();
+  const navigate = useNavigate();
   const { id } = useParams();
   const dispatch = useDispatch();
   const { idUser } = useSelector((state) => state.user);
@@ -126,7 +127,7 @@ const DoStudentQuiz = () => {
           try {
             await addAttemptQuiz(values);
             message.success("Berhasil menyimpan data!");
-            history.push("/quiz");
+            navigate.push("/quiz");
           } catch (e) {
             message.error("Gagal menyimpan data!");
           }

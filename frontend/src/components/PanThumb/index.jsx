@@ -1,9 +1,16 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { PropTypes } from "prop-types";
 import "./index.less";
 
-const PanThumb = (props) => {
-  const { image, zIndex, width, height, className } = props;
+const PanThumb = ({
+  image,
+  zIndex = 1,
+  width = "150px",
+  height = "150px",
+  className = "",
+  children,
+}) => {
   return (
     <div
       className={`pan-item ${className}`}
@@ -14,7 +21,9 @@ const PanThumb = (props) => {
       }}
     >
       <div className="pan-info">
-        <div className="pan-info-roles-container">{props.children}</div>
+        <div className="pan-info-roles-container">
+          {React.Children.count(children) > 1 ? <>{children}</> : children}
+        </div>
       </div>
       <img src={image} className="pan-thumb" alt="" />
     </div>
@@ -27,13 +36,6 @@ PanThumb.propTypes = {
   width: PropTypes.string,
   height: PropTypes.string,
   className: PropTypes.string,
-};
-
-PanThumb.defaultProps = {
-  width: "150px",
-  height: "150px",
-  zIndex: 1,
-  className: "",
 };
 
 export default PanThumb;

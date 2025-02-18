@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 import * as types from "../action-types";
 const initState = {
   taglist: [],

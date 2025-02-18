@@ -141,7 +141,7 @@ const LearningMethod = () => {
       <br />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={learningMethods}
           pagination={false}

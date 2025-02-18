@@ -192,7 +192,7 @@ const Lecture = () => {
       <TypingCard title="Manajemen Guru" source={cardContent} />
       <br />
       <Card title={title}>
-        <Table bordered rowKey="id" dataSource={lectures} pagination={false}>
+        <Table variant rowKey="id" dataSource={lectures} pagination={false}>
           <Column title="NIDN" dataIndex="nidn" key="nidn" align="center" />
           <Column
             title="Nama Depan"

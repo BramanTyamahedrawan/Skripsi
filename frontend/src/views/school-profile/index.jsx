@@ -147,7 +147,7 @@ const SchoolProfile = () => {
         style={{ overflowX: "scroll" }}
       >
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={schoolProfiles}
           pagination={false}

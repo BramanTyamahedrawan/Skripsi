@@ -182,7 +182,7 @@ const RPSDetailDetail = () => {
       <TypingCard title="Manajemen RPS" source={cardContent} />
       <br />
       <Card title={title}>
-        <Table bordered rowKey="id" dataSource={rpsDetail} pagination={false}>
+        <Table variant rowKey="id" dataSource={rpsDetail} pagination={false}>
           <Column title="ID RPS" dataIndex="id" key="id" align="center" />
           <Column
             title="Minggu Ke"

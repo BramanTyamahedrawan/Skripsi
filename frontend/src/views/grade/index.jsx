@@ -130,7 +130,7 @@ const Grade = () => {
       <TypingCard title="Manajemen Pengguna" source={cardContent} />
       <br />
       <Card title={title}>
-        <Table bordered rowKey="id" dataSource={users} pagination={false}>
+        <Table variant rowKey="id" dataSource={users} pagination={false}>
           <Column title="ID Pengguna" dataIndex="id" key="id" align="center" />
           <Column title="Nama" dataIndex="name" key="name" align="center" />
           <Column title="Peran" dataIndex="role" key="role" align="center" />

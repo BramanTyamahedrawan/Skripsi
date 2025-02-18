@@ -5,7 +5,7 @@ import { getQuestionsByRPSQuiz1 } from "@/api/quiz";
 import { getAllCriteriaValueByQuestion } from "@/api/criteriaValue";
 import { getRPSDetail } from "@/api/rpsDetail";
 import TypingCard from "@/components/TypingCard";
-import { useHistory, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 
 const { Column } = Table;
 
@@ -17,7 +17,7 @@ const QuestionIndexQuiz1 = () => {
   const [selectedQuestionID, setSelectedQuestionID] = useState(null);
 
   const { rpsID } = useParams();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const getQuestionsQuiz = async (rpsID) => {
     const result = await getQuestionsByRPSQuiz1(rpsID);

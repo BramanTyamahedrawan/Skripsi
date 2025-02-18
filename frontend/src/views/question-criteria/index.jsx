@@ -140,7 +140,7 @@ const QuestionCriteria = () => {
       <br />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={questionCriterias}
           pagination={false}

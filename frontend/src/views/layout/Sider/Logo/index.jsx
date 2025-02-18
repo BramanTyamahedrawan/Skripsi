@@ -1,14 +1,26 @@
-/* eslint-disable no-unused-vars */
-import React from "react";
+import PropTypes from "prop-types";
+import { connect } from "react-redux";
 import logo from "@/assets/images/logo.svg";
 import "./index.less";
-const Logo = () => {
+
+const Logo = ({ sidebarCollapsed }) => {
   return (
     <div className="sidebar-logo-container">
       <img src={logo} className="sidebar-logo" alt="logo" />
-      <h1 className="sidebar-title">Sistem Ujian</h1>
+      {!sidebarCollapsed && <h1 className="sidebar-title">Bank Soal</h1>}
     </div>
   );
 };
 
-export default Logo;
+// Add PropTypes for better validation
+Logo.propTypes = {
+  sidebarCollapsed: PropTypes.bool.isRequired,
+};
+
+// Map state to props
+const mapStateToProps = (state) => ({
+  sidebarCollapsed: state.app.sidebarCollapsed,
+});
+
+// Connect the component to Redux
+export default connect(mapStateToProps)(Logo);

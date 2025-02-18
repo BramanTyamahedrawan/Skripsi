@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, Button, Table, message } from "antd";
 import { getRPSDetail } from "@/api/rpsDetail";
-import { useHistory, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { getRPS } from "@/api/rps";
 import AddExerciseForm from "./forms/add-exercise-index-form";
@@ -31,7 +31,7 @@ const ExerciseIndex = () => {
   const [selectedOption, setSelectedOption] = useState("");
   const [addExerciseFormRef, setAddExerciseFormRef] = useState(null);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const { exerciseID: paramExerciseID } = useParams();
   const location = useLocation();
 

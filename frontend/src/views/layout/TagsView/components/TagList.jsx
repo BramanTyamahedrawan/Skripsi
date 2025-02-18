@@ -1,47 +1,55 @@
-import { useRef, useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useLocation } from "react-router-dom";
+/* eslint-disable react/prop-types */
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Scrollbars } from "react-custom-scrollbars-2";
 import { Tag } from "antd";
+import { useSelector, useDispatch } from "react-redux";
 import { deleteTag, emptyTaglist, closeOtherTags } from "@/store/actions";
+import "../index.less";
 
 const TagList = () => {
-  const tagListContainer = useRef();
-  const contextMenuContainer = useRef();
+  const tagListContainer = useRef(null);
+  const contextMenuContainer = useRef(null);
   const [menuState, setMenuState] = useState({
     left: 0,
     top: 0,
-    menuVisible: false,
+    visible: false,
     currentTag: null,
   });
 
-  const navigate = useNavigate();
-  const location = useLocation();
-  const dispatch = useDispatch();
   const taglist = useSelector((state) => state.tagsView.taglist);
+  const dispatch = useDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const handleClose = (tag) => {
-    const path = tag.path;
-    const currentPath = location.pathname;
-    const length = taglist.length;
+  const currentPath = location.pathname;
 
-    if (path === currentPath) {
-      navigate(taglist[length - 1].path);
-    }
+  const handleClose = useCallback(
+    (tag) => {
+      const path = tag.path;
+      const length = taglist.length;
 
-    if (
-      path === taglist[length - 1].path &&
-      currentPath === taglist[length - 1].path
-    ) {
-      if (length - 2 > 0) {
-        navigate(taglist[length - 2].path);
-      } else if (length === 2) {
-        navigate(taglist[0].path);
+      // If closing the current tag, navigate to the last tag
+      if (path === currentPath) {
+        navigate(taglist[length - 1]?.path || "/dashboard");
       }
-    }
 
-    dispatch(deleteTag(tag));
-  };
+      // If closing the last tag, navigate to the previous tag
+      if (
+        path === taglist[length - 1]?.path &&
+        currentPath === taglist[length - 1]?.path
+      ) {
+        if (length - 2 >= 0) {
+          navigate(taglist[length - 2]?.path || "/dashboard");
+        } else if (length === 2) {
+          navigate(taglist[0]?.path || "/dashboard");
+        }
+      }
+
+      dispatch(deleteTag(tag));
+    },
+    [taglist, currentPath, dispatch, navigate]
+  );
 
   const handleClick = (path) => {
     navigate(path);
@@ -55,46 +63,27 @@ const TagList = () => {
     const clientWidth = tagListContainer.current.clientWidth;
     const maxLeft = clientWidth - menuMinWidth;
 
-    if (clickX > maxLeft) {
-      setMenuState({
-        left: clickX - menuMinWidth + 15,
-        top: clickY,
-        menuVisible: true,
-        currentTag: tag,
-      });
-    } else {
-      setMenuState({
-        left: clickX,
-        top: clickY,
-        menuVisible: true,
-        currentTag: tag,
-      });
-    }
-  };
-
-  const handleClickOutside = (event) => {
-    const isOutside = !(
-      contextMenuContainer.current &&
-      contextMenuContainer.current.contains(event.target)
-    );
-    if (isOutside && menuState.menuVisible) {
-      closeContextMenu();
-    }
+    setMenuState({
+      left: clickX > maxLeft ? clickX - menuMinWidth + 15 : clickX,
+      top: clickY,
+      visible: true,
+      currentTag: tag,
+    });
   };
 
   const closeContextMenu = () => {
-    setMenuState((prev) => ({
-      ...prev,
-      menuVisible: false,
-    }));
+    setMenuState((prevState) => ({ ...prevState, visible: false }));
   };
 
-  useEffect(() => {
-    document.body.addEventListener("click", handleClickOutside);
-    return () => {
-      document.body.removeEventListener("click", handleClickOutside);
-    };
-  }, []);
+  const handleClickOutside = (event) => {
+    if (
+      contextMenuContainer.current &&
+      !contextMenuContainer.current.contains(event.target) &&
+      menuState.visible
+    ) {
+      closeContextMenu();
+    }
+  };
 
   const handleCloseAllTags = () => {
     dispatch(emptyTaglist());
@@ -104,14 +93,17 @@ const TagList = () => {
 
   const handleCloseOtherTags = () => {
     const { currentTag } = menuState;
-    const { path } = currentTag;
     dispatch(closeOtherTags(currentTag));
-    navigate(path);
+    navigate(currentTag?.path || "/dashboard");
     closeContextMenu();
   };
 
-  const { left, top, menuVisible } = menuState;
-  const currentPath = location.pathname;
+  useEffect(() => {
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [menuState.visible]);
 
   return (
     <>
@@ -119,7 +111,7 @@ const TagList = () => {
         autoHide
         autoHideTimeout={1000}
         autoHideDuration={200}
-        hideTracksWhenNotNeeded={true}
+        hideTracksWhenNotNeeded
         renderView={(props) => (
           <div {...props} className="scrollbar-container" />
         )}
@@ -143,10 +135,10 @@ const TagList = () => {
           ))}
         </ul>
       </Scrollbars>
-      {menuVisible && (
+      {menuState.visible && (
         <ul
           className="contextmenu"
-          style={{ left: `${left}px`, top: `${top}px` }}
+          style={{ left: `${menuState.left}px`, top: `${menuState.top}px` }}
           ref={contextMenuContainer}
         >
           <li onClick={handleCloseOtherTags}>关闭其他</li>

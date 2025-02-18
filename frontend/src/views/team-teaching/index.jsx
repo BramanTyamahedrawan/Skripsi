@@ -122,7 +122,7 @@ const TeamTeaching = () => {
       <TypingCard title="Team Teaching" source={cardContent} />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={teamTeachings}
           pagination={false}

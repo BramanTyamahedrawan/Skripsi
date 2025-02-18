@@ -141,7 +141,7 @@ const FormLearning = () => {
       <br />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={formLearnings}
           pagination={false}

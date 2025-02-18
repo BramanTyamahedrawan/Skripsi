@@ -218,7 +218,7 @@ const Exercise = () => {
       <TypingCard title="Manajemen Latihan" source={cardContent} />
       <br />
       <Card title={title}>
-        <Table bordered rowKey="id" dataSource={exercise} pagination={false}>
+        <Table variant rowKey="id" dataSource={exercise} pagination={false}>
           <Column title="ID Exercise" dataIndex="id" key="id" align="center" />
           <Column
             title="RPS"

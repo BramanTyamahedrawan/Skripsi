@@ -1,10 +1,16 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef } from "react";
-import { Card, Button, Table, message } from "antd";
+import { Card, Button, Table, message, Col, Row, Divider } from "antd";
 import { getUsers, deleteUser, editUser, addUser } from "@/api/user";
 import TypingCard from "@/components/TypingCard";
 import EditUserForm from "./forms/edit-user-form";
 import AddUserForm from "./forms/add-user-form";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+} from "@ant-design/icons";
 
 const { Column } = Table;
 
@@ -117,58 +123,112 @@ const User = () => {
 
   const cardContent = `Di sini, Anda dapat mengelola pengguna di sistem, seperti menambahkan pengguna baru, atau mengubah pengguna yang sudah ada di sistem.`;
 
+  const renderColumns = () => [
+    { title: "Nama", dataIndex: "name", key: "name", align: "center" },
+    {
+      title: "Username",
+      dataIndex: "username",
+      key: "username",
+      align: "center",
+    },
+    { title: "Email", dataIndex: "email", key: "email", align: "center" },
+    { title: "Peran", dataIndex: "roles", key: "roles", align: "center" },
+    {
+      title: "Sekolah",
+      key: "school",
+      align: "center",
+      dataIndex: ["school", "name"],
+    },
+    {
+      title: "Operasi",
+      key: "action",
+      width: 120,
+      align: "center",
+      render: (_, row) => (
+        <span>
+          <Button
+            type="primary"
+            shape="circle"
+            icon={<EditOutlined />}
+            onClick={() => handleEditUser(row)}
+          />
+          <Divider type="vertical" />
+          <Button
+            type="primary"
+            danger
+            shape="circle"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteUser(row)}
+          />
+        </span>
+      ),
+    },
+  ];
+
+  const renderTable = () => (
+    <Table
+      rowKey="id"
+      dataSource={users}
+      bordered
+      columns={renderColumns()}
+      pagination={false}
+    />
+  );
+
+  const renderButtons = () => (
+    <Row gutter={[16, 16]} justify="start">
+      <Col>
+        <Button
+          type="primary"
+          onClick={() =>
+            setModalState((prev) => ({ ...prev, addVisible: true }))
+          }
+          block
+        >
+          Tambah Pengguna
+        </Button>
+      </Col>
+      <Col>
+        <Button icon={<UploadOutlined />} block>
+          Import File
+        </Button>
+      </Col>
+      <Col>
+        <Button icon={<DownloadOutlined />} block>
+          Download Format CSV
+        </Button>
+      </Col>
+    </Row>
+  );
+
   return (
     <div className="app-container">
-      <TypingCard title="Manajemen Pengguna" source={cardContent} />
+      <TypingCard
+        title="Manajemen Pengguna"
+        source="Di sini, Anda dapat mengelola daftar pengguna di sistem."
+      />
       <br />
-      <Card
-        title={
-          <Button type="primary" onClick={handleAddUser}>
-            Tambahkan pengguna
-          </Button>
-        }
-      >
-        <Table bordered rowKey="id" dataSource={users} pagination={false}>
-          <Column title="Nama" dataIndex="name" align="center" />
-          <Column title="Username" dataIndex="username" align="center" />
-          <Column title="Email" dataIndex="email" align="center" />
-          <Column title="Peran" dataIndex="roles" align="center" />
-          <Column title="Sekolah" dataIndex="school.name" align="center" />
-          <Column
-            title="Operasi"
-            key="action"
-            width={195}
-            align="center"
-            render={(_, row) => (
-              <span>
-                <Button
-                  type="primary"
-                  shape="circle"
-                  icon="delete"
-                  title="menghapus"
-                  onClick={() => handleDeleteUser(row)}
-                />
-              </span>
-            )}
-          />
-        </Table>
+      <Card title={renderButtons()} style={{ overflowX: "scroll" }}>
+        {renderTable()}
       </Card>
-
       <EditUserForm
         wrappedComponentRef={editFormRef}
         currentRowData={currentRowData}
         visible={modalState.editVisible}
         confirmLoading={modalState.editLoading}
-        onCancel={handleCancel}
-        onOk={handleEditUserOk}
+        onCancel={() =>
+          setModalState((prev) => ({ ...prev, editVisible: false }))
+        }
+        onOk={fetchUsers}
       />
-
       <AddUserForm
         wrappedComponentRef={addFormRef}
         visible={modalState.addVisible}
         confirmLoading={modalState.addLoading}
-        onCancel={handleCancel}
-        onOk={handleAddUserOk}
+        onCancel={() =>
+          setModalState((prev) => ({ ...prev, addVisible: false }))
+        }
+        onOk={fetchUsers}
       />
     </div>
   );

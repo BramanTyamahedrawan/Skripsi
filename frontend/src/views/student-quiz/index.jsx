@@ -4,7 +4,7 @@ import { Card, Button, Table, Modal } from "antd";
 import { getQuiz } from "@/api/quiz";
 import { getQuestions, getQuestionsByRPS } from "@/api/question";
 import { getRPS } from "@/api/rps";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import TypingCard from "@/components/TypingCard";
 import { getAttemptQuizByUserID } from "../../api/attemptQuiz";
@@ -18,7 +18,7 @@ const StudentQuiz = () => {
   const [questions, setQuestions] = useState([]);
   const [rps, setRps] = useState([]);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const idUser = useSelector((state) => state.user.idUser);
 
@@ -91,7 +91,7 @@ const StudentQuiz = () => {
       okText: "OK",
       cancelText: "Batal",
       onOk: () => {
-        history.push(`/quiz/do/${row.id}`);
+        navigate.push(`/quiz/do/${row.id}`);
       },
     });
   };
@@ -111,12 +111,7 @@ const StudentQuiz = () => {
       <TypingCard title="Ujian" source={cardContent} />
       <br />
       <Card title={title}>
-        <Table
-          bordered
-          rowKey="id"
-          dataSource={filteredQuiz}
-          pagination={false}
-        >
+        <Table variant rowKey="id" dataSource={filteredQuiz} pagination={false}>
           <Column
             title="RPS"
             dataIndex="rps.name"

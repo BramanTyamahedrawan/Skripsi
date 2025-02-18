@@ -1,4 +1,5 @@
-import { Component } from "react";
+/* eslint-disable no-unused-vars */
+import React, { Component } from "react";
 import { PropTypes } from "prop-types";
 import { Upload, message } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
@@ -49,7 +50,7 @@ class UploadExcel extends Component {
           message.error(`${info.file.name} 文件上传失败`);
         }
       },
-      beforeUpload(file) {
+      beforeUpload(file, fileList) {
         if (!isExcel(file)) {
           message.error("仅支持上传.xlsx, .xls, .csv 文件");
           return false;
@@ -63,7 +64,7 @@ class UploadExcel extends Component {
     };
   };
   readerData = (rawFile) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const data = e.target.result;

@@ -1,118 +1,127 @@
+/* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import { Menu, Dropdown, Modal, Layout, Avatar } from "antd";
-import { CaretDownFilled } from "@ant-design/icons";
 import { Link } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { connect } from "react-redux";
 import { logout, getUserInfo } from "@/store/actions";
 import FullScreen from "@/components/FullScreen";
-import Settings from "@/components/Settings";
 import Hamburger from "@/components/Hamburger";
 import BreadCrumb from "@/components/BreadCrumb";
-import { reqUserInfo } from "@/api/user";
 import "./index.less";
+import { reqUserInfo } from "@/api/user";
+import { CaretDownOutlined } from "@ant-design/icons";
+import assets from "../../../assets";
 
 const { Header } = Layout;
 
-const LayoutHeader = () => {
+const LayoutHeader = (props) => {
+  const { sidebarCollapsed } = props;
   const [user, setUser] = useState(null);
-  const dispatch = useDispatch();
-
-  const { token, fixedHeader, sidebarCollapsed, showSettings } = useSelector(
-    (state) => ({
-      ...state.app,
-      ...state.user,
-      ...state.settings,
-    })
-  );
 
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const response = await reqUserInfo();
+    // Fetch user info
+    reqUserInfo()
+      .then((response) => {
         setUser(response.data);
-      } catch (error) {
+      })
+      .catch((error) => {
         console.error("Error fetching user data:", error);
-      }
-    };
+      });
 
-    fetchUserInfo();
-    token && dispatch(getUserInfo(token));
-  }, [dispatch, token]);
+    const { token, getUserInfo } = props;
+    if (token) getUserInfo(token);
+  }, [props]);
 
-  const handleLogout = () => {
+  const handleLogout = (token) => {
     Modal.confirm({
-      title: "Keluar",
-      content: "Apakah Anda yakin ingin keluar?",
-      okText: "Ya",
-      cancelText: "Tidak",
+      title: "Logout",
+      content: "Are you sure you want to log out?",
+      okText: "Yes",
+      cancelText: "No",
       onOk: () => {
-        dispatch(logout(token));
+        props.logout(token);
       },
     });
   };
 
-  const handleMenuClick = ({ key }) => {
-    if (key === "logout") {
-      handleLogout();
+  const onClick = ({ key }) => {
+    switch (key) {
+      case "logout":
+        handleLogout(props.token);
+        break;
+      default:
+        break;
     }
   };
 
-  const getHeaderStyle = () => {
-    if (fixedHeader) {
-      return {
-        width: sidebarCollapsed ? "calc(100% - 80px)" : "calc(100% - 200px)",
-      };
-    }
-    return { width: "100%" };
+  const computedStyle = () => {
+    // if (fixedHeader) {
+    return {
+      width: sidebarCollapsed ? "calc(100% - 80px)" : "calc(100% - 200px)",
+      marginLeft: sidebarCollapsed ? "80px" : "200px",
+      position: "fixed",
+    };
+    // }
+    // return {
+    //   width: '100%',
+    // }
   };
 
-  const dropdownMenu = (
-    <Menu onClick={handleMenuClick}>
+  const menu = (
+    <Menu onClick={onClick}>
       {user ? (
-        <>
-          <Menu.Item disabled>
-            <div>
-              <p>{user.name}</p>
-              <p>{user.roles}</p>
-            </div>
-          </Menu.Item>
-          <Menu.Item key="dashboard">
-            <Link to="/dashboard">Beranda</Link>
-          </Menu.Item>
-          <Menu.Divider />
-          <Menu.Item key="logout">Logout</Menu.Item>
-        </>
+        <div>
+          <p
+            style={{
+              maxWidth: 180,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {user.name}
+          </p>
+        </div>
       ) : (
-        <Menu.Item disabled>Loading...</Menu.Item>
+        <p>Loading...</p>
       )}
+      <Menu.Item key="dashboard">
+        <Link to="/dashboard">Home</Link>
+      </Menu.Item>
+      <Menu.Divider />
+      <Menu.Item key="logout">Logout</Menu.Item>
     </Menu>
   );
 
   return (
     <>
-      {fixedHeader && <Header />}
+      {props.fixedHeader ? <Header /> : null}
+
       <Header
-        style={getHeaderStyle()}
-        className={fixedHeader ? "fix-header" : ""}
+        style={computedStyle()}
+        className={props.fixedHeader ? "fix-header" : ""}
       >
         <Hamburger />
-        <BreadCrumb />
-
+        {sidebarCollapsed ? <></> : <BreadCrumb />}
         <div className="right-menu">
           <FullScreen />
-          {showSettings && <Settings />}
-
+          {/* {props.showSettings && <Settings />} */}
           <div className="dropdown-wrap">
-            <Dropdown overlay={dropdownMenu}>
-              <div style={{ display: "flex" }}>
+            <Dropdown overlay={menu} destroyPopupOnHide>
+              {/* Wrap children in a single container */}
+              <div style={{ display: "flex", alignItems: "center" }}>
                 {user ? (
-                  <Avatar shape="square" size="medium" src={user.avatar} />
+                  <Avatar
+                    shape="square"
+                    size="medium"
+                    src={assets.images.avatar}
+                  />
                 ) : (
-                  <span>Loading...</span>
+                  <p>Loading...</p>
                 )}
-                <div style={{ top: 20 }}>
-                  <CaretDownFilled style={{ fontSize: 20 }} />
-                </div>
+                <CaretDownOutlined
+                  style={{ color: "rgba(0,0,0,.3)", marginLeft: 8 }}
+                />
               </div>
             </Dropdown>
           </div>
@@ -122,4 +131,10 @@ const LayoutHeader = () => {
   );
 };
 
-export default LayoutHeader;
+const mapStateToProps = (state) => ({
+  ...state.app,
+  ...state.user,
+  ...state.settings,
+});
+
+export default connect(mapStateToProps, { logout, getUserInfo })(LayoutHeader);

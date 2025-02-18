@@ -133,7 +133,7 @@ const SubjectGroup = () => {
         }
       >
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={subjectGroups}
           pagination={false}

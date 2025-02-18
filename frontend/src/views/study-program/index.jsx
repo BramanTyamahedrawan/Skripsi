@@ -142,7 +142,7 @@ const StudyProgram = () => {
         }
       >
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={studyPrograms}
           pagination={false}

@@ -148,7 +148,7 @@ const ListTodoAdmin = () => {
         </Select>
 
         <Table
-          bordered
+          variant
           rowKey={(record, index) => index}
           dataSource={quizMessages}
           pagination={false}

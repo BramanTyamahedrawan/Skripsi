@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import screenfull from "screenfull";
 import { message, Tooltip } from "antd";
-import { FullscreenOutlined, FullscreenExitOutlined } from "@ant-design/icons";
+import { FullscreenExitOutlined, FullscreenOutlined } from "@ant-design/icons";
 import "./index.less";
 
 const click = () => {
@@ -30,11 +30,9 @@ const FullScreen = () => {
   return (
     <div className="fullScreen-container">
       <Tooltip placement="bottom" title={title}>
-        {isFullscreen ? (
-          <FullscreenExitOutlined onClick={click} />
-        ) : (
-          <FullscreenOutlined onClick={click} />
-        )}
+        <div className="fullScreen" onClick={click}>
+          {isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+        </div>
       </Tooltip>
     </div>
   );

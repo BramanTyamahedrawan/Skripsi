@@ -240,7 +240,7 @@ const TahunAjaran = () => {
         }
       >
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={tahunAjaran}
           pagination={{ pageSize: 10 }}

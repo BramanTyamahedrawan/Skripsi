@@ -208,7 +208,7 @@ const RPS = () => {
           </Button>
         }
       >
-        <Table bordered rowKey="id" dataSource={rps} pagination={false}>
+        <Table variant rowKey="id" dataSource={rps} pagination={false}>
           <Column title="ID RPS" dataIndex="id" key="id" align="center" />
           <Column title="Nama" dataIndex="name" key="name" align="center" />
           <Column

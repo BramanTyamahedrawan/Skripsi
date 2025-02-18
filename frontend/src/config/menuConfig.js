@@ -1,209 +1,87 @@
+/* eslint-disable no-unused-vars */
+import {
+  HomeOutlined,
+  DatabaseOutlined,
+  ApartmentOutlined,
+  AppstoreOutlined,
+  GlobalOutlined,
+  BranchesOutlined,
+  AuditOutlined,
+  ContainerOutlined,
+  ControlOutlined,
+  FileDoneOutlined,
+  FileSyncOutlined,
+  TeamOutlined,
+  SolutionOutlined,
+  FileTextOutlined,
+  FileSearchOutlined,
+  UsergroupAddOutlined,
+  RadarChartOutlined,
+  FileProtectOutlined,
+  CopyrightOutlined,
+  BugOutlined,
+} from "@ant-design/icons";
+import { icon } from "leaflet";
+
 const menuList = [
   {
     title: "Beranda",
     path: "/dashboard",
-    icon: "home",
-    roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_DUDI", "ROLE_STUDENT"],
+    icon: HomeOutlined,
+    roles: [
+      "ROLE_ADMINISTRATOR",
+      "ROLE_OPERATOR",
+      "ROLE_TEACHER",
+      "ROLE_DUDI",
+      "ROLE_STUDENT",
+    ],
   },
-  // {
-  //   title: "Author Blog",
-  //   path: "/doc",
-  //   icon: "file",
-  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
-  // },
-  // {
-  //   title: "Guide",
-  //   path: "/guide",
-  //   icon: "key",
-  //   roles:["ROLE_OPERATOR","ROLE_TEACHER"]
-  // },
-  // {
-  //   title: "Permission",
-  //   path: "/permission",
-  //   icon: "lock",
-  //   children: [
-  //     {
-  //       title: "Deskripsi Permission",
-  //       path: "/permission/explanation",
-  //       roles:["ROLE_OPERATOR"]
-  //     },
-  //     {
-  //       title: "Halaman Admin",
-  //       path: "/permission/adminPage",
-  //       roles:["ROLE_OPERATOR"]
-  //     },
-  //     {
-  //       title: "Halaman Dosen",
-  //       path: "/permission/lecturePage",
-  //       roles:["ROLE_TEACHER"]
-  //     },
-  //     {
-  //       title: "Halaman Siswa",
-  //       path: "/permission/studentPage",
-  //       roles:["ROLE_STUDENT"]
-  //     },
-
-  //   ],
-  // },
-  // {
-  //   title: "Komponen",
-  //   path: "/components",
-  //   icon: "appstore",
-  //   roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //   children: [
-  //     {
-  //       title: "Rich Text",
-  //       path: "/components/richTextEditor",
-  //       roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //     },
-  //     {
-  //       title: "Markdown",
-  //       path: "/components/Markdown",
-  //       roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //     },
-  //     {
-  //       title: "Drag List",
-  //       path: "/components/draggable",
-  //       roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //     },
-  //   ],
-  // },
-  // {
-  //   title: "Bagan",
-  //   path: "/charts",
-  //   icon: "area-chart",
-  //   roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //   children: [
-  //     {
-  //       title: "Bagan Keyboard",
-  //       path: "/charts/keyboard",
-  //       roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //     },
-  //     {
-  //       title: "Bagan Garis",
-  //       path: "/charts/line",
-  //       roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //     },
-  //     {
-  //       title: "Bagan Campuran",
-  //       path: "/charts/mix-chart",
-  //       roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //     },
-  //   ],
-  // },
-  // {
-  //   title: "Menu Bersarang",
-  //   path: "/nested",
-  //   icon: "cluster",
-  //   roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //   children: [
-  //     {
-  //       title: "Menu 1",
-  //       path: "/nested/menu1",
-  //       children: [
-  //         {
-  //           title: "Menu 1-1",
-  //           path: "/nested/menu1/menu1-1",
-  //           roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //         },
-  //         {
-  //           title: "Menu 1-2",
-  //           path: "/nested/menu1/menu1-2",
-  //           children: [
-  //             {
-  //               title: "Menu 1-2-1",
-  //               path: "/nested/menu1/menu1-2/menu1-2-1",
-  //               roles:["ROLE_OPERATOR","ROLE_TEACHER"],
-  //             },
-  //           ],
-  //         },
-  //       ],
-  //     },
-  //   ],
-  // },
-  // {
-  //   title: "Tabel",
-  //   path: "/table",
-  //   icon: "table",
-  //   roles:["ROLE_OPERATOR","ROLE_TEACHER"]
-  // },
-  // {
-  //   title: "Excel",
-  //   path: "/excel",
-  //   icon: "file-excel",
-  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
-  //   children: [
-  //     {
-  //       title: "Export Excel",
-  //       path: "/excel/export",
-  //       roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
-  //     },
-  //     {
-  //       title: "Export Excel",
-  //       path: "/excel/upload",
-  //       roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
-  //     },
-  //   ],
-  // },
-  // {
-  //   title: "Zip",
-  //   path: "/zip",
-  //   icon: "file-zip",
-  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
-  // },
-  // {
-  //   title: "Papan Klip",
-  //   path: "/clipboard",
-  //   icon: "copy",
-  //   roles:["ROLE_OPERATOR","ROLE_TEACHER"]
-  // },
-  // Admin
   {
     title: "Master Data",
     path: "/master",
-    icon: "database",
-    roles: ["ROLE_ADMINISTRATOR" , "ROLE_OPERATOR"],
+    icon: DatabaseOutlined,
+    roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],
     children: [
       {
         title: "Bidang Keahlian",
         path: "/bidang-keahlian",
-        icon: "apartment",
+        icon: ApartmentOutlined,
         roles: ["ROLE_ADMINISTRATOR"],
       },
       {
         title: "Program Keahlian",
         path: "/program-keahlian",
-        icon: "apartment",
+        icon: ApartmentOutlined,
         roles: ["ROLE_ADMINISTRATOR"],
       },
       {
         title: "Konsentrasi Keahlian",
         path: "/konsentrasi-keahlian",
-        icon: "apartment",
+        icon: ApartmentOutlined,
         roles: ["ROLE_ADMINISTRATOR"],
       },
       {
         title: "Jurusan",
         path: "/department",
-        icon: "apartment",
-        roles: [ "ROLE_OPERATOR"],
+        icon: ApartmentOutlined,
+        roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Prodi",
         path: "/study-program",
-        icon: "appstore",
+        icon: ApartmentOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Agama",
         path: "/religion",
-        icon: "global",
+        icon: GlobalOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Kurikulum",
         path: "/kurikulum",
-        icon: "branches",
+        icon: BranchesOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
@@ -215,213 +93,217 @@ const menuList = [
       {
         title: "Jadwal Pelajaran",
         path: "/jadwal-pelajaran",
-        icon: "branches",
+        icon: BranchesOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Kelas",
         path: "/kelas",
-        icon: "audit",
+        icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Tahun Ajaran",
         path: "/tahun-ajaran",
-        icon: "audit",
+        icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Kelas Ajaran",
         path: "/season",
-        icon: "audit",
+        icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Analisis Capaian Pembelajaran",
         path: "/acp",
-        icon: "audit",
+        icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Alur Tujuan Pembelajaran",
         path: "/atp",
-        icon: "audit",
+        icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Media Pembelajaran",
         path: "/learning-media",
-        icon: "apartment",
+        icon: ApartmentOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Bentuk Pembelajaran",
         path: "/form-learning",
-        icon: "container",
+        icon: ContainerOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Metode Pembelajaran",
         path: "/learning-method",
-        icon: "control",
+        icon: ControlOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Kriteria Penilaian",
         path: "/assessment-criteria",
-        icon: "file-done",
+        icon: FileDoneOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
         title: "Formulir Penilaian",
         path: "/appraisal-form",
-        icon: "file-sync",
+        icon: FileSyncOutlined,
         roles: ["ROLE_OPERATOR"],
       },
     ],
   },
-  
+
   {
     title: "Guru",
     path: "/lecture",
-    icon: "team",
+    icon: TeamOutlined,
     roles: ["ROLE_OPERATOR"],
   },
 
   {
     title: "Siswa",
     path: "/student",
-    icon: "team",
+    icon: TeamOutlined,
     roles: ["ROLE_OPERATOR"],
   },
   {
     title: "List Todo",
     path: "/list-todo-admin",
-    icon: "solution",
-    roles: ["ROLE_OPERATOR"]
+    icon: SolutionOutlined,
+    roles: ["ROLE_OPERATOR"],
   },
   // Lecture
-  {  title: "Master Soal",
+  {
+    title: "Master Soal",
     path: "/question",
-    icon: "database",
+    icon: DatabaseOutlined,
     roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
     children: [
       {
         title: "Kriteria Pertanyaan",
         path: "/question-criteria",
-        icon: "apartment",
+        icon: ApartmentOutlined,
         roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
       },
       {
         title: "Tabel Nilai Linguistik",
         path: "/linguistic-value",
-        icon: "file-text",
+        icon: FileTextOutlined,
         roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
       },
       {
-        title : "Pengujian Soal",
-        path : "/criteria-value",
-        icon : "file-search",
+        title: "Pengujian Soal",
+        path: "/criteria-value",
+        icon: FileSearchOutlined,
         // roles : ["ROLE_OPERATOR"],
-        roles : ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
+        roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
       },
     ],
   },
   {
     title: "List Todo",
     path: "/list-todo",
-    icon: "solution",
-    roles: ["ROLE_TEACHER", "ROLE_DUDI",]
+    icon: SolutionOutlined,
+    roles: ["ROLE_TEACHER", "ROLE_DUDI"],
   },
   {
     title: "Pengguna",
     path: "/user",
-    icon: "usergroup-add",
+    icon: UsergroupAddOutlined,
     roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],
   },
 
   {
     title: "Profil Sekolah",
     path: "/school-profile",
-    icon: "apartment",
+    icon: ApartmentOutlined,
     roles: ["ROLE_ADMINISTRATOR"],
   },
 
   {
     title: "RPS",
     path: "/rps",
-    icon: "radar-chart",
+    icon: RadarChartOutlined,
     roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
   },
   {
     title: "Manajemen Soal",
     path: "/question",
-    icon: "file-search",
+    icon: FileSearchOutlined,
     roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
   },
   {
     title: "Setting Ujian",
     path: "/setting-exam",
-    icon: "solution",
+    icon: SolutionOutlined,
     roles: ["ROLE_OPERATOR"],
   },
   {
     title: "Setting Kuis",
     path: "/setting-quiz",
-    icon: "solution",
+    icon: SolutionOutlined,
     roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
   },
   {
     title: "Setting Latihan",
     path: "/setting-exercise",
-    icon: "solution",
+    icon: SolutionOutlined,
     roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
   },
   {
     title: "Ujian",
     path: "/exam",
-    icon: "solution",
+    icon: SolutionOutlined,
     roles: ["ROLE_STUDENT"],
   },
   {
     title: "Kuis",
     path: "/quiz",
-    icon: "solution",
+    icon: SolutionOutlined,
     roles: ["ROLE_STUDENT"],
   },
   {
     title: "Latihan",
     path: "/exercise",
-    icon: "solution",
+    icon: SolutionOutlined,
     roles: ["ROLE_STUDENT"],
   },
   {
     title: "Nilai",
     path: "/result",
-    icon: "file-protect",
-    roles: ["ROLE_TEACHER",  "ROLE_DUDI"],
+    icon: FileProtectOutlined,
+    roles: ["ROLE_TEACHER", "ROLE_DUDI"],
     children: [
       {
         title: "Nilai Ujian",
         path: "/result/exam",
-        roles: ["ROLE_TEACHER",  "ROLE_DUDI",],
+        icon: ContainerOutlined,
+        roles: ["ROLE_TEACHER", "ROLE_DUDI"],
       },
       {
         title: "Nilai Kuis",
         path: "/result/quiz",
-        roles: [ "ROLE_DUDI", "ROLE_TEACHER"],
+        icon: ContainerOutlined,
+        roles: ["ROLE_DUDI", "ROLE_TEACHER"],
       },
       {
         title: "Nilai Latihan",
         path: "/result/exercise",
-        roles: [ "ROLE_DUDI", "ROLE_TEACHER"],
+        icon: ContainerOutlined,
+        roles: ["ROLE_DUDI", "ROLE_TEACHER"],
       },
     ],
   },
   {
     title: "Tentang Penulis",
     path: "/about",
-    icon: "copyright",
+    icon: CopyrightOutlined,
     roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER", "ROLE_STUDENT"],
   },
 

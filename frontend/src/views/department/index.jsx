@@ -148,7 +148,7 @@ const Department = () => {
       <TypingCard title="Manajemen Jurusan" source={cardContent} />
       <br />
       <Card title={title}>
-        <Table bordered rowKey="id" dataSource={departments} pagination={false}>
+        <Table variant rowKey="id" dataSource={departments} pagination={false}>
           <Column title="ID Jurusan" dataIndex="id" key="id" align="center" />
           <Column title="Nama" dataIndex="name" key="name" align="center" />
           <Column

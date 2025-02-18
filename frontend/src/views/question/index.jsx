@@ -7,7 +7,7 @@ import {
   editQuestion,
   addQuestion,
 } from "@/api/question";
-import { useHistory, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import TypingCard from "@/components/TypingCard";
 import EditQuestionForm from "./forms/edit-question-form";
 import AddQuestionForm from "./forms/add-question-form";
@@ -33,7 +33,7 @@ const Question = ({ imageNames }) => {
   });
 
   const { rpsID, rpsDetailID } = useParams();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const editQuestionFormRef = useRef();
   const addQuestionFormRef = useRef();
@@ -206,7 +206,7 @@ const Question = ({ imageNames }) => {
       {imageElements}
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={getFilteredData()}
           pagination={false}

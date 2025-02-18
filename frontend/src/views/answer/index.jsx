@@ -129,7 +129,7 @@ const Answer = () => {
       <br />
       <Card title={title}>
         <h3>{questionTitle}</h3>
-        <Table bordered rowKey="id" dataSource={answers} pagination={false}>
+        <Table variant rowKey="id" dataSource={answers} pagination={false}>
           <Column title="ID Jawaban" dataIndex="id" key="id" align="center" />
           <Column
             title="Jawaban"

@@ -4,7 +4,7 @@ import { Card, Button, Table, Modal } from "antd";
 import { getExercise } from "@/api/exercise";
 import { getQuestions, getQuestionsByRPS } from "@/api/question";
 import { getRPS } from "@/api/rps";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import TypingCard from "@/components/TypingCard";
 import { getAttemptExerciseByUserID } from "../../api/attemptExercise";
@@ -18,7 +18,7 @@ const StudentExercise = () => {
   const [questions, setQuestions] = useState([]);
   const [rps, setRps] = useState([]);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const idUser = useSelector((state) => state.user.idUser);
 
@@ -98,7 +98,7 @@ const StudentExercise = () => {
       okText: "OK",
       cancelText: "Batal",
       onOk: () => {
-        history.push(`/exercise/do/${row.id}`);
+        navigate.push(`/exercise/do/${row.id}`);
       },
     });
   };
@@ -110,7 +110,7 @@ const StudentExercise = () => {
       okText: "OK",
       cancelText: "Batal",
       onOk: () => {
-        history.push(`/exercise-review/${row.attemptExerciseId}`);
+        navigate.push(`/exercise-review/${row.attemptExerciseId}`);
       },
     });
   };
@@ -129,7 +129,7 @@ const StudentExercise = () => {
       <TypingCard title="Ujian" source={cardContent} />
       <br />
       <Card title={title}>
-        <Table bordered rowKey="id" dataSource={exercise} pagination={false}>
+        <Table variant rowKey="id" dataSource={exercise} pagination={false}>
           <Column
             title="RPS"
             dataIndex="rps.name"

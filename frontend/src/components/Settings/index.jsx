@@ -1,8 +1,8 @@
+import React from "react";
 import { connect } from "react-redux";
 import { Tooltip } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 import { toggleSettingPanel } from "@/store/actions";
-import PropTypes from "prop-types";
 import "./index.less";
 const Settings = (props) => {
   const { toggleSettingPanel } = props;
@@ -13,9 +13,6 @@ const Settings = (props) => {
       </Tooltip>
     </div>
   );
-};
-Settings.propTypes = {
-  toggleSettingPanel: PropTypes.func.isRequired,
 };
 
 export default connect(null, { toggleSettingPanel })(Settings);

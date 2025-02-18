@@ -14,7 +14,7 @@ const RichTextEditor = () => {
 
   return (
     <div>
-      <Card bordered={false}>
+      <Card variant={false}>
         <Editor
           editorState={editorState}
           onEditorStateChange={onEditorStateChange}
@@ -27,11 +27,7 @@ const RichTextEditor = () => {
       <br />
       <Row gutter={10}>
         <Col span={12}>
-          <Card
-            title="同步转换HTML"
-            bordered={false}
-            style={{ minHeight: 200 }}
-          >
+          <Card title="同步转换HTML" variant={false} style={{ minHeight: 200 }}>
             {editorState &&
               draftToHtml(convertToRaw(editorState.getCurrentContent()))}
           </Card>
@@ -39,7 +35,7 @@ const RichTextEditor = () => {
         <Col span={12}>
           <Card
             title="同步转换MarkDown"
-            bordered={false}
+            variant={false}
             style={{ minHeight: 200 }}
           >
             {editorState &&

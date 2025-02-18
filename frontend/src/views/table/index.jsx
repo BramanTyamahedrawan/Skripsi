@@ -158,7 +158,7 @@ const TableComponent = () => {
       </Collapse>
       <br />
       <Table
-        bordered
+        variant
         rowKey={(record) => record.id}
         dataSource={list}
         loading={loading}

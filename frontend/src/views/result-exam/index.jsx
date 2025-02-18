@@ -189,7 +189,7 @@ const ResultExam = () => {
       <br />
       <Card>
         <Table
-          bordered
+          variant
           rowKey={(record) => record.id}
           dataSource={exam}
           pagination={false}

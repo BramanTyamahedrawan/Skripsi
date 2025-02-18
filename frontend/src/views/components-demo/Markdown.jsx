@@ -11,7 +11,7 @@ const MarkdownDemo = () => {
     <div className="app-container">
       <TypingCard title="新手引导" source={cardContent} />
       <br />
-      <Card bordered={false}>
+      <Card variant={false}>
         <Markdown />
       </Card>
     </div>

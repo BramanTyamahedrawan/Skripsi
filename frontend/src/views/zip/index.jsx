@@ -143,7 +143,7 @@ const Zip = () => {
       </Collapse>
       <br />
       <Table
-        bordered
+        variant
         columns={columns}
         rowKey={(record) => record.id}
         dataSource={list}

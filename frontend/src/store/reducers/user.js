@@ -2,8 +2,9 @@ import * as types from "../action-types";
 import { getToken } from "@/utils/auth";
 const initUserInfo = {
   name: "",
-  roles: "",
-  avatar:"",
+  role: "",
+  avatar: "",
+  idUser: "",
   token: getToken(),
 };
 export default function user(state = initUserInfo, action) {
@@ -11,13 +12,14 @@ export default function user(state = initUserInfo, action) {
     case types.USER_SET_USER_TOKEN:
       return {
         ...state,
-        token: action.token
+        token: action.token,
       };
     case types.USER_SET_USER_INFO:
       return {
         ...state,
         name: action.name,
-        role: action.role,
+        role: action.roles,
+        idUser: action.id,
         avatar: action.avatar,
       };
     case types.USER_RESET_USER:

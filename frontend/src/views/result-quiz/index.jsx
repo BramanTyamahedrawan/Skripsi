@@ -190,7 +190,7 @@ const ResultQuiz = () => {
       <br />
       <Card>
         <Table
-          bordered
+          variant
           rowKey={(record) => record.id}
           dataSource={quiz}
           pagination={false}

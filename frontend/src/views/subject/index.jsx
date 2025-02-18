@@ -247,7 +247,7 @@ const Mapel = () => {
         }
       >
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={mapels}
           pagination={{ pageSize: 10 }}

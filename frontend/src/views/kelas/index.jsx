@@ -278,7 +278,7 @@ const Kelas = () => {
       <br />
       <Card title={title}>
         <Table
-          bordered
+          variant
           rowKey="id"
           dataSource={kelas}
           pagination={{ pageSize: 10 }}
@@ -342,7 +342,7 @@ const Kelas = () => {
 
       <Modal
         title="Import File"
-        visible={importModalVisible}
+        open={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
         footer={[
           <Button key="cancel" onClick={() => setImportModalVisible(false)}>
