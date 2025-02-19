@@ -1,294 +1,180 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
-import { Card, Button, Table, message, Upload, Row, Col, Modal } from "antd";
+import React, { useState, useEffect } from "react";
+import { Card, Button, Table, message, Modal, Row, Col, Upload } from "antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import {
   getTahunAjaran,
   deleteTahunAjaran,
-  editTahunAjaran,
   addTahunAjaran,
 } from "@/api/tahun-ajaran";
 import TypingCard from "@/components/TypingCard";
-import EditTahunAjaranForm from "./forms/edit-tahun-ajaran-form";
 import AddTahunAjaranForm from "./forms/add-tahun-ajaran-form";
-import { read, utils } from "xlsx";
-
-const { Column } = Table;
+import EditTahunAjaranForm from "./forms/edit-tahun-ajaran-form";
 
 const TahunAjaran = () => {
   const [tahunAjaran, setTahunAjaran] = useState([]);
-  const [modalState, setModalState] = useState({
-    editVisible: false,
-    editLoading: false,
-    addVisible: false,
-    addLoading: false,
-    importVisible: false,
-  });
-  const [currentRowData, setCurrentRowData] = useState({});
-  const [importData, setImportData] = useState({
-    data: [],
-    columnTitles: [],
-    fileName: "",
-    columnMapping: {},
-  });
+  const [addTahunAjaranModalVisible, setAddTahunAjaranModalVisible] =
+    useState(false);
+  const [addTahunAjaranModalLoading, setAddTahunAjaranModalLoading] =
+    useState(false);
+  const [editTahunAjaranModalVisible, setEditTahunAjaranModalVisible] =
+    useState(false);
+  const [editTahunAjaranModalLoading, setEditTahunAjaranModalLoading] =
+    useState(false);
+  const [importModalVisible, setImportModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
-
-  const editFormRef = useRef();
-  const addFormRef = useRef();
-
-  const fetchTahunAjaran = async () => {
-    try {
-      const result = await getTahunAjaran();
-      if (result.data.statusCode === 200) {
-        setTahunAjaran(result.data.content);
-      }
-    } catch (error) {
-      console.error("Error fetching tahun ajaran:", error);
-    }
-  };
+  const [currentRowData, setCurrentRowData] = useState({});
 
   useEffect(() => {
     fetchTahunAjaran();
   }, []);
 
-  const handleEditTahunAjaran = (row) => {
-    setCurrentRowData({ ...row });
-    setModalState((prev) => ({ ...prev, editVisible: true }));
-  };
-
-  const handleDeleteTahunAjaran = async (row) => {
-    if (row.id === "admin") {
-      message.error("Tidak dapat menghapus Admin!");
-      return;
-    }
-
+  const fetchTahunAjaran = async () => {
     try {
-      await deleteTahunAjaran({ id: row.id });
-      message.success("Berhasil dihapus");
-      fetchTahunAjaran();
+      const result = await getTahunAjaran();
+      if (
+        result.data.statusCode === 200 &&
+        Array.isArray(result.data.content)
+      ) {
+        setTahunAjaran(result.data.content);
+      } else {
+        setTahunAjaran([]);
+        message.error("Gagal mengambil data");
+      }
     } catch (error) {
-      message.error("Gagal menghapus");
+      setTahunAjaran([]);
+      message.error("Terjadi kesalahan: " + error.message);
     }
   };
 
-  const handleEditTahunAjaranOk = () => {
-    const form = editFormRef.current?.props.form;
-    form?.validateFields(async (err, values) => {
-      if (err) return;
-
-      setModalState((prev) => ({ ...prev, editLoading: true }));
-      try {
-        await editTahunAjaran(values, values.id);
-        form.resetFields();
-        setModalState((prev) => ({
-          ...prev,
-          editVisible: false,
-          editLoading: false,
-        }));
-        message.success("Berhasil diperbarui!");
-        fetchTahunAjaran();
-      } catch (error) {
-        message.error("Gagal memperbarui");
-        setModalState((prev) => ({ ...prev, editLoading: false }));
-      }
+  const handleDeleteTahunAjaran = (row) => {
+    Modal.confirm({
+      title: "Konfirmasi",
+      content: "Apakah Anda yakin ingin menghapus data ini?",
+      okText: "Ya",
+      okType: "danger",
+      cancelText: "Tidak",
+      onOk: async () => {
+        try {
+          await deleteTahunAjaran({ id: row.id });
+          message.success("Berhasil dihapus");
+          fetchTahunAjaran();
+        } catch (error) {
+          message.error("Gagal menghapus: " + error.message);
+        }
+      },
     });
   };
 
-  const handleCancel = () => {
-    setModalState((prev) => ({
-      ...prev,
-      editVisible: false,
-      addVisible: false,
-      importVisible: false,
-    }));
+  const handleEditTahunAjaran = (row) => {
+    setCurrentRowData({ ...row });
+    setEditTahunAjaranModalVisible(true);
   };
 
   const handleAddTahunAjaran = () => {
-    setModalState((prev) => ({ ...prev, addVisible: true }));
+    setAddTahunAjaranModalVisible(true);
   };
 
-  const handleAddTahunAjaranOk = () => {
-    const form = addFormRef.current?.props.form;
-    form?.validateFields(async (err, values) => {
-      if (err) return;
-
-      setModalState((prev) => ({ ...prev, addLoading: true }));
-      try {
-        await addTahunAjaran(values);
-        form.resetFields();
-        setModalState((prev) => ({
-          ...prev,
-          addVisible: false,
-          addLoading: false,
-        }));
-        message.success("Berhasil ditambahkan!");
-        fetchTahunAjaran();
-      } catch (error) {
-        message.error("Gagal menambahkan, coba lagi!");
-        setModalState((prev) => ({ ...prev, addLoading: false }));
-      }
-    });
-  };
-
-  const handleFileImport = (file) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = read(data, { type: "array" });
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
-
-      const columnTitles = jsonData[0];
-      const columnMapping = {};
-      columnTitles.forEach((title, index) => {
-        columnMapping[title] = index;
-      });
-
-      setImportData({
-        data: jsonData.slice(1),
-        columnTitles,
-        fileName: file.name.toLowerCase(),
-        columnMapping,
-      });
-    };
-    reader.readAsArrayBuffer(file);
-  };
-
-  const handleUpload = async () => {
-    if (importData.data.length === 0) {
-      message.error("Tidak ada data untuk diimpor");
-      return;
-    }
-
-    setUploading(true);
-    let errorCount = 0;
-
+  const handleAddTahunAjaranOk = async (values) => {
+    setAddTahunAjaranModalLoading(true);
     try {
-      for (const row of importData.data) {
-        const dataToSave = {
-          id: row[importData.columnMapping["ID Konsentrasi"]],
-          konsentrasi:
-            row[importData.columnMapping["Nama Konsentrasi Keahlian"]],
-          programKeahlian_id: row[importData.columnMapping["ID Program"]],
-        };
-
-        const existingIdx = tahunAjaran.findIndex(
-          (p) => p.id === dataToSave.id
-        );
-
-        try {
-          if (existingIdx > -1) {
-            await editTahunAjaran(dataToSave, dataToSave.id);
-            setTahunAjaran((prev) => {
-              const updated = [...prev];
-              updated[existingIdx] = dataToSave;
-              return updated;
-            });
-          } else {
-            await addTahunAjaran(dataToSave);
-            setTahunAjaran((prev) => [...prev, dataToSave]);
-          }
-        } catch (error) {
-          errorCount++;
-          console.error("Gagal menyimpan data:", error);
-        }
-      }
-
-      if (errorCount === 0) {
-        message.success("Semua data berhasil disimpan");
-      } else {
-        message.error(`${errorCount} data gagal disimpan`);
-      }
+      await addTahunAjaran(values);
+      message.success("Berhasil menambahkan");
+      fetchTahunAjaran();
+      setAddTahunAjaranModalVisible(false);
     } catch (error) {
-      console.error("Gagal memproses data:", error);
-      message.error("Gagal memproses data");
+      message.error("Gagal menambahkan: " + error.message);
     } finally {
-      setUploading(false);
-      setModalState((prev) => ({ ...prev, importVisible: false }));
-      setImportData({
-        data: [],
-        columnTitles: [],
-        fileName: "",
-        columnMapping: {},
-      });
+      setAddTahunAjaranModalLoading(false);
     }
   };
 
-  const cardContent = `Di sini, Anda dapat mengelola tahun ajaran di sistem, seperti menambahkan tahun ajaran baru, atau mengubah tahun ajaran yang sudah ada di sistem.`;
+  const handleCancel = () => {
+    setAddTahunAjaranModalVisible(false);
+    setEditTahunAjaranModalVisible(false);
+  };
+
+  const renderColumns = () => [
+    {
+      title: "ID Tahun Ajaran",
+      dataIndex: "idTahun",
+      key: "idTahun",
+      align: "center",
+    },
+    {
+      title: "Tahun Ajaran",
+      dataIndex: "tahunAjaran",
+      key: "tahunAjaran",
+      align: "center",
+    },
+    {
+      title: "Operasi",
+      key: "action",
+      align: "center",
+      render: (text, row) => (
+        <span>
+          <Button
+            type="primary"
+            shape="circle"
+            icon={<EditOutlined />}
+            onClick={() => handleEditTahunAjaran(row)}
+          />
+          <Button
+            type="primary"
+            danger
+            shape="circle"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteTahunAjaran(row)}
+          />
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="app-container">
-      <TypingCard title="Manajemen Tahun Ajaran" source={cardContent} />
+      <TypingCard
+        title="Manajemen Tahun Ajaran"
+        source="Di sini, Anda dapat mengelola tahun ajaran di sistem."
+      />
       <br />
       <Card
         title={
-          <Row gutter={[16, 16]} justify="start" style={{ paddingLeft: 9 }}>
-            <Col xs={24} sm={12} md={8} lg={6} xl={6}>
-              <Button type="primary" onClick={handleAddTahunAjaran}>
-                Tambahkan Tahun Ajaran
-              </Button>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6} xl={6}>
-              <Button
-                onClick={() =>
-                  setModalState((prev) => ({ ...prev, importVisible: true }))
-                }
-              >
-                Import File
-              </Button>
-            </Col>
-          </Row>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAddTahunAjaran}
+          >
+            Tambah Tahun Ajaran
+          </Button>
         }
       >
         <Table
-          variant
-          rowKey="id"
+          rowKey="idTahun"
           dataSource={tahunAjaran}
+          columns={renderColumns()}
           pagination={{ pageSize: 10 }}
-        >
-          <Column title="ID Tahun Ajaran" dataIndex="idTahun" align="center" />
-          <Column title="Tahun Ajaran" dataIndex="tahunAjaran" align="center" />
-        </Table>
+        />
       </Card>
 
-      <EditTahunAjaranForm
-        wrappedComponentRef={editFormRef}
-        currentRowData={currentRowData}
-        visible={modalState.editVisible}
-        confirmLoading={modalState.editLoading}
-        onCancel={handleCancel}
-        onOk={handleEditTahunAjaranOk}
-      />
-
       <AddTahunAjaranForm
-        wrappedComponentRef={addFormRef}
-        visible={modalState.addVisible}
-        confirmLoading={modalState.addLoading}
+        visible={addTahunAjaranModalVisible}
+        confirmLoading={addTahunAjaranModalLoading}
         onCancel={handleCancel}
         onOk={handleAddTahunAjaranOk}
       />
 
-      <Modal
-        title="Import File"
-        visible={modalState.importVisible}
+      <EditTahunAjaranForm
+        currentRowData={currentRowData}
+        visible={editTahunAjaranModalVisible}
+        confirmLoading={editTahunAjaranModalLoading}
         onCancel={handleCancel}
-        footer={[
-          <Button key="cancel" onClick={handleCancel}>
-            Cancel
-          </Button>,
-          <Button
-            key="upload"
-            type="primary"
-            loading={uploading}
-            onClick={handleUpload}
-          >
-            Upload
-          </Button>,
-        ]}
-      >
-        <Upload beforeUpload={handleFileImport}>
-          <Button>Pilih File</Button>
-        </Upload>
-      </Modal>
+      />
     </div>
   );
 };

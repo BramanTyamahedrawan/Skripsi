@@ -214,6 +214,9 @@ const JadwalPelajaran = React.lazy(() =>
 const Kelas = React.lazy(() =>
   import(/*webpackChunkName:'kelas'*/ "@/views/kelas")
 );
+const Semester = React.lazy(() =>
+  import(/*webpackChunkName:'Semester'*/ "@/views/semester")
+);
 const TahunAjaran = React.lazy(() =>
   import(/*webpackChunkName:'TahunAjaran'*/ "@/views/tahun-ajaran")
 );
@@ -367,10 +370,11 @@ export default [
   {
     path: "/konsentrasi-keahlian",
     component: KonsentrasiKeahlian,
-    roles: ["ROLE_ADMINISTRATOR"],
+    roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],
   },
   { path: "/department", component: Department, roles: ["ROLE_OPERATOR"] },
   { path: "/kelas", component: Kelas, roles: ["ROLE_OPERATOR"] },
+  { path: "/semester", component: Semester, roles: ["ROLE_OPERATOR"] },
   { path: "/tahun-ajaran", component: TahunAjaran, roles: ["ROLE_OPERATOR"] },
   { path: "/season", component: Season, roles: ["ROLE_OPERATOR"] },
   { path: "/acp", component: ACP, roles: ["ROLE_OPERATOR"] },

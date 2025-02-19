@@ -37,29 +37,28 @@ const menuList = [
     ],
   },
   {
+    title: "Bidang Keahlian",
+    path: "/bidang-keahlian",
+    icon: ApartmentOutlined,
+    roles: ["ROLE_ADMINISTRATOR"],
+  },
+  {
+    title: "Program Keahlian",
+    path: "/program-keahlian",
+    icon: ApartmentOutlined,
+    roles: ["ROLE_ADMINISTRATOR"],
+  },
+  {
+    title: "Konsentrasi Keahlian",
+    path: "/konsentrasi-keahlian",
+    icon: ApartmentOutlined,
+    roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],
+  },
+  {
     title: "Master Data",
-    path: "/master",
     icon: DatabaseOutlined,
     roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],
     children: [
-      {
-        title: "Bidang Keahlian",
-        path: "/bidang-keahlian",
-        icon: ApartmentOutlined,
-        roles: ["ROLE_ADMINISTRATOR"],
-      },
-      {
-        title: "Program Keahlian",
-        path: "/program-keahlian",
-        icon: ApartmentOutlined,
-        roles: ["ROLE_ADMINISTRATOR"],
-      },
-      {
-        title: "Konsentrasi Keahlian",
-        path: "/konsentrasi-keahlian",
-        icon: ApartmentOutlined,
-        roles: ["ROLE_ADMINISTRATOR"],
-      },
       {
         title: "Jurusan",
         path: "/department",
@@ -79,6 +78,12 @@ const menuList = [
         roles: ["ROLE_OPERATOR"],
       },
       {
+        title: "Semester",
+        path: "/semester",
+        icon: AuditOutlined,
+        roles: ["ROLE_OPERATOR"],
+      },
+      {
         title: "Kurikulum",
         path: "/kurikulum",
         icon: BranchesOutlined,
@@ -87,7 +92,7 @@ const menuList = [
       {
         title: "Mata Pelajaran",
         path: "/subject",
-        icon: "audit",
+        icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
       {
@@ -181,7 +186,6 @@ const menuList = [
   // Lecture
   {
     title: "Master Soal",
-    path: "/question",
     icon: DatabaseOutlined,
     roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
     children: [
