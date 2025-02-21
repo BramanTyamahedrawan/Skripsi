@@ -177,7 +177,7 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
 
   return (
     <Modal
-      title="Tambah Kelas Ajaran"
+      title="Tambah Kelas Analisa Capaian Pembelajaran"
       open={visible}
       onCancel={() => {
         form.resetFields();

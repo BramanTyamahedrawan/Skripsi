@@ -1,131 +1,90 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
-import { Form, Input, Modal, Select, Table, Tabs } from "antd";
-import ReactSelect from "react-select";
-import { HotTable } from "@handsontable/react";
-import { registerAllModules } from "handsontable/registry";
-import "handsontable/dist/handsontable.full.min.css";
-import { getTahunAjaran } from "@/api/tahun-ajaran";
+import {
+  Form,
+  Input,
+  Modal,
+  Select,
+  Table,
+  Tabs,
+  Row,
+  Col,
+  message,
+} from "antd";
 import { getKelas } from "@/api/kelas";
-import { getStudents } from "@/api/student";
-import { getJadwalPelajaran } from "@/api/jadwalPelajaran";
-import { getLectures } from "@/api/lecture";
-import { getBidangKeahlian } from "@/api/bidangKeahlian";
-import { getProgramByBidang } from "@/api/programKeahlian";
-import { getKonsentrasiByProgram } from "@/api/konsentrasiKeahlian";
+import { getTahunAjaran } from "@/api/tahun-ajaran";
+import { getSemester } from "@/api/semester";
+import { getMapel } from "@/api/mapel";
+import { getKonsentrasiKeahlian } from "@/api/konsentrasiKeahlian";
+import { getElemen } from "@/api/elemen";
+import { getACP } from "@/api/acp";
+import { getATP } from "@/api/atp";
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { Column } = Table;
 const { TabPane } = Tabs;
 
-registerAllModules();
+const renderColumns = () => [
+  {
+    title: "No.",
+    dataIndex: "index",
+    key: "index",
+    align: "center",
+    render: (_, __, index) => index + 1,
+  },
+  {
+    title: "Elemen",
+    dataIndex: ["elemen", "namaElemen"],
+    key: "namaElemen",
+    align: "center",
+  },
+  {
+    title: "Capaian Pembelajaran",
+    dataIndex: ["acp", "namaAcp"],
+    key: "namaAcp",
+    align: "center",
+  },
+  {
+    title: "Tujuan Pembelajaran",
+    dataIndex: "namaAtp",
+    key: "namaAtp",
+    align: "center",
+  },
+];
 
-const AddSeasonForm = ({ visible, onCancel, onOk, confirmLoading }) => {
+const EditATPForm = ({
+  visible,
+  onCancel,
+  onOk,
+  confirmLoading,
+  currentRowData,
+}) => {
+  const [atp, setATP] = useState([]);
   const [form] = Form.useForm();
-  const [state, setState] = useState({
-    tahunList: [],
-    bidangList: [],
-    filteredProgramList: [],
-    filteredKonsentrasiList: [],
-    kelasList: [],
-    siswaList: [],
-    jadwalPelajaranList: [],
-    guruList: [],
-    selectedStudents: [],
-    selectedJadwalPelajarans: [],
-    siswaData: [{ nisn: "", nama: "", alamat: "", jurusan: "" }],
-    jadwalPelajaranData: [{ guru: "", jabatan: "", mapel: "", jmlJam: "" }],
-    activeTab: "siswa",
-  });
 
-  const handleTabChange = (activeKey) => {
-    setState((prev) => ({ ...prev, activeTab: activeKey }));
-  };
+  const [kelasList, setKelasList] = useState([]);
+  const [tahunAjaranList, setTahunAjaranList] = useState([]);
+  const [semesterList, setSemesterList] = useState([]);
+  const [mapelList, setMapelList] = useState([]);
+  const [konsentrasiKeahlianList, setKonsentrasiKeahlianList] = useState([]);
+  const [elemenList, setElemenList] = useState([]);
+  const [acpList, setACPList] = useState([]);
+  const [tableLoading, setTableLoading] = useState(false);
 
-  const fetchTahunAjaranList = async () => {
+  const fetchATP = async () => {
+    setTableLoading(true);
     try {
-      const result = await getTahunAjaran();
-      const { content, statusCode } = result.data;
-      if (statusCode === 200) {
-        const tahunList = content.map((tahun) => ({
-          idTahun: tahun.idTahun,
-          tahunAjaran: tahun.tahunAjaran,
-        }));
-        setState((prev) => ({ ...prev, tahunList }));
-      }
-    } catch (error) {
-      console.error("Error fetching tahun data: ", error);
-    }
-  };
-
-  const fetchBidangKeahlianList = async () => {
-    try {
-      const result = await getBidangKeahlian();
-      const { content, statusCode } = result.data;
-      if (statusCode === 200) {
-        const bidangList = content.map((bidang) => ({
-          id: bidang.id,
-          bidang: bidang.bidang,
-        }));
-        setState((prev) => ({ ...prev, bidangList }));
-      }
-    } catch (error) {
-      console.error("Error fetching bidang data: ", error);
-    }
-  };
-
-  const handleBidangChange = async (value) => {
-    try {
-      const result = await getProgramByBidang(value);
-      const { content, statusCode } = result.data;
-
-      if (statusCode === 200) {
-        setState((prev) => ({
-          ...prev,
-          filteredProgramList: content,
-          filteredKonsentrasiList: [],
-        }));
+      const result = await getATP();
+      if (result.data.statusCode === 200) {
+        setATP(result.data.content);
       } else {
-        setState((prev) => ({
-          ...prev,
-          filteredProgramList: [],
-          filteredKonsentrasiList: [],
-        }));
+        message.error("Gagal mengambil data");
       }
-
-      form.setFieldsValue({
-        programkeahlian_id: undefined,
-        konsentrasikeahlian_id: undefined,
-      });
     } catch (error) {
-      console.error("Error fetching program data: ", error);
-    }
-  };
-
-  const handleProgramChange = async (value) => {
-    try {
-      const result = await getKonsentrasiByProgram(value);
-      const { content, statusCode } = result.data;
-
-      if (statusCode === 200) {
-        setState((prev) => ({
-          ...prev,
-          filteredKonsentrasiList: content,
-        }));
-      } else {
-        setState((prev) => ({
-          ...prev,
-          filteredKonsentrasiList: [],
-        }));
-      }
-
-      form.setFieldsValue({
-        konsentrasikeahlian_id: undefined,
-      });
-    } catch (error) {
-      console.error("Error fetching konsentrasi data: ", error);
+      message.error("Terjadi kesalahan: " + error.message);
+    } finally {
+      setTableLoading(false);
     }
   };
 
@@ -134,370 +93,306 @@ const AddSeasonForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       const result = await getKelas();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        const kelasList = content.map((kelas) => ({
-          idKelas: kelas.idKelas,
-          namaKelas: kelas.namaKelas,
-        }));
-        setState((prev) => ({ ...prev, kelasList }));
+        setKelasList(content);
+      } else {
+        console.log("Error: ", result.data.message);
       }
     } catch (error) {
-      console.error("Error fetching kelas data: ", error);
+      console.log("Error: ", error);
     }
   };
 
-  const fetchSiswaList = async () => {
+  const fetchTahunAjaranList = async () => {
     try {
-      const result = await getStudents();
+      const result = await getTahunAjaran();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        const siswaList = content.map((student) => ({
-          id: student.id,
-          name: student.name,
-          nisn: student.nisn,
-          address: student.address,
-          konsentrasi: student.konsentrasiKeahlian.konsentrasi,
-        }));
-        setState((prev) => ({ ...prev, siswaList }));
+        setTahunAjaranList(content);
+      } else {
+        console.log("Error: ", result.data.message);
       }
     } catch (error) {
-      console.error("Error fetching siswa data: ", error);
+      console.log("Error: ", error);
     }
   };
 
-  const fetchJadwalPelajaranList = async () => {
+  const fetchSemesterList = async () => {
     try {
-      const result = await getJadwalPelajaran();
+      const result = await getSemester();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        const jadwalPelajaranList = content.map((jadwalPelajaran) => ({
-          idJadwal: jadwalPelajaran.idJadwal,
-          guru: jadwalPelajaran.lecture.name,
-          jabatan: jadwalPelajaran.jabatan,
-          mapel: jadwalPelajaran.mapel.name,
-          jmlJam: jadwalPelajaran.jmlJam,
-        }));
-        setState((prev) => ({ ...prev, jadwalPelajaranList }));
+        setSemesterList(content);
+      } else {
+        console.log("Error: ", result.data.message);
       }
     } catch (error) {
-      console.error("Error fetching jadwalPelajaran data: ", error);
+      console.log("Error: ", error);
     }
   };
 
-  const fetchGuruList = async () => {
+  const fetchMapelList = async () => {
     try {
-      const result = await getLectures();
+      const result = await getMapel();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        const guruList = content.map((guru) => ({
-          id: guru.id,
-          name: guru.name,
-          nidn: guru.nidn,
-        }));
-        setState((prev) => ({ ...prev, guruList }));
+        setMapelList(content);
+      } else {
+        console.log("Error: ", result.data.message);
       }
     } catch (error) {
-      console.error("Error fetching guru data: ", error);
+      console.log("Error: ", error);
+    }
+  };
+
+  const fetchKonsentrasiKeahlianList = async () => {
+    try {
+      const result = await getKonsentrasiKeahlian();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setKonsentrasiKeahlianList(content);
+      } else {
+        console.log("Error: ", result.data.message);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  };
+
+  const fetchElemenList = async () => {
+    try {
+      const result = await getElemen();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setElemenList(content);
+      } else {
+        console.log("Error: ", result.data.message);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  };
+
+  const fetchACPList = async () => {
+    try {
+      const result = await getACP();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setACPList(content);
+      } else {
+        console.log("Error: ", result.data.message);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
     }
   };
 
   useEffect(() => {
-    fetchTahunAjaranList();
-    fetchBidangKeahlianList();
     fetchKelasList();
-    fetchSiswaList();
-    fetchJadwalPelajaranList();
-    fetchGuruList();
-  }, []);
+    fetchTahunAjaranList();
+    fetchSemesterList();
+    fetchMapelList();
+    fetchKonsentrasiKeahlianList();
+    fetchElemenList();
+    fetchACPList();
+    fetchATP();
 
-  const formItemLayout = {
-    labelCol: {
-      xs: { span: 24 },
-      sm: { span: 6 },
-    },
-    wrapperCol: {
-      xs: { span: 24 },
-      sm: { span: 18 },
-    },
+    if (currentRowData) {
+      form.setFieldsValue({
+        idAtp: currentRowData.idAtp,
+        namaAtp: currentRowData.namaAtp,
+        idKelas: currentRowData.kelas?.idKelas,
+        idTahun: currentRowData.tahunAjaran?.idTahun,
+        idSemester: currentRowData.semester?.idSemester,
+        idMapel: currentRowData.mapel?.idMapel,
+        id: currentRowData.konsentrasiKeahlian?.id,
+        idElemen: currentRowData.elemen?.idElemen,
+        idAcp: currentRowData.acp?.idAcp,
+      });
+    }
+  }, [currentRowData, form]);
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      onOk(values);
+    } catch (error) {
+      console.error("Validation failed:", error);
+    }
   };
 
   return (
     <Modal
-      title="Tambah Kelas Ajaran"
-      visible={visible}
-      onCancel={onCancel}
-      onOk={() => {
-        form
-          .validateFields()
-          .then((values) => {
-            onOk(values);
-          })
-          .catch((info) => {
-            console.log("Validate Failed:", info);
-          });
+      title="Edit Analisa Tujuan Pembelajaran"
+      open={visible}
+      onCancel={() => {
+        form.resetFields();
+        onCancel();
       }}
+      onOk={handleSubmit}
       confirmLoading={confirmLoading}
-      width={900}
+      okText="Simpan"
+      width={1000} // Mengatur lebar modal agar lebih luas
     >
-      <Form {...formItemLayout} form={form}>
-        <Form.Item
-          label="Tahun Ajaran:"
-          name="tahunAjaran_id"
-          rules={[{ required: true, message: "Silahkan isi tahun ajaran" }]}
-        >
-          <Select placeholder="Pilih Tahun Ajaran">
-            {state.tahunList.map((tahun) => (
-              <Option key={tahun.idTahun} value={tahun.idTahun}>
-                {tahun.tahunAjaran}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Bidang Keahlian:"
-          name="bidangKeahlian_id"
-          rules={[
-            { required: true, message: "Silahkan isi konsentrasi keahlian" },
-          ]}
-        >
-          <Select
-            placeholder="Pilih Bidang Keahlian"
-            onChange={handleBidangChange}
-          >
-            {state.bidangList.map((bidang) => (
-              <Option key={bidang.id} value={bidang.id}>
-                {bidang.bidang}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Program Keahlian:"
-          name="programKeahlian_id"
-          rules={[
-            { required: true, message: "Silahkan isi konsentrasi keahlian" },
-          ]}
-        >
-          <Select
-            placeholder="Pilih Program Keahlian"
-            onChange={handleProgramChange}
-          >
-            {state.filteredProgramList.map((program) => (
-              <Option key={program.id} value={program.id}>
-                {program.program}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Konsentrasi Keahlian:"
-          name="konsentrasiKeahlian_id"
-          rules={[
-            { required: true, message: "Silahkan isi konsentrasi keahlian" },
-          ]}
-        >
-          <Select placeholder="Pilih Konsentrasi Keahlian">
-            {state.filteredKonsentrasiList.map((konsentrasi) => (
-              <Option key={konsentrasi.id} value={konsentrasi.id}>
-                {konsentrasi.konsentrasi}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Kelas:"
-          name="kelas_id"
-          rules={[{ required: true, message: "Silahkan isi kelas" }]}
-        >
-          <Select placeholder="Pilih Kelas">
-            {state.kelasList.map((kelas) => (
-              <Option key={kelas.idKelas} value={kelas.idKelas}>
-                {kelas.namaKelas}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Semester:"
-          name="semester"
-          rules={[{ required: true, message: "Semester wajib diisi" }]}
-        >
-          <Select style={{ width: 120 }} placeholder="Semester">
-            <Select.Option value="Ganjil">Ganjil</Select.Option>
-            <Select.Option value="Genap">Genap</Select.Option>
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Wali Kelas:"
-          name="lecture_id"
-          rules={[{ required: true, message: "Silahkan isi kelas" }]}
-        >
-          <Select placeholder="Pilih Kelas">
-            {state.guruList.map((guru) => (
-              <Option key={guru.id} value={guru.id}>
-                {guru.name}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Tabs defaultActiveKey="siswa" onChange={handleTabChange}>
-          <TabPane tab="Siswa" key="siswa">
+      <Form form={form} layout="vertical">
+        <Row gutter={16}>
+          <Col xs={24} sm={24} md={12}>
             <Form.Item
-              name="student_id"
-              initialValue={state.siswaData
-                .slice(0, -1)
-                .filter((siswa) => siswa.id !== null)
-                .map((siswa) => siswa.id)}
+              label="ID ATP:"
+              name="idAtp"
+              rules={[{ required: true, message: "Silahkan isi ID ATP" }]}
             >
-              <HotTable
-                data={state.siswaData}
-                colHeaders={["NISN", "Nama", "Alamat", "Jurusan"]}
-                columns={[
-                  {
-                    data: "nisn",
-                    type: "dropdown",
-                    source: state.siswaList.map((siswa) => siswa.nisn),
-                    allowInvalid: false,
-                  },
-                  { data: "nama", readOnly: true },
-                  { data: "alamat", readOnly: true },
-                  { data: "konsentrasi", readOnly: true },
-                ]}
-                afterChange={(changes) => {
-                  if (!changes) return;
-
-                  changes.forEach(([row, prop, oldValue, newValue]) => {
-                    if (prop === "nisn" && oldValue !== newValue) {
-                      const selectedSiswa = state.siswaList.find(
-                        (siswa) => siswa.nisn === newValue
-                      );
-                      if (selectedSiswa) {
-                        setState((prevState) => {
-                          const updatedTableData = [...prevState.siswaData];
-                          updatedTableData[row] = {
-                            ...updatedTableData[row],
-                            id: selectedSiswa.id,
-                            nisn: selectedSiswa.nisn,
-                            nama: selectedSiswa.name,
-                            alamat: selectedSiswa.address,
-                            konsentrasi: selectedSiswa.konsentrasi,
-                          };
-                          if (row === updatedTableData.length - 1) {
-                            updatedTableData.push({
-                              nisn: "",
-                              nama: "",
-                              alamat: "",
-                              konsentrasi: "",
-                            });
-                          }
-
-                          form.setFieldsValue({
-                            siswaData: updatedTableData,
-                          });
-                          return { ...prevState, siswaData: updatedTableData };
-                        });
-                      }
-                    }
-                  });
-                }}
-                stretchH="all"
-                rowHeaders={true}
-                manualColumnResize={true}
-                height="300"
-                licenseKey="non-commercial-and-evaluation"
-              />
+              <Input placeholder="Masukkan ID ATP" />
             </Form.Item>
-          </TabPane>
-
-          <TabPane tab="Jadwal Pelajaran" key="jadwalPelajaran">
+          </Col>
+          <Col xs={24} sm={24} md={12}>
             <Form.Item
-              name="jadwalPelajaran_id"
-              initialValue={state.jadwalPelajaranData
-                .slice(0, -1)
-                .filter((jadwal) => jadwal.idJadwal !== null)
-                .map((jadwal) => jadwal.idJadwal)}
+              label="Nama Tujuan Pembelajaran:"
+              name="namaAtp"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan isi Nama Tujuan Pembelajaran",
+                },
+              ]}
             >
-              <HotTable
-                data={state.jadwalPelajaranData}
-                colHeaders={[
-                  "Guru Pengajar",
-                  "Jabatan",
-                  "Mata Pelajaran",
-                  "Jumlah Jam",
-                ]}
-                columns={[
-                  {
-                    data: "guru",
-                    type: "dropdown",
-                    source: state.jadwalPelajaranList.map(
-                      (jadwal) => jadwal.guru
-                    ),
-                    allowInvalid: false,
-                  },
-                  { data: "jabatan", readOnly: true },
-                  { data: "mapel", readOnly: true },
-                  { data: "jmlJam", readOnly: true },
-                ]}
-                afterChange={(changes) => {
-                  if (!changes) return;
-
-                  changes.forEach(([row, prop, oldValue, newValue]) => {
-                    if (prop === "guru" && oldValue !== newValue) {
-                      const selectedJadwal = state.jadwalPelajaranList.find(
-                        (jadwal) => jadwal.guru === newValue
-                      );
-                      if (selectedJadwal) {
-                        setState((prevState) => {
-                          const updatedTableData = [
-                            ...prevState.jadwalPelajaranData,
-                          ];
-                          updatedTableData[row] = {
-                            ...updatedTableData[row],
-                            idJadwal: selectedJadwal.idJadwal,
-                            guru: selectedJadwal.guru,
-                            jabatan: selectedJadwal.jabatan,
-                            mapel: selectedJadwal.mapel,
-                            jmlJam: selectedJadwal.jmlJam,
-                          };
-                          if (row === updatedTableData.length - 1) {
-                            updatedTableData.push({
-                              guru: "",
-                              jabatan: "",
-                              mapel: "",
-                              jmlJam: "",
-                            });
-                          }
-
-                          form.setFieldsValue({
-                            jadwalPelajaranData: updatedTableData,
-                          });
-                          return {
-                            ...prevState,
-                            jadwalPelajaranData: updatedTableData,
-                          };
-                        });
-                      }
-                    }
-                  });
-                }}
-                stretchH="all"
-                rowHeaders={true}
-                manualColumnResize={true}
-                height="300"
-                licenseKey="non-commercial-and-evaluation"
-              />
+              <Input placeholder="Masukkan Nama ATP" />
             </Form.Item>
-          </TabPane>
-        </Tabs>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Kelas:"
+              name="idKelas"
+              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
+            >
+              <Select placeholder="Pilih Kelas">
+                {kelasList.map(({ idKelas, namaKelas }) => (
+                  <Option key={idKelas} value={idKelas}>
+                    {namaKelas}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Tahun Ajaran:"
+              name="idTahun"
+              rules={[
+                { required: true, message: "Silahkan pilih Tahun Ajaran" },
+              ]}
+            >
+              <Select placeholder="Pilih Tahun Ajaran">
+                {tahunAjaranList.map(({ idTahun, tahunAjaran }) => (
+                  <Option key={idTahun} value={idTahun}>
+                    {tahunAjaran}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Semester:"
+              name="idSemester"
+              rules={[{ required: true, message: "Silahkan pilih Semester" }]}
+            >
+              <Select placeholder="Pilih Semester">
+                {semesterList.map(({ idSemester, namaSemester }) => (
+                  <Option key={idSemester} value={idSemester}>
+                    {namaSemester}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Mapel:"
+              name="idMapel"
+              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
+            >
+              <Select placeholder="Pilih Mapel">
+                {mapelList.map(({ idMapel, name }) => (
+                  <Option key={idMapel} value={idMapel}>
+                    {name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Konsentrasi Keahlian:"
+              name="id"
+              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
+            >
+              <Select placeholder="Pilih Konsetrasi Keahlian">
+                {konsentrasiKeahlianList.map(({ id, konsentrasi }) => (
+                  <Option key={id} value={id}>
+                    {konsentrasi}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Elemen:"
+              name="idElemen"
+              rules={[{ required: true, message: "Silahkan pilih Elemen" }]}
+            >
+              <Select placeholder="Pilih Elemen">
+                {elemenList.map(({ idElemen, namaElemen }) => (
+                  <Option key={idElemen} value={idElemen}>
+                    {namaElemen}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Capaian Pembelajaran:"
+              name="idAcp"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan pilih Capaian Pembelajaran",
+                },
+              ]}
+            >
+              <Select placeholder="Pilih Capaian Pembelajaran">
+                {acpList.map(({ idAcp, namaAcp }) => (
+                  <Option key={idAcp} value={idAcp}>
+                    {namaAcp}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Tabs
+            defaultActiveKey="id"
+            style={{ width: "100%" }}
+            items={[
+              {
+                key: "id",
+                label: "Tujuan Pembelajaran",
+                children: (
+                  <Table
+                    rowKey="id"
+                    dataSource={atp}
+                    columns={renderColumns()}
+                    pagination={{ pageSize: 10 }}
+                    style={{ width: "100%" }}
+                  />
+                ),
+              },
+            ]}
+          />
+        </Row>
       </Form>
     </Modal>
   );
 };
 
-export default AddSeasonForm;
+export default EditATPForm;

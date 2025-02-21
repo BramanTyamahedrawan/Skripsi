@@ -196,7 +196,7 @@ const EditACPForm = ({
 
   return (
     <Modal
-      title="Tambah Kelas Ajaran"
+      title="Edit Capaian Pembelajaran"
       open={visible}
       onCancel={() => {
         form.resetFields();

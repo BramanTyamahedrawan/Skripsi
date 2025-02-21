@@ -25,7 +25,7 @@ export function editATP(data, id) {
 
 export function deleteATP(data) {
   return request({
-    url: `/atp/${data.id}`,
+    url: `/atp/${data.idAtp}`,
     method: "delete",
     data,
   });
