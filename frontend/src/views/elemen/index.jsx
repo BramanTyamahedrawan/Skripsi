@@ -132,6 +132,13 @@ const Elemen = () => {
 
   const renderColumns = () => [
     {
+      title: "No.",
+      dataIndex: "index",
+      key: "index",
+      align: "center",
+      render: (_, __, index) => index + 1,
+    },
+    {
       title: "Elemen",
       dataIndex: "namaElemen",
       key: "namaElemen",

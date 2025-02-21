@@ -1,197 +1,177 @@
 /* eslint-disable react/prop-types */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
-import { Form, Input, Modal, Select, Table, Tabs } from "antd";
-import { getTahunAjaran } from "@/api/tahun-ajaran";
+import {
+  Form,
+  Input,
+  Modal,
+  Select,
+  Table,
+  Tabs,
+  Row,
+  Col,
+  message,
+} from "antd";
 import { getKelas } from "@/api/kelas";
+import { getTahunAjaran } from "@/api/tahun-ajaran";
+import { getSemester } from "@/api/semester";
 import { getMapel } from "@/api/mapel";
-import { getBidangKeahlian } from "@/api/bidangKeahlian";
-import { getProgramByBidang } from "@/api/programKeahlian";
-import { getKonsentrasiByProgram } from "@/api/konsentrasiKeahlian";
+import { getKonsentrasiKeahlian } from "@/api/konsentrasiKeahlian";
+import { getElemen } from "@/api/elemen";
+import { getACP } from "@/api/acp";
 
 const { Option } = Select;
 const { TabPane } = Tabs;
 
-const columns = [
+const renderColumns = () => [
   {
-    title: "No",
-    dataIndex: "no",
-    key: "no",
+    title: "No.",
+    dataIndex: "index",
+    key: "index",
+    align: "center",
+    render: (_, __, index) => index + 1,
   },
   {
     title: "Elemen",
-    dataIndex: "elemen",
-    key: "elemen",
+    dataIndex: ["elemen", "namaElemen"],
+    key: "namaElemen",
+    align: "center",
   },
   {
     title: "Capaian Pembelajaran",
-    dataIndex: "capaian",
-    key: "capaian",
-    width: "50%",
+    dataIndex: "namaAcp",
+    key: "namaAcp",
+    align: "center",
   },
 ];
 
-const data = [
-  {
-    key: 1,
-    no: "1",
-    elemen: "Berpikir Komputasional (BK)",
-    capaian:
-      "Pada akhir fase E, peserta didik mampu" +
-      " menerapkan strategi algoritmik standar untuk" +
-      " menghasilkan beberapa solusi persoalan dengan" +
-      " data diskrit bervolume tidak kecil pada" +
-      " kehidupan sehari-hari maupun" +
-      " implementasinya dalam program komputer.",
-    children: [
-      {
-        key: 11,
-        elemen: "Tujuan Pembelajaran",
-      },
-      {
-        key: 12,
-        elemen:
-          "Peserta didik memahami algoritma pengambilan keputusan untuk pemecahan sebuah masalah.",
-      },
-      {
-        key: 13,
-        elemen:
-          "Peserta didik mampu menerapkan strategi algoritmik untuk menemukan cara yang paling efisien dalam pemecahan sebuah masalah.",
-      },
-      {
-        key: 14,
-        elemen: "Siswa memahami beberapa algoritma proses sorting.",
-      },
-      {
-        key: 15,
-        elemen:
-          "Siswa mampu menerapkan strategi algoritmik untuk menemukan cara yang paling efisien dalam proses sorting",
-      },
-      {
-        key: 16,
-        elemen:
-          "Siswa memahami konsep struktur data stack dan queue serta operasi-operasi yang dapat dikenakan pada struktur data tersebut.",
-      },
-    ],
-  },
-  {
-    key: 2,
-    no: "2",
-    elemen: "Teknologi Informasi dan Komunikasi (TIK)",
-    capaian:
-      "Pada akhir fase E, peserta didik mampu memanfaatkan berbagai aplikasi secara bersamaan dan" +
-      " optimal untuk berkomunikasi, mencari sumber data yang akan diolah menjadi informasi, baik di dunia nyata maupun" +
-      " di internet, serta mahir menggunakan fitur lanjut aplikasi perkantoran (pengolah kata, angka, dan presentasi) beserta otomasinya untuk mengintegrasikan dan menyajikan konten" +
-      " aplikasi dalam berbagai representasi yang memudahkan analisis dan interpretasi konten tersebut",
-    children: [
-      {
-        key: 21,
-        elemen: "Tujuan Pembelajaran",
-      },
-      {
-        key: 22,
-        elemen:
-          "Peserta didik mampu memahami serta menjelaskan tentang Teknologi Informasi dan Komunikasi serta pemanfaatannya",
-      },
-      {
-        key: 23,
-        elemen:
-          "Peserta didik mampu memahami Aplikasi Video Conference (Google Meet)",
-      },
-      {
-        key: 24,
-        elemen:
-          "Peserta didik mampu memahami konsep aplikasi peyimpanan Awan/Cloud (Google Drive)",
-      },
-      {
-        key: 25,
-        elemen:
-          "Peserta didik mampu menggunakan Aplikasi Video Conference (Google Meet)",
-      },
-      {
-        key: 26,
-        elemen:
-          "SPeserta didik mampu menggunakan Aplikasi Penyimpanan Awan (Google Drive)",
-      },
-    ],
-  },
-];
-
-const AddSeasonForm = ({ visible, onCancel, onOk, confirmLoading }) => {
+const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
+  const [acp, setACP] = useState([]);
   const [form] = Form.useForm();
-  const [state, setState] = useState({
-    mapelList: [],
-    tahunList: [],
-    bidangList: [],
-    filteredProgramList: [],
-    filteredKonsentrasiList: [],
-    kelasList: [],
-  });
+  const [kelasList, setKelasList] = useState([]);
+  const [tahunAjaranList, setTahunAjaranList] = useState([]);
+  const [semesterList, setSemesterList] = useState([]);
+  const [mapelList, setMapelList] = useState([]);
+  const [konsentrasiKeahlianList, setKonsentrasiKeahlianList] = useState([]);
+  const [elemenList, setElemenList] = useState([]);
+  const [tableLoading, setTableLoading] = useState(false);
+
+  const fetchACP = async () => {
+    setTableLoading(true);
+    try {
+      const result = await getACP();
+      if (result.data.statusCode === 200) {
+        setACP(result.data.content);
+      } else {
+        message.error("Gagal mengambil data");
+      }
+    } catch (error) {
+      message.error("Terjadi kesalahan: " + error.message);
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
+  const fetchKelasList = async () => {
+    try {
+      const result = await getKelas();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setKelasList(content);
+      } else {
+        console.log("Error: ", result.data.message);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  };
+
+  const fetchTahunAjaranList = async () => {
+    try {
+      const result = await getTahunAjaran();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setTahunAjaranList(content);
+      } else {
+        console.log("Error: ", result.data.message);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  };
+
+  const fetchSemesterList = async () => {
+    try {
+      const result = await getSemester();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setSemesterList(content);
+      } else {
+        console.log("Error: ", result.data.message);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  };
+
+  const fetchMapelList = async () => {
+    try {
+      const result = await getMapel();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setMapelList(content);
+      } else {
+        console.log("Error: ", result.data.message);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  };
+
+  const fetchKonsentrasiKeahlianList = async () => {
+    try {
+      const result = await getKonsentrasiKeahlian();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setKonsentrasiKeahlianList(content);
+      } else {
+        console.log("Error: ", result.data.message);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  };
+
+  const fetchElemenList = async () => {
+    try {
+      const result = await getElemen();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setElemenList(content);
+      } else {
+        console.log("Error: ", result.data.message);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  };
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [tahunResult, bidangResult, kelasResult, mapelResult] =
-          await Promise.all([
-            getTahunAjaran(),
-            getBidangKeahlian(),
-            getKelas(),
-            getMapel(),
-          ]);
-
-        setState((prev) => ({
-          ...prev,
-          tahunList: tahunResult.data.content || [],
-          bidangList: bidangResult.data.content || [],
-          kelasList: kelasResult.data.content || [],
-          mapelList: mapelResult.data.content || [],
-        }));
-      } catch (error) {
-        console.error("Error fetching initial data:", error);
-      }
-    };
-
-    fetchInitialData();
+    fetchKelasList();
+    fetchTahunAjaranList();
+    fetchSemesterList();
+    fetchMapelList();
+    fetchKonsentrasiKeahlianList();
+    fetchElemenList();
+    fetchACP();
   }, []);
 
-  const handleBidangChange = async (value) => {
-    try {
-      const result = await getProgramByBidang(value);
-      setState((prev) => ({
-        ...prev,
-        filteredProgramList: result.data.content || [],
-        filteredKonsentrasiList: [],
-      }));
-      form.setFieldsValue({
-        programKeahlian_id: undefined,
-        konsentrasiKeahlian_id: undefined,
-      });
-    } catch (error) {
-      console.error("Error fetching program data: ", error);
-    }
-  };
-
-  const handleProgramChange = async (value) => {
-    try {
-      const result = await getKonsentrasiByProgram(value);
-      setState((prev) => ({
-        ...prev,
-        filteredKonsentrasiList: result.data.content || [],
-      }));
-      form.setFieldsValue({
-        konsentrasiKeahlian_id: undefined,
-      });
-    } catch (error) {
-      console.error("Error fetching konsentrasi data: ", error);
-    }
-  };
-
-  const handleOk = async () => {
+  const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
       onOk(values);
     } catch (error) {
-      console.log("Validation failed:", error);
+      console.error("Validation failed:", error);
     }
   };
 
@@ -199,113 +179,155 @@ const AddSeasonForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     <Modal
       title="Tambah Kelas Ajaran"
       open={visible}
-      onCancel={onCancel}
-      onOk={handleOk}
+      onCancel={() => {
+        form.resetFields();
+        onCancel();
+      }}
+      onOk={handleSubmit}
       confirmLoading={confirmLoading}
-      width={900}
+      okText="Simpan"
+      width={1000} // Mengatur lebar modal agar lebih luas
     >
       <Form form={form} layout="vertical">
-        <Form.Item label="Kode:" name="id">
-          <Input disabled placeholder="ACP001" />
-        </Form.Item>
-
-        <Form.Item
-          label="Tahun Ajaran:"
-          name="tahunAjaran_id"
-          rules={[{ required: true, message: "Silahkan isi tahun ajaran" }]}
-        >
-          <Select placeholder="Pilih Tahun Ajaran">
-            {state.tahunList.map((tahun) => (
-              <Option key={tahun.idTahun} value={tahun.idTahun}>
-                {tahun.tahunAjaran}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Bidang Keahlian:"
-          name="bidangKeahlian_id"
-          rules={[{ required: true, message: "Silahkan isi bidang keahlian" }]}
-        >
-          <Select
-            placeholder="Pilih Bidang Keahlian"
-            onChange={handleBidangChange}
-          >
-            {state.bidangList.map((bidang) => (
-              <Option key={bidang.id} value={bidang.id}>
-                {bidang.bidang}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Program Keahlian:"
-          name="programKeahlian_id"
-          rules={[{ required: true, message: "Silahkan isi program keahlian" }]}
-        >
-          <Select
-            placeholder="Pilih Program Keahlian"
-            onChange={handleProgramChange}
-          >
-            {state.filteredProgramList.map((program) => (
-              <Option key={program.id} value={program.id}>
-                {program.program}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Konsentrasi Keahlian:"
-          name="konsentrasiKeahlian_id"
-          rules={[
-            { required: true, message: "Silahkan isi konsentrasi keahlian" },
-          ]}
-        >
-          <Select placeholder="Pilih Konsentrasi Keahlian">
-            {state.filteredKonsentrasiList.map((konsentrasi) => (
-              <Option key={konsentrasi.id} value={konsentrasi.id}>
-                {konsentrasi.konsentrasi}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Kelas:"
-          name="kelas_id"
-          rules={[{ required: true, message: "Silahkan isi kelas" }]}
-        >
-          <Select placeholder="Pilih Kelas">
-            {state.kelasList.map((kelas) => (
-              <Option key={kelas.idKelas} value={kelas.idKelas}>
-                {kelas.namaKelas}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        <Form.Item
-          label="Semester:"
-          name="semester"
-          rules={[{ required: true, message: "Semester wajib diisi" }]}
-        >
-          <Select placeholder="Semester">
-            <Option value="Ganjil">Ganjil</Option>
-            <Option value="Genap">Genap</Option>
-          </Select>
-        </Form.Item>
-
-        <Tabs defaultActiveKey="siswa">
-          <TabPane tab="Capaian Pembelajaran" key="siswa">
-            <Table columns={columns} dataSource={[]} />
-          </TabPane>
-        </Tabs>
+        <Row gutter={16}>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="ID ACP:"
+              name="idAcp"
+              rules={[{ required: true, message: "Silahkan isi ID ACP" }]}
+            >
+              <Input placeholder="Masukkan ID ACP" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Nama Capaian Pembelajaran:"
+              name="namaAcp"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan isi Nama Capaian Pembelajaran",
+                },
+              ]}
+            >
+              <Input placeholder="Masukkan Nama ACP" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Kelas:"
+              name="idKelas"
+              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
+            >
+              <Select placeholder="Pilih Kelas">
+                {kelasList.map(({ idKelas, namaKelas }) => (
+                  <Option key={idKelas} value={idKelas}>
+                    {namaKelas}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Tahun Ajaran:"
+              name="idTahun"
+              rules={[
+                { required: true, message: "Silahkan pilih Tahun Ajaran" },
+              ]}
+            >
+              <Select placeholder="Pilih Tahun Ajaran">
+                {tahunAjaranList.map(({ idTahun, tahunAjaran }) => (
+                  <Option key={idTahun} value={idTahun}>
+                    {tahunAjaran}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Semester:"
+              name="idSemester"
+              rules={[{ required: true, message: "Silahkan pilih Semester" }]}
+            >
+              <Select placeholder="Pilih Semester">
+                {semesterList.map(({ idSemester, namaSemester }) => (
+                  <Option key={idSemester} value={idSemester}>
+                    {namaSemester}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Mapel:"
+              name="idMapel"
+              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
+            >
+              <Select placeholder="Pilih Mapel">
+                {mapelList.map(({ idMapel, name }) => (
+                  <Option key={idMapel} value={idMapel}>
+                    {name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Konsentrasi Keahlian:"
+              name="id"
+              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
+            >
+              <Select placeholder="Pilih Konsetrasi Keahlian">
+                {konsentrasiKeahlianList.map(({ id, konsentrasi }) => (
+                  <Option key={id} value={id}>
+                    {konsentrasi}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Elemen:"
+              name="idElemen"
+              rules={[{ required: true, message: "Silahkan pilih Elemen" }]}
+            >
+              <Select placeholder="Pilih Elemen">
+                {elemenList.map(({ idElemen, namaElemen }) => (
+                  <Option key={idElemen} value={idElemen}>
+                    {namaElemen}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Tabs
+            defaultActiveKey="id"
+            style={{ width: "100%" }}
+            items={[
+              {
+                key: "id",
+                label: "Capaian Pembelajaran",
+                children: (
+                  <Table
+                    rowKey="id"
+                    dataSource={acp}
+                    columns={renderColumns()}
+                    pagination={{ pageSize: 10 }}
+                    style={{ width: "100%" }}
+                  />
+                ),
+              },
+            ]}
+          />
+        </Row>
       </Form>
     </Modal>
   );
 };
 
-export default AddSeasonForm;
+export default AddACPForm;

@@ -25,7 +25,7 @@ export function editACP(data, id) {
 
 export function deleteACP(data) {
   return request({
-    url: `/acp/${data.id}`,
+    url: `/acp/${data.idAcp}`,
     method: "delete",
     data,
   });
