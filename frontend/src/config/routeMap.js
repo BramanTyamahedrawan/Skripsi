@@ -226,6 +226,9 @@ const Season = React.lazy(() =>
 const Kurikulum = React.lazy(() =>
   import(/*webpackChunkName:'Kurikulum'*/ "@/views/kurikulum")
 );
+const Elemen = React.lazy(() =>
+  import(/*webpackChunkName:'Result'*/ "@/views/elemen")
+);
 const ACP = React.lazy(() =>
   import(/*webpackChunkName:'AnalisaCapaianPembelajaran'*/ "@/views/acp")
 );
@@ -377,6 +380,7 @@ export default [
   { path: "/semester", component: Semester, roles: ["ROLE_OPERATOR"] },
   { path: "/tahun-ajaran", component: TahunAjaran, roles: ["ROLE_OPERATOR"] },
   { path: "/season", component: Season, roles: ["ROLE_OPERATOR"] },
+  { path: "/elemen", component: Elemen, roles: ["ROLE_OPERATOR"] },
   { path: "/acp", component: ACP, roles: ["ROLE_OPERATOR"] },
   { path: "/atp", component: ATP, roles: ["ROLE_OPERATOR"] },
   {

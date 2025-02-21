@@ -53,6 +53,7 @@ const TahunAjaran = () => {
   };
 
   const handleDeleteTahunAjaran = (row) => {
+    const { idTahun } = row;
     Modal.confirm({
       title: "Konfirmasi",
       content: "Apakah Anda yakin ingin menghapus data ini?",
@@ -61,7 +62,7 @@ const TahunAjaran = () => {
       cancelText: "Tidak",
       onOk: async () => {
         try {
-          await deleteTahunAjaran({ id: row.id });
+          await deleteTahunAjaran({ idTahun });
           message.success("Berhasil dihapus");
           fetchTahunAjaran();
         } catch (error) {

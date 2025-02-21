@@ -120,6 +120,12 @@ const menuList = [
         roles: ["ROLE_OPERATOR"],
       },
       {
+        title: "Elemen Pembelajaran",
+        path: "/elemen",
+        icon: AuditOutlined,
+        roles: ["ROLE_OPERATOR"],
+      },
+      {
         title: "Analisis Capaian Pembelajaran",
         path: "/acp",
         icon: AuditOutlined,

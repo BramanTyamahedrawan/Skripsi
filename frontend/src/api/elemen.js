@@ -1,31 +1,31 @@
 import request from "@/utils/request";
 
-export function addTahunAjaran(data) {
+export function addElemen(data) {
   return request({
-    url: "/tahun",
+    url: "/elemen",
     method: "post",
     data,
   });
 }
 
-export function getTahunAjaran() {
+export function getElemen() {
   return request({
-    url: "/tahun",
+    url: "/elemen",
     method: "get",
   });
 }
 
-export function editTahunAjaran(data, id) {
+export function editElemen(data, id) {
   return request({
-    url: `/tahun/${id}`,
+    url: `/elemen/${id}`,
     method: "put",
     data,
   });
 }
 
-export function deleteTahunAjaran(data) {
+export function deleteElemen(data) {
   return request({
-    url: `/tahun/${data.idTahun}`,
+    url: `/elemen/${data.idElemen}`,
     method: "delete",
     data,
   });
