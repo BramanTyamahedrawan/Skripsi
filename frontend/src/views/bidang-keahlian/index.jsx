@@ -102,12 +102,6 @@ const BidangKeahlian = () => {
 
   const renderColumns = () => [
     {
-      title: "Sekolah",
-      dataIndex: ["school", "name"],
-      key: "name",
-      align: "center",
-    },
-    {
       title: "ID Bidang Keahlian",
       dataIndex: "id",
       key: "id",

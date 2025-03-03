@@ -66,15 +66,6 @@ const EditBidangKeahlianForm = ({
         >
           <Input placeholder="ID Bidang Keahlian" />
         </Form.Item>
-
-        <Form.Item label="Sekolah:" name="schoolId" initialValue="RWK001">
-          <Select style={{ width: 240 }}>
-            <Select.Option value="RWK001">
-              SMK Negeri Rowokangkung
-            </Select.Option>
-            <Select.Option value="TMP001">SMK Negeri Tempeh</Select.Option>
-          </Select>
-        </Form.Item>
       </Form>
     </Modal>
   );

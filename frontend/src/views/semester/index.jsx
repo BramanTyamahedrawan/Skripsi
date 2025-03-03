@@ -83,7 +83,11 @@ const Semester = () => {
   const handleAddSemesterOk = async (values) => {
     setAddSemesterModalLoading(true);
     try {
-      await addSemester(values);
+      const updatedData = {
+        idSemester: null,
+        namaSemester: values.namaSemester,
+      };
+      await addSemester(updatedData);
       message.success("Berhasil menambahkan");
       fetchSemesters();
       setAddSemesterModalVisible(false);

@@ -36,14 +36,6 @@ const AddSemesterForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     >
       <Form {...formItemLayout} form={form}>
         <Form.Item
-          label="ID Semester:"
-          name="idSemester"
-          rules={[{ required: true, message: "Silahkan isikan ID Semester" }]}
-        >
-          <Input placeholder="ID Semester" />
-        </Form.Item>
-
-        <Form.Item
           label="Nama Semester:"
           name="namaSemester"
           rules={[{ required: true, message: "Silahkan isikan Semester" }]}
