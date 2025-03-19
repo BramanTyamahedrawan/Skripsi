@@ -55,6 +55,12 @@ const menuList = [
     roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],
   },
   {
+    title: "Bidang Keahlian Sekolah",
+    path: "/bidang-keahlian-sekolah",
+    icon: ApartmentOutlined,
+    roles: ["ROLE_OPERATOR"],
+  },
+  {
     title: "Master Data",
     icon: DatabaseOutlined,
     roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],

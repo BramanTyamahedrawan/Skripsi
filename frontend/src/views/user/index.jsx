@@ -137,7 +137,7 @@ const User = () => {
       title: "Sekolah",
       key: "school",
       align: "center",
-      dataIndex: ["school", "name"],
+      dataIndex: ["school", "nameSchool"],
     },
     {
       title: "Operasi",
