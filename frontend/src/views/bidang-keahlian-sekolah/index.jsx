@@ -68,20 +68,6 @@ const BidangSekolah = () => {
     initializeData();
   }, []);
 
-  useEffect(() => {
-    if (userIdJson) {
-      fetchBidangSekolah();
-    }
-  }, [userIdJson, fetchBidangSekolah]);
-
-  const getUserInfoJson = async (userId) => {
-    const result = await getUserById(userId);
-    const { content, statusCode } = result.data;
-    if (statusCode === 200) {
-      setUserIdJson(content[0].school.idSchool); // Ubah dari userId ke schoolId
-    }
-  };
-
   const fetchBidangSekolah = useCallback(async () => {
     setTableLoading(true);
     try {
@@ -101,6 +87,20 @@ const BidangSekolah = () => {
       setTableLoading(false);
     }
   }, [userIdJson]);
+
+  useEffect(() => {
+    if (userIdJson) {
+      fetchBidangSekolah();
+    }
+  }, [userIdJson, fetchBidangSekolah]);
+
+  const getUserInfoJson = async (userId) => {
+    const result = await getUserById(userId);
+    const { content, statusCode } = result.data;
+    if (statusCode === 200) {
+      setUserIdJson(content[0].school.idSchool); // Ubah dari userId ke schoolId
+    }
+  };
 
   const handleDelete = (row) => {
     const { idBidangSekolah } = row;
