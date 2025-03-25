@@ -99,8 +99,8 @@ const BidangSekolah = () => {
       const updatedValues = {
         idBidangSekolah: values.idBidangSekolah,
         namaBidangSekolah: values.namaBidangSekolah,
-        idSchool: values.idSchool,
-        idBidangKeahlian: values.idBidangKeahlian,
+        idSekolah: values.idSchool,
+        idBidangKeahlian: values.id,
       };
 
       console.log("respon data", updatedValues);
@@ -132,10 +132,10 @@ const BidangSekolah = () => {
     setAddBidangSekolahModalLoading(true);
     try {
       const updatedValues = {
-        idBidangSekolah: values.idBidangSekolah,
+        idBidangSekolah: null,
         namaBidangSekolah: values.namaBidangSekolah,
-        idSchool: values.idSchool,
-        idBidangKeahlian: values.idBidangKeahlian,
+        idSekolah: values.idSchool,
+        idBidangKeahlian: values.id,
       };
       console.log("respon data", updatedValues);
       await addBidangSekolah(updatedValues);
@@ -146,6 +146,8 @@ const BidangSekolah = () => {
     } catch (error) {
       setAddBidangSekolahModalLoading(false);
       message.error("Gagal menambahkan: " + error.message);
+    } finally {
+      setAddBidangSekolahModalVisible(false);
     }
   };
 

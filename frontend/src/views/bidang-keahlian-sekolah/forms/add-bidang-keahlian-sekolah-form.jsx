@@ -88,10 +88,11 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const fetchBidangKeahlianList = async () => {
     try {
       const result = await getBidangKeahlian();
-      if (result.data.statusCode === 200) {
-        setBidangKeahlianList(result.data.content);
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setBidangKeahlianList(content);
       } else {
-        message.error("Gagal mengambil data");
+        console.log("Error: ", result.data.message);
       }
     } catch (error) {
       message.error("Terjadi kesalahan: " + error.message);
@@ -103,6 +104,15 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     fetchSchoolList();
     fetchBidangKeahlianList();
   }, []);
+
+  const handleBidangChange = (selectedId) => {
+    const selectedBidang = bidangKeahlianList.find(
+      (item) => item.id === selectedId
+    );
+    if (selectedBidang) {
+      form.setFieldsValue({ namaBidangSekolah: selectedBidang.bidang });
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -146,26 +156,24 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           <Col xs={24} sm={24} md={12}>
             <Form.Item
               label="Bidang Keahlian:"
-              name="idBidangKeahlian"
+              name="id"
               rules={[
                 { required: true, message: "Silahkan pilih Bidang Keahlian" },
               ]}
             >
-              <Select placeholder="Pilih Bidang Keahlian">
-                {bidangKeahlianList.map(
-                  ({ idBidangKeahlian, bidang }, index) => (
-                    <Option
-                      key={idBidangKeahlian || `option-${index}`}
-                      value={idBidangKeahlian}
-                    >
-                      {bidang}
-                    </Option>
-                  )
-                )}
+              <Select
+                placeholder="Pilih Bidang Keahlian"
+                onChange={handleBidangChange}
+              >
+                {bidangKeahlianList.map(({ id, bidang }) => (
+                  <Option key={id} value={id}>
+                    {bidang}
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
           </Col>
-          <Col xs={24} sm={24} md={12}>
+          <Col xs={24} sm={24} md={12} style={{ display: "none" }}>
             <Form.Item
               label="Nama Bidang Keahlian Sekolah:"
               name="namaBidangSekolah"
@@ -176,7 +184,10 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                 },
               ]}
             >
-              <Input placeholder="Masukkan Nama Bidang Keahlian Sekolah" />
+              <Input
+                readOnly
+                placeholder="Masukkan Nama Bidang Keahlian Sekolah"
+              />
             </Form.Item>
           </Col>
         </Row>
