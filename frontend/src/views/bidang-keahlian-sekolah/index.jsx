@@ -1,5 +1,6 @@
+/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Card,
   Button,
@@ -23,9 +24,11 @@ import {
   editBidangSekolah,
   addBidangSekolah,
 } from "@/api/bidangKeahlianSekolah";
+import { useSelector } from "react-redux";
 import TypingCard from "@/components/TypingCard";
 import EditBidangSekolahForm from "./forms/edit-bidang-keahlian-sekolah-form";
 import AddBidangSekolahForm from "./forms/add-bidang-keahlian-sekolah-form";
+import { reqUserInfo, getUserById } from "@/api/user";
 import { read, utils } from "xlsx";
 
 const { Column } = Table;
@@ -49,20 +52,46 @@ const BidangSekolah = () => {
   const [columnMapping, setColumnMapping] = useState({});
   const [searchKeyword, setSearchKeyword] = useState("");
   const [tableLoading, setTableLoading] = useState(false);
+  const [userIdJson, setUserIdJson] = useState("");
 
   const editBidangSekolahFormRef = useRef();
   const addBidangSekolahFormRef = useRef();
 
   useEffect(() => {
-    fetchBidangSekolah();
+    const initializeData = async () => {
+      const userInfoResponse = await reqUserInfo();
+      const { id: userId } = userInfoResponse.data;
+
+      await getUserInfoJson(userId);
+    };
+
+    initializeData();
   }, []);
 
-  const fetchBidangSekolah = async () => {
+  useEffect(() => {
+    if (userIdJson) {
+      fetchBidangSekolah();
+    }
+  }, [userIdJson, fetchBidangSekolah]);
+
+  const getUserInfoJson = async (userId) => {
+    const result = await getUserById(userId);
+    const { content, statusCode } = result.data;
+    if (statusCode === 200) {
+      setUserIdJson(content[0].school.idSchool); // Ubah dari userId ke schoolId
+    }
+  };
+
+  const fetchBidangSekolah = useCallback(async () => {
     setTableLoading(true);
     try {
       const result = await getBidangSekolah();
-      if (result.data.statusCode === 200) {
-        setBidangSekolah(result.data.content);
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        const filteredContent = content.filter(
+          (item) => item.school?.idSchool === userIdJson
+        );
+        setBidangSekolah(filteredContent);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -71,7 +100,7 @@ const BidangSekolah = () => {
     } finally {
       setTableLoading(false);
     }
-  };
+  }, [userIdJson]);
 
   const handleDelete = (row) => {
     const { idBidangSekolah } = row;
