@@ -15,6 +15,7 @@ import {
 import { getBidangSekolah } from "@/api/bidangKeahlianSekolah";
 import { getSchool } from "@/api/school";
 import { getBidangKeahlian } from "@/api/bidangKeahlian";
+import { reqUserInfo } from "@/api/user";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -55,6 +56,17 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const [schoolList, setSchoolList] = useState([]);
   const [bidangKeahlianList, setBidangKeahlianList] = useState([]);
   const [tableLoading, setTableLoading] = useState(false);
+  const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
+
+  const fetchUserInfo = async () => {
+    try {
+      const response = await reqUserInfo(); // Ambil data user dari API
+      setUserSchoolId(response.data.school_id); // Simpan ID sekolah user ke state
+      console.log("User School ID: ", response.data.school_id);
+    } catch (error) {
+      message.error("Gagal mengambil informasi pengguna");
+    }
+  };
 
   const fetchBidangSekolah = async () => {
     setTableLoading(true);
@@ -100,10 +112,17 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   };
 
   useEffect(() => {
+    fetchUserInfo();
     fetchBidangSekolah();
     fetchSchoolList();
     fetchBidangKeahlianList();
   }, []);
+
+  useEffect(() => {
+    if (userSchoolId) {
+      form.setFieldsValue({ idSchool: userSchoolId });
+    }
+  }, [userSchoolId]);
 
   const handleBidangChange = (selectedId) => {
     const selectedBidang = bidangKeahlianList.find(
@@ -144,12 +163,14 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
               name="idSchool"
               rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
             >
-              <Select placeholder="Pilih Sekolah">
-                {schoolList.map(({ idSchool, nameSchool }, index) => (
-                  <Option key={idSchool || `option-${index}`} value={idSchool}>
-                    {nameSchool}
-                  </Option>
-                ))}
+              <Select defaultValue={userSchoolId} disabled>
+                {schoolList
+                  .filter(({ idSchool }) => idSchool === userSchoolId) // Hanya menampilkan sekolah user
+                  .map(({ idSchool, nameSchool }) => (
+                    <Option key={idSchool} value={idSchool}>
+                      {nameSchool}
+                    </Option>
+                  ))}
               </Select>
             </Form.Item>
           </Col>
@@ -162,8 +183,13 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
               ]}
             >
               <Select
+                showSearch
                 placeholder="Pilih Bidang Keahlian"
+                optionFilterProp="children"
                 onChange={handleBidangChange}
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
               >
                 {bidangKeahlianList.map(({ id, bidang }) => (
                   <Option key={id} value={id}>
