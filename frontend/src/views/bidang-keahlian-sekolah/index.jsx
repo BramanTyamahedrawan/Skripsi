@@ -12,11 +12,13 @@ import {
   Divider,
   Modal,
   Input,
+  Space,
 } from "antd";
 import {
   UploadOutlined,
   EditOutlined,
   DeleteOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import {
   getBidangSekolah,
@@ -24,7 +26,8 @@ import {
   editBidangSekolah,
   addBidangSekolah,
 } from "@/api/bidangKeahlianSekolah";
-import { useSelector } from "react-redux";
+import { Skeleton } from "antd";
+import Highlighter from "react-highlight-words";
 import TypingCard from "@/components/TypingCard";
 import EditBidangSekolahForm from "./forms/edit-bidang-keahlian-sekolah-form";
 import AddBidangSekolahForm from "./forms/add-bidang-keahlian-sekolah-form";
@@ -53,6 +56,12 @@ const BidangSekolah = () => {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [tableLoading, setTableLoading] = useState(false);
   const [userIdJson, setUserIdJson] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState("");
+  const [searchedColumn, setSearchedColumn] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const searchInput = useRef(null);
 
   const editBidangSekolahFormRef = useRef();
   const addBidangSekolahFormRef = useRef();
@@ -69,7 +78,7 @@ const BidangSekolah = () => {
   }, []);
 
   const fetchBidangSekolah = useCallback(async () => {
-    setTableLoading(true);
+    setLoading(true);
     try {
       const result = await getBidangSekolah();
       const { content, statusCode } = result.data;
@@ -84,7 +93,7 @@ const BidangSekolah = () => {
     } catch (error) {
       message.error("Terjadi kesalahan: " + error.message);
     } finally {
-      setTableLoading(false);
+      setLoading(false);
     }
   }, [userIdJson]);
 
@@ -93,6 +102,15 @@ const BidangSekolah = () => {
       fetchBidangSekolah();
     }
   }, [userIdJson, fetchBidangSekolah]);
+
+  const filteredData = bidangSekolah.filter((item) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (item?.namaBidangSekolah?.toLowerCase() || "").includes(query) ||
+      (item?.nameSchool?.toLowerCase() || "").includes(query) ||
+      (item?.bidang?.toLowerCase() || "").includes(query)
+    );
+  });
 
   const getUserInfoJson = async (userId) => {
     const result = await getUserById(userId);
@@ -180,6 +198,113 @@ const BidangSekolah = () => {
     }
   };
 
+  const handleSearchTable = (selectedKeys, confirm, dataIndex) => {
+    confirm();
+    setSearchText(selectedKeys[0]);
+    setSearchedColumn(dataIndex);
+  };
+
+  const handleReset = (clearFilters) => {
+    clearFilters();
+    setSearchText("");
+  };
+
+  const handleSearch = (keyword) => {
+    setSearchKeyword(keyword);
+    getBidangSekolah();
+  };
+
+  const getColumnSearchProps = (dataIndex, nestedPath) => ({
+    filterDropdown: ({
+      setSelectedKeys,
+      selectedKeys,
+      confirm,
+      clearFilters,
+      close,
+    }) => (
+      <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+        <Input
+          ref={searchInput}
+          placeholder={`Search ${dataIndex}`}
+          value={selectedKeys[0]}
+          onChange={(e) =>
+            setSelectedKeys(e.target.value ? [e.target.value] : [])
+          }
+          onPressEnter={() =>
+            handleSearchTable(selectedKeys, confirm, dataIndex)
+          }
+          style={{ marginBottom: 8, display: "block" }}
+        />
+        <Space>
+          <Button
+            type="primary"
+            onClick={() => handleSearchTable(selectedKeys, confirm, dataIndex)}
+            icon={<SearchOutlined />}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Search
+          </Button>
+          <Button
+            onClick={() => clearFilters && handleReset(clearFilters)}
+            size="small"
+            style={{ width: 90 }}
+          >
+            Reset
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            onClick={() => {
+              confirm({ closeDropdown: false });
+              setSearchText(selectedKeys[0]);
+              setSearchedColumn(dataIndex);
+            }}
+          >
+            Filter
+          </Button>
+          <Button type="link" size="small" onClick={() => close()}>
+            Close
+          </Button>
+        </Space>
+      </div>
+    ),
+    filterIcon: (filtered) => (
+      <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />
+    ),
+    onFilter: (value, record) => {
+      if (nestedPath) {
+        const nestedValue = nestedPath
+          .split(".")
+          .reduce((obj, key) => obj?.[key], record);
+        return nestedValue
+          ?.toString()
+          .toLowerCase()
+          .includes(value.toLowerCase());
+      }
+      return record[dataIndex]
+        ?.toString()
+        .toLowerCase()
+        .includes(value.toLowerCase());
+    },
+    filterDropdownProps: {
+      onOpenChange(open) {
+        if (open) setTimeout(() => searchInput.current?.select(), 100);
+      },
+    },
+    render: (text) =>
+      searchedColumn === dataIndex ? (
+        <Highlighter
+          highlightStyle={{ backgroundColor: "#ffc069", padding: 0 }}
+          searchWords={[searchText]}
+          autoEscape
+          textToHighlight={text?.toString() || ""}
+        />
+      ) : (
+        text
+      ),
+  });
+
   const renderColumns = () => [
     {
       title: "No.",
@@ -193,18 +318,25 @@ const BidangSekolah = () => {
       dataIndex: "namaBidangSekolah",
       key: "namaBidangSekolah",
       align: "center",
+      ...getColumnSearchProps("namaBidangSekolah"),
+      sorter: (a, b) => a.namaBidangSekolah.localeCompare(b.namaBidangSekolah),
     },
     {
       title: "Sekolah",
       dataIndex: ["school", "nameSchool"],
       key: "nameSchool",
       align: "center",
+      ...getColumnSearchProps("nameSchool", "school.nameSchool"),
+      sorter: (a, b) => a.school.nameSchool.localeCompare(b.school.nameSchool),
     },
     {
       title: "Bidang Keahlian",
       dataIndex: ["bidangKeahlian", "bidang"],
       key: "bidang",
       align: "center",
+      ...getColumnSearchProps("bidang", "bidangKeahlian.bidang"),
+      sorter: (a, b) =>
+        a.bidangKeahlian.bidang.localeCompare(b.bidangKeahlian.bidang),
     },
     {
       title: "Operasi",
@@ -233,8 +365,8 @@ const BidangSekolah = () => {
 
   const renderTable = () => (
     <Table
-      rowKey="id"
-      dataSource={bidangSekolah}
+      rowKey="idBidangSekolah"
+      dataSource={filteredData}
       columns={renderColumns()}
       pagination={{ pageSize: 10 }}
     />
@@ -268,8 +400,40 @@ const BidangSekolah = () => {
         source="Di sini, Anda dapat mengelola Analisa Bidang Keahlian Sekolah di sistem."
       />
       <br />
-      <Card title={renderButtons()}>{renderTable()}</Card>
+      {loading ? (
+        <Card>
+          <Skeleton active paragraph={{ rows: 10 }} />
+        </Card>
+      ) : (
+        <Card style={{ overflowX: "scroll" }}>
+          {/* Baris untuk tombol dan pencarian */}
+          <Row
+            justify="space-between"
+            align="middle"
+            style={{ marginBottom: 16 }}
+          >
+            {/* Tombol Tambah & Import */}
+            {renderButtons()}
 
+            {/* Kolom Pencarian */}
+            <Col>
+              <Input.Search
+                key="search"
+                placeholder="Cari bidang keahlian..."
+                allowClear
+                enterButton
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ width: 300 }}
+              />
+            </Col>
+          </Row>
+
+          {/* Tabel */}
+          {renderTable()}
+        </Card>
+      )}
+
+      {/* Modal Tambah Bidang Keahlian Sekolah */}
       <AddBidangSekolahForm
         wrappedComponentRef={addBidangSekolahFormRef}
         visible={addBidangSekolahModalVisible}
@@ -278,6 +442,7 @@ const BidangSekolah = () => {
         onOk={handleAddOk}
       />
 
+      {/* Modal Edit Bidang Keahlian Sekolah */}
       <EditBidangSekolahForm
         wrappedComponentRef={editBidangSekolahFormRef}
         currentRowData={currentRowData}
@@ -286,36 +451,6 @@ const BidangSekolah = () => {
         onCancel={handleCancel}
         onOk={handleEditOk}
       />
-
-      <Modal
-        title="Import File"
-        open={importModalVisible}
-        onCancel={() => setImportModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setImportModalVisible(false)}>
-            Cancel
-          </Button>,
-          <Button
-            key="upload"
-            type="primary"
-            loading={uploading}
-            onClick={() => {
-              /* Implementasi Upload */
-            }}
-          >
-            Upload
-          </Button>,
-        ]}
-      >
-        <Upload
-          beforeUpload={() => {
-            /* Implementasi File Upload */ return false;
-          }}
-          accept=".csv,.xlsx,.xls"
-        >
-          <Button>Pilih File</Button>
-        </Upload>
-      </Modal>
     </div>
   );
 };
