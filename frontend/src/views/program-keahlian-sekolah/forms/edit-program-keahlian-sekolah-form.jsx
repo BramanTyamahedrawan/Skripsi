@@ -12,9 +12,10 @@ import {
   Col,
   message,
 } from "antd";
-import { getBidangSekolah } from "@/api/bidangKeahlianSekolah";
+
+import { getProgramSekolah } from "@/api/programKeahlianSekolah";
 import { getSchool } from "@/api/school";
-import { getBidangKeahlian } from "@/api/bidangKeahlian";
+import { getProgramKeahlian } from "@/api/programKeahlian";
 import { reqUserInfo } from "@/api/user";
 
 const { TextArea } = Input;
@@ -36,25 +37,31 @@ const renderColumns = () => [
     align: "center",
   },
   {
-    title: "Bidang Keahlian",
-    dataIndex: ["bidangKeahlian", "bidang"],
-    key: "bidang",
+    title: "Program Keahlian",
+    dataIndex: ["programKeahlian", "program"],
+    key: "program",
     align: "center",
   },
   {
-    title: "Bidang Keahlian Sekolah",
-    dataIndex: "namaBidangSekolah",
-    key: "namaBidangSekolah",
+    title: "Program Keahlian Sekolah",
+    dataIndex: "namaProgramSekolah",
+    key: "namaProgramSekolah",
     align: "center",
   },
 ];
 
-const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
-  const [bidangSekolah, setBidangSekolah] = useState([]);
+const EditProgramSekolahForm = ({
+  visible,
+  onCancel,
+  onOk,
+  confirmLoading,
+  currentRowData,
+}) => {
+  const [programSekolah, setProgramSekolah] = useState([]);
   const [form] = Form.useForm();
 
   const [schoolList, setSchoolList] = useState([]);
-  const [bidangKeahlianList, setBidangKeahlianList] = useState([]);
+  const [programKeahlianList, setProgramKeahlianList] = useState([]);
   const [tableLoading, setTableLoading] = useState(false);
   const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
 
@@ -68,12 +75,12 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     }
   };
 
-  const fetchBidangSekolah = async () => {
+  const fetchProgramSekolah = async () => {
     setTableLoading(true);
     try {
-      const result = await getBidangSekolah();
+      const result = await getProgramSekolah();
       if (result.data.statusCode === 200) {
-        setBidangSekolah(result.data.content);
+        setProgramSekolah(result.data.content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -97,12 +104,12 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     }
   };
 
-  const fetchBidangKeahlianList = async () => {
+  const fetchProgramKeahlianList = async () => {
     try {
-      const result = await getBidangKeahlian();
+      const result = await getProgramKeahlian();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        setBidangKeahlianList(content);
+        setProgramKeahlianList(content);
       } else {
         console.log("Error: ", result.data.message);
       }
@@ -112,24 +119,33 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   };
 
   useEffect(() => {
-    fetchUserInfo();
-    fetchBidangSekolah();
+    fetchProgramSekolah();
     fetchSchoolList();
-    fetchBidangKeahlianList();
-  }, []);
+    fetchProgramKeahlianList();
+    fetchUserInfo();
+
+    if (currentRowData) {
+      form.setFieldsValue({
+        idProgramSekolah: currentRowData.idProgramSekolah,
+        namaProgramSekolah: currentRowData.namaProgramSekolah,
+        idSchool: currentRowData.school?.idSchool,
+        id: currentRowData.programKeahlian?.id,
+      });
+    }
+  }, [currentRowData, form]);
 
   useEffect(() => {
     if (userSchoolId) {
       form.setFieldsValue({ idSchool: userSchoolId });
     }
-  }, [userSchoolId, form]);
+  }, [userSchoolId]);
 
-  const handleBidangChange = (selectedId) => {
-    const selectedBidang = bidangKeahlianList.find(
+  const handleProgramChange = (selectedId) => {
+    const selectedProgram = programKeahlianList.find(
       (item) => item.id === selectedId
     );
-    if (selectedBidang) {
-      form.setFieldsValue({ namaBidangSekolah: selectedBidang.bidang });
+    if (selectedProgram) {
+      form.setFieldsValue({ namaProgramSekolah: selectedProgram.program });
     }
   };
 
@@ -144,7 +160,7 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
 
   return (
     <Modal
-      title="Tambah Kelas Analisa Bidang Keahlian Sekolah"
+      title="Edit Analisa Program Keahlian Sekolah"
       open={visible}
       onCancel={() => {
         form.resetFields();
@@ -176,24 +192,24 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
-              label="Bidang Keahlian:"
+              label="Program Keahlian:"
               name="id"
               rules={[
-                { required: true, message: "Silahkan pilih Bidang Keahlian" },
+                { required: true, message: "Silahkan pilih Program Keahlian" },
               ]}
             >
               <Select
+                placeholder="Pilih Program Keahlian"
                 showSearch
-                placeholder="Pilih Bidang Keahlian"
                 optionFilterProp="children"
-                onChange={handleBidangChange}
+                onChange={handleProgramChange}
                 filterOption={(input, option) =>
                   option.children.toLowerCase().includes(input.toLowerCase())
                 }
               >
-                {bidangKeahlianList.map(({ id, bidang }) => (
+                {programKeahlianList.map(({ id, program }) => (
                   <Option key={id} value={id}>
-                    {bidang}
+                    {program}
                   </Option>
                 ))}
               </Select>
@@ -201,18 +217,18 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           </Col>
           <Col xs={24} sm={24} md={12} style={{ display: "none" }}>
             <Form.Item
-              label="Nama Bidang Keahlian Sekolah:"
-              name="namaBidangSekolah"
+              label="Nama Program Keahlian Sekolah:"
+              name="namaProgramSekolah"
               rules={[
                 {
                   required: true,
-                  message: "Silahkan isi Nama Bidang Keahlian Sekolah",
+                  message: "Silahkan isi Nama Program Keahlian Sekolah",
                 },
               ]}
             >
               <Input
                 readOnly
-                placeholder="Masukkan Nama Bidang Keahlian Sekolah"
+                placeholder="Masukkan Nama Program Keahlian Sekolah"
               />
             </Form.Item>
           </Col>
@@ -222,4 +238,4 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   );
 };
 
-export default AddBidangSekolahForm;
+export default EditProgramSekolahForm;

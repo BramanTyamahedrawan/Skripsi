@@ -12,9 +12,10 @@ import {
   Col,
   message,
 } from "antd";
-import { getBidangSekolah } from "@/api/bidangKeahlianSekolah";
+
+import { getKonsentrasiSekolah } from "@/api/konsentrasiKeahlianSekolah";
 import { getSchool } from "@/api/school";
-import { getBidangKeahlian } from "@/api/bidangKeahlian";
+import { getKonsentrasiKeahlian } from "@/api/konsentrasiKeahlian";
 import { reqUserInfo } from "@/api/user";
 
 const { TextArea } = Input;
@@ -36,25 +37,31 @@ const renderColumns = () => [
     align: "center",
   },
   {
-    title: "Bidang Keahlian",
-    dataIndex: ["bidangKeahlian", "bidang"],
-    key: "bidang",
+    title: "Konsentrasi Keahlian",
+    dataIndex: ["konsentrasiKeahlian", "konsentrasi"],
+    key: "konsentrasi",
     align: "center",
   },
   {
-    title: "Bidang Keahlian Sekolah",
-    dataIndex: "namaBidangSekolah",
-    key: "namaBidangSekolah",
+    title: "Konsentrasi Keahlian Sekolah",
+    dataIndex: "namaKonsentrasiSekolah",
+    key: "namaKonsentrasiSekolah",
     align: "center",
   },
 ];
 
-const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
-  const [bidangSekolah, setBidangSekolah] = useState([]);
+const EditKonsentrasiSekolahForm = ({
+  visible,
+  onCancel,
+  onOk,
+  confirmLoading,
+  currentRowData,
+}) => {
+  const [konsentrasiSekolah, setKonsentrasiSekolah] = useState([]);
   const [form] = Form.useForm();
 
   const [schoolList, setSchoolList] = useState([]);
-  const [bidangKeahlianList, setBidangKeahlianList] = useState([]);
+  const [konsentrasiKeahlianList, setKonsentrasiKeahlianList] = useState([]);
   const [tableLoading, setTableLoading] = useState(false);
   const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
 
@@ -68,12 +75,12 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     }
   };
 
-  const fetchBidangSekolah = async () => {
+  const fetchKonsentrasiSekolah = async () => {
     setTableLoading(true);
     try {
-      const result = await getBidangSekolah();
+      const result = await getKonsentrasiSekolah();
       if (result.data.statusCode === 200) {
-        setBidangSekolah(result.data.content);
+        setKonsentrasiSekolah(result.data.content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -97,12 +104,12 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     }
   };
 
-  const fetchBidangKeahlianList = async () => {
+  const fetchKonsentrasiKeahlianList = async () => {
     try {
-      const result = await getBidangKeahlian();
+      const result = await getKonsentrasiKeahlian();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        setBidangKeahlianList(content);
+        setKonsentrasiKeahlianList(content);
       } else {
         console.log("Error: ", result.data.message);
       }
@@ -112,24 +119,35 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   };
 
   useEffect(() => {
-    fetchUserInfo();
-    fetchBidangSekolah();
+    fetchKonsentrasiSekolah();
     fetchSchoolList();
-    fetchBidangKeahlianList();
-  }, []);
+    fetchKonsentrasiKeahlianList();
+    fetchUserInfo();
+
+    if (currentRowData) {
+      form.setFieldsValue({
+        idKonsentrasiSekolah: currentRowData.idKonsentrasiSekolah,
+        namaKonsentrasiSekolah: currentRowData.namaKonsentrasiSekolah,
+        idSchool: currentRowData.school?.idSchool,
+        id: currentRowData.konsentrasiKeahlian?.id,
+      });
+    }
+  }, [currentRowData, form]);
 
   useEffect(() => {
     if (userSchoolId) {
       form.setFieldsValue({ idSchool: userSchoolId });
     }
-  }, [userSchoolId, form]);
+  }, [userSchoolId]);
 
-  const handleBidangChange = (selectedId) => {
-    const selectedBidang = bidangKeahlianList.find(
+  const handleKonsentrasiChange = (selectedId) => {
+    const selectedKonsentrasi = konsentrasiKeahlianList.find(
       (item) => item.id === selectedId
     );
-    if (selectedBidang) {
-      form.setFieldsValue({ namaBidangSekolah: selectedBidang.bidang });
+    if (selectedKonsentrasi) {
+      form.setFieldsValue({
+        namaKonsentrasiSekolah: selectedKonsentrasi.konsentrasi,
+      });
     }
   };
 
@@ -144,7 +162,7 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
 
   return (
     <Modal
-      title="Tambah Kelas Analisa Bidang Keahlian Sekolah"
+      title="Edit Analisa Konsentrasi Keahlian Sekolah"
       open={visible}
       onCancel={() => {
         form.resetFields();
@@ -176,24 +194,27 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
-              label="Bidang Keahlian:"
+              label="Konsentrasi Keahlian:"
               name="id"
               rules={[
-                { required: true, message: "Silahkan pilih Bidang Keahlian" },
+                {
+                  required: true,
+                  message: "Silahkan pilih Konsentrasi Keahlian",
+                },
               ]}
             >
               <Select
+                placeholder="Pilih Konsentrasi Keahlian"
                 showSearch
-                placeholder="Pilih Bidang Keahlian"
                 optionFilterProp="children"
-                onChange={handleBidangChange}
+                onChange={handleKonsentrasiChange}
                 filterOption={(input, option) =>
                   option.children.toLowerCase().includes(input.toLowerCase())
                 }
               >
-                {bidangKeahlianList.map(({ id, bidang }) => (
+                {konsentrasiKeahlianList.map(({ id, konsentrasi }) => (
                   <Option key={id} value={id}>
-                    {bidang}
+                    {konsentrasi}
                   </Option>
                 ))}
               </Select>
@@ -201,18 +222,18 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           </Col>
           <Col xs={24} sm={24} md={12} style={{ display: "none" }}>
             <Form.Item
-              label="Nama Bidang Keahlian Sekolah:"
-              name="namaBidangSekolah"
+              label="Nama Konsentrasi Keahlian Sekolah:"
+              name="namaKonsentrasiSekolah"
               rules={[
                 {
                   required: true,
-                  message: "Silahkan isi Nama Bidang Keahlian Sekolah",
+                  message: "Silahkan isi Nama Konsentrasi Keahlian Sekolah",
                 },
               ]}
             >
               <Input
                 readOnly
-                placeholder="Masukkan Nama Bidang Keahlian Sekolah"
+                placeholder="Masukkan Nama Konsentrasi Keahlian Sekolah"
               />
             </Form.Item>
           </Col>
@@ -222,4 +243,4 @@ const AddBidangSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   );
 };
 
-export default AddBidangSekolahForm;
+export default EditKonsentrasiSekolahForm;

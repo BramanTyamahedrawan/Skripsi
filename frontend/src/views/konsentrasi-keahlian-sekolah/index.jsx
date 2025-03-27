@@ -20,32 +20,40 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import {
-  getBidangSekolah,
-  deleteBidangSekolah,
-  editBidangSekolah,
-  addBidangSekolah,
-} from "@/api/bidangKeahlianSekolah";
+  getKonsentrasiSekolah,
+  deleteKonsentrasiSekolah,
+  editKonsentrasiSekolah,
+  addKonsentrasiSekolah,
+} from "@/api/konsentrasiKeahlianSekolah";
 import { Skeleton } from "antd";
 import Highlighter from "react-highlight-words";
 import TypingCard from "@/components/TypingCard";
-import EditBidangSekolahForm from "./forms/edit-bidang-keahlian-sekolah-form";
-import AddBidangSekolahForm from "./forms/add-bidang-keahlian-sekolah-form";
+import EditKonsentrasiSekolahForm from "./forms/edit-konsentrasi-keahlian-sekolah-form";
+import AddKonsentrasiSekolahForm from "./forms/add-konsentrasi-keahlian-sekolah-form";
 import { reqUserInfo, getUserById } from "@/api/user";
 import { read, utils } from "xlsx";
 
 const { Column } = Table;
 
-const BidangSekolah = () => {
-  const [bidangSekolah, setBidangSekolah] = useState([]);
-  const [editBidangSekolahModalVisible, setEditBidangSekolahModalVisible] =
-    useState(false);
-  const [editBidangSekolahModalLoading, setEditBidangSekolahModalLoading] =
-    useState(false);
+const KonsentrasiSekolah = () => {
+  const [konsentrasiSekolah, setKonsentrasiSekolah] = useState([]);
+  const [
+    editKonsentrasiSekolahModalVisible,
+    setEditKonsentrasiSekolahModalVisible,
+  ] = useState(false);
+  const [
+    editKonsentrasiSekolahModalLoading,
+    setEditKonsentrasiSekolahModalLoading,
+  ] = useState(false);
   const [currentRowData, setCurrentRowData] = useState({});
-  const [addBidangSekolahModalVisible, setAddBidangSekolahModalVisible] =
-    useState(false);
-  const [addBidangSekolahModalLoading, setAddBidangSekolahModalLoading] =
-    useState(false);
+  const [
+    addKonsentrasiSekolahModalVisible,
+    setAddKonsentrasiSekolahModalVisible,
+  ] = useState(false);
+  const [
+    addKonsentrasiSekolahModalLoading,
+    setAddKonsentrasiSekolahModalLoading,
+  ] = useState(false);
   const [importedData, setImportedData] = useState([]);
   const [columnTitles, setColumnTitles] = useState([]);
   const [fileName, setFileName] = useState("");
@@ -62,8 +70,8 @@ const BidangSekolah = () => {
 
   const searchInput = useRef(null);
 
-  const editBidangSekolahFormRef = useRef();
-  const addBidangSekolahFormRef = useRef();
+  const editKonsentrasiSekolahFormRef = useRef();
+  const addKonsentrasiSekolahFormRef = useRef();
 
   useEffect(() => {
     const initializeData = async () => {
@@ -76,16 +84,16 @@ const BidangSekolah = () => {
     initializeData();
   }, []);
 
-  const fetchBidangSekolah = useCallback(async () => {
+  const fetchKonsentrasiSekolah = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await getBidangSekolah();
+      const result = await getKonsentrasiSekolah();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
         const filteredContent = content.filter(
           (item) => item.school?.idSchool === userIdJson
         );
-        setBidangSekolah(filteredContent);
+        setKonsentrasiSekolah(filteredContent);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -98,16 +106,16 @@ const BidangSekolah = () => {
 
   useEffect(() => {
     if (userIdJson) {
-      fetchBidangSekolah();
+      fetchKonsentrasiSekolah();
     }
-  }, [userIdJson, fetchBidangSekolah]);
+  }, [userIdJson, fetchKonsentrasiSekolah]);
 
-  const filteredData = bidangSekolah.filter((item) => {
+  const filteredData = konsentrasiSekolah.filter((item) => {
     const query = searchQuery.toLowerCase();
     return (
-      (item?.namaBidangSekolah?.toLowerCase() || "").includes(query) ||
+      (item?.namaKonsentrasiSekolah?.toLowerCase() || "").includes(query) ||
       (item?.nameSchool?.toLowerCase() || "").includes(query) ||
-      (item?.bidang?.toLowerCase() || "").includes(query)
+      (item?.konsentrasi?.toLowerCase() || "").includes(query)
     );
   });
 
@@ -120,7 +128,7 @@ const BidangSekolah = () => {
   };
 
   const handleDelete = (row) => {
-    const { idBidangSekolah } = row;
+    const { idKonsentrasiSekolah } = row;
     Modal.confirm({
       title: "Konfirmasi",
       content: "Apakah Anda yakin ingin menghapus data ini?",
@@ -129,9 +137,9 @@ const BidangSekolah = () => {
       cancelText: "Tidak",
       onOk: async () => {
         try {
-          await deleteBidangSekolah({ idBidangSekolah });
+          await deleteKonsentrasiSekolah({ idKonsentrasiSekolah });
           message.success("Berhasil dihapus");
-          fetchBidangSekolah();
+          fetchKonsentrasiSekolah();
         } catch (error) {
           message.error("Gagal menghapus: " + error.message);
         }
@@ -140,60 +148,63 @@ const BidangSekolah = () => {
   };
 
   const handleEditOk = async (values) => {
-    setEditBidangSekolahModalLoading(true);
+    setEditKonsentrasiSekolahModalLoading(true);
     try {
       const updatedValues = {
-        idBidangSekolah: values.idBidangSekolah,
-        namaBidangSekolah: values.namaBidangSekolah,
+        idKonsentrasiSekolah: values.idKonsentrasiSekolah,
+        namaKonsentrasiSekolah: values.namaKonsentrasiSekolah,
         idSekolah: values.idSchool,
-        idBidangKeahlian: values.id,
+        idKonsentrasiKeahlian: values.id,
       };
 
       console.log("respon data", updatedValues);
-      await editBidangSekolah(updatedValues, currentRowData.idBidangSekolah);
-      setEditBidangSekolahModalVisible(false);
-      setEditBidangSekolahModalLoading(false);
+      await editKonsentrasiSekolah(
+        updatedValues,
+        currentRowData.idKonsentrasiSekolah
+      );
+      setEditKonsentrasiSekolahModalVisible(false);
+      setEditKonsentrasiSekolahModalLoading(false);
       message.success("Berhasil mengubah");
-      fetchBidangSekolah();
+      fetchKonsentrasiSekolah();
     } catch (error) {
-      setEditBidangSekolahModalLoading(false);
+      setEditKonsentrasiSekolahModalLoading(false);
       message.error("Gagal mengubah: " + error.message);
     }
   };
 
   const handleEdit = (row) => {
     setCurrentRowData({ ...row });
-    setEditBidangSekolahModalVisible(true);
+    setEditKonsentrasiSekolahModalVisible(true);
   };
 
   const handleCancel = () => {
-    setEditBidangSekolahModalVisible(false);
-    setAddBidangSekolahModalVisible(false);
+    setEditKonsentrasiSekolahModalVisible(false);
+    setAddKonsentrasiSekolahModalVisible(false);
   };
 
   const handleAdd = () => {
-    setAddBidangSekolahModalVisible(true);
+    setAddKonsentrasiSekolahModalVisible(true);
   };
   const handleAddOk = async (values) => {
-    setAddBidangSekolahModalLoading(true);
+    setAddKonsentrasiSekolahModalLoading(true);
     try {
       const updatedValues = {
-        idBidangSekolah: null,
-        namaBidangSekolah: values.namaBidangSekolah,
+        idKonsentrasiSekolah: null,
+        namaKonsentrasiSekolah: values.namaKonsentrasiSekolah,
         idSekolah: values.idSchool,
-        idBidangKeahlian: values.id,
+        idKonsentrasiKeahlian: values.id,
       };
       console.log("respon data", updatedValues);
-      await addBidangSekolah(updatedValues);
-      setAddBidangSekolahModalLoading(false);
-      setAddBidangSekolahModalLoading(false);
+      await addKonsentrasiSekolah(updatedValues);
+      setAddKonsentrasiSekolahModalLoading(false);
+      setAddKonsentrasiSekolahModalLoading(false);
       message.success("Berhasil menambahkan");
-      fetchBidangSekolah();
+      fetchKonsentrasiSekolah();
     } catch (error) {
-      setAddBidangSekolahModalLoading(false);
+      setAddKonsentrasiSekolahModalLoading(false);
       message.error("Gagal menambahkan: " + error.message);
     } finally {
-      setAddBidangSekolahModalVisible(false);
+      setAddKonsentrasiSekolahModalVisible(false);
     }
   };
 
@@ -210,7 +221,7 @@ const BidangSekolah = () => {
 
   const handleSearch = (keyword) => {
     setSearchKeyword(keyword);
-    getBidangSekolah();
+    getKonsentrasiSekolah();
   };
 
   const getColumnSearchProps = (dataIndex, nestedPath) => ({
@@ -313,12 +324,13 @@ const BidangSekolah = () => {
       render: (_, __, index) => index + 1,
     },
     {
-      title: "Bidang Keahlian Sekolah",
-      dataIndex: "namaBidangSekolah",
-      key: "namaBidangSekolah",
+      title: "Konsentrasi Keahlian Sekolah",
+      dataIndex: "namaKonsentrasiSekolah",
+      key: "namaKonsentrasiSekolah",
       align: "center",
-      ...getColumnSearchProps("namaBidangSekolah"),
-      sorter: (a, b) => a.namaBidangSekolah.localeCompare(b.namaBidangSekolah),
+      ...getColumnSearchProps("namaKonsentrasiSekolah"),
+      sorter: (a, b) =>
+        a.namaKonsentrasiSekolah.localeCompare(b.namaKonsentrasiSekolah),
     },
     {
       title: "Sekolah",
@@ -329,13 +341,15 @@ const BidangSekolah = () => {
       sorter: (a, b) => a.school.nameSchool.localeCompare(b.school.nameSchool),
     },
     {
-      title: "Bidang Keahlian",
-      dataIndex: ["bidangKeahlian", "bidang"],
-      key: "bidang",
+      title: "Konsentrasi Keahlian",
+      dataIndex: ["konsentrasiKeahlian", "konsentrasi"],
+      key: "konsentrasi",
       align: "center",
-      ...getColumnSearchProps("bidang", "bidangKeahlian.bidang"),
+      ...getColumnSearchProps("konsentrasi", "konsentrasiKeahlian.konsentrasi"),
       sorter: (a, b) =>
-        a.bidangKeahlian.bidang.localeCompare(b.bidangKeahlian.bidang),
+        a.konsentrasiKeahlian.konsentrasi.localeCompare(
+          b.konsentrasiKeahlian.konsentrasi
+        ),
     },
     {
       title: "Operasi",
@@ -364,7 +378,7 @@ const BidangSekolah = () => {
 
   const renderTable = () => (
     <Table
-      rowKey="idBidangSekolah"
+      rowKey="idKonsentrasiSekolah"
       dataSource={filteredData}
       columns={renderColumns()}
       pagination={{ pageSize: 10 }}
@@ -376,9 +390,9 @@ const BidangSekolah = () => {
       <Col>
         <Button
           type="primary"
-          onClick={() => setAddBidangSekolahModalVisible(true)}
+          onClick={() => setAddKonsentrasiSekolahModalVisible(true)}
         >
-          Tambahkan Bidang Keahlian Sekolah
+          Tambahkan Konsentrasi Keahlian Sekolah
         </Button>
       </Col>
       <Col>
@@ -395,8 +409,8 @@ const BidangSekolah = () => {
   return (
     <div className="app-container">
       <TypingCard
-        title="Manajemen Analisa Bidang Keahlian Sekolah"
-        source="Di sini, Anda dapat mengelola Analisa Bidang Keahlian Sekolah di sistem."
+        title="Manajemen Analisa Konsentrasi Keahlian Sekolah"
+        source="Di sini, Anda dapat mengelola Analisa Konsentrasi Keahlian Sekolah di sistem."
       />
       <br />
       {loading ? (
@@ -418,7 +432,7 @@ const BidangSekolah = () => {
             <Col>
               <Input.Search
                 key="search"
-                placeholder="Cari bidang keahlian..."
+                placeholder="Cari konsentrasi keahlian..."
                 allowClear
                 enterButton
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -432,21 +446,21 @@ const BidangSekolah = () => {
         </Card>
       )}
 
-      {/* Modal Tambah Bidang Keahlian Sekolah */}
-      <AddBidangSekolahForm
-        wrappedComponentRef={addBidangSekolahFormRef}
-        visible={addBidangSekolahModalVisible}
-        confirmLoading={addBidangSekolahModalLoading}
+      {/* Modal Tambah Konsentrasi Keahlian Sekolah */}
+      <AddKonsentrasiSekolahForm
+        wrappedComponentRef={addKonsentrasiSekolahFormRef}
+        visible={addKonsentrasiSekolahModalVisible}
+        confirmLoading={addKonsentrasiSekolahModalLoading}
         onCancel={handleCancel}
         onOk={handleAddOk}
       />
 
-      {/* Modal Edit Bidang Keahlian Sekolah */}
-      <EditBidangSekolahForm
-        wrappedComponentRef={editBidangSekolahFormRef}
+      {/* Modal Edit Konsentrasi Keahlian Sekolah */}
+      <EditKonsentrasiSekolahForm
+        wrappedComponentRef={editKonsentrasiSekolahFormRef}
         currentRowData={currentRowData}
-        visible={editBidangSekolahModalVisible}
-        confirmLoading={editBidangSekolahModalLoading}
+        visible={editKonsentrasiSekolahModalVisible}
+        confirmLoading={editKonsentrasiSekolahModalLoading}
         onCancel={handleCancel}
         onOk={handleEditOk}
       />
@@ -454,4 +468,4 @@ const BidangSekolah = () => {
   );
 };
 
-export default BidangSekolah;
+export default KonsentrasiSekolah;

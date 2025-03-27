@@ -20,31 +20,31 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import {
-  getBidangSekolah,
-  deleteBidangSekolah,
-  editBidangSekolah,
-  addBidangSekolah,
-} from "@/api/bidangKeahlianSekolah";
+  getProgramSekolah,
+  deleteProgramSekolah,
+  editProgramSekolah,
+  addProgramSekolah,
+} from "@/api/program-keahlian-sekolah";
 import { Skeleton } from "antd";
 import Highlighter from "react-highlight-words";
 import TypingCard from "@/components/TypingCard";
-import EditBidangSekolahForm from "./forms/edit-bidang-keahlian-sekolah-form";
-import AddBidangSekolahForm from "./forms/add-bidang-keahlian-sekolah-form";
+import EditProgramSekolahForm from "./forms/edit-program-keahlian-sekolah-form";
+import AddProgramSekolahForm from "./forms/add-program-keahlian-sekolah-form";
 import { reqUserInfo, getUserById } from "@/api/user";
 import { read, utils } from "xlsx";
 
 const { Column } = Table;
 
-const BidangSekolah = () => {
-  const [bidangSekolah, setBidangSekolah] = useState([]);
-  const [editBidangSekolahModalVisible, setEditBidangSekolahModalVisible] =
+const ProgramSekolah = () => {
+  const [programSekolah, setProgramSekolah] = useState([]);
+  const [editProgramSekolahModalVisible, setEditProgramSekolahModalVisible] =
     useState(false);
-  const [editBidangSekolahModalLoading, setEditBidangSekolahModalLoading] =
+  const [editProgramSekolahModalLoading, setEditProgramSekolahModalLoading] =
     useState(false);
   const [currentRowData, setCurrentRowData] = useState({});
-  const [addBidangSekolahModalVisible, setAddBidangSekolahModalVisible] =
+  const [addProgramSekolahModalVisible, setAddProgramSekolahModalVisible] =
     useState(false);
-  const [addBidangSekolahModalLoading, setAddBidangSekolahModalLoading] =
+  const [addProgramSekolahModalLoading, setAddProgramSekolahModalLoading] =
     useState(false);
   const [importedData, setImportedData] = useState([]);
   const [columnTitles, setColumnTitles] = useState([]);
@@ -62,8 +62,8 @@ const BidangSekolah = () => {
 
   const searchInput = useRef(null);
 
-  const editBidangSekolahFormRef = useRef();
-  const addBidangSekolahFormRef = useRef();
+  const editProgramSekolahFormRef = useRef();
+  const addProgramSekolahFormRef = useRef();
 
   useEffect(() => {
     const initializeData = async () => {
@@ -76,16 +76,16 @@ const BidangSekolah = () => {
     initializeData();
   }, []);
 
-  const fetchBidangSekolah = useCallback(async () => {
+  const fetchProgramSekolah = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await getBidangSekolah();
+      const result = await getProgramSekolah();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
         const filteredContent = content.filter(
           (item) => item.school?.idSchool === userIdJson
         );
-        setBidangSekolah(filteredContent);
+        setProgramSekolah(filteredContent);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -98,16 +98,16 @@ const BidangSekolah = () => {
 
   useEffect(() => {
     if (userIdJson) {
-      fetchBidangSekolah();
+      fetchProgramSekolah();
     }
-  }, [userIdJson, fetchBidangSekolah]);
+  }, [userIdJson, fetchProgramSekolah]);
 
-  const filteredData = bidangSekolah.filter((item) => {
+  const filteredData = programSekolah.filter((item) => {
     const query = searchQuery.toLowerCase();
     return (
-      (item?.namaBidangSekolah?.toLowerCase() || "").includes(query) ||
+      (item?.namaProgramSekolah?.toLowerCase() || "").includes(query) ||
       (item?.nameSchool?.toLowerCase() || "").includes(query) ||
-      (item?.bidang?.toLowerCase() || "").includes(query)
+      (item?.program?.toLowerCase() || "").includes(query)
     );
   });
 
@@ -120,7 +120,7 @@ const BidangSekolah = () => {
   };
 
   const handleDelete = (row) => {
-    const { idBidangSekolah } = row;
+    const { idProgramSekolah } = row;
     Modal.confirm({
       title: "Konfirmasi",
       content: "Apakah Anda yakin ingin menghapus data ini?",
@@ -129,9 +129,9 @@ const BidangSekolah = () => {
       cancelText: "Tidak",
       onOk: async () => {
         try {
-          await deleteBidangSekolah({ idBidangSekolah });
+          await deleteProgramSekolah({ idProgramSekolah });
           message.success("Berhasil dihapus");
-          fetchBidangSekolah();
+          fetchProgramSekolah();
         } catch (error) {
           message.error("Gagal menghapus: " + error.message);
         }
@@ -140,60 +140,60 @@ const BidangSekolah = () => {
   };
 
   const handleEditOk = async (values) => {
-    setEditBidangSekolahModalLoading(true);
+    setEditProgramSekolahModalLoading(true);
     try {
       const updatedValues = {
-        idBidangSekolah: values.idBidangSekolah,
-        namaBidangSekolah: values.namaBidangSekolah,
+        idProgramSekolah: values.idProgramSekolah,
+        namaProgramSekolah: values.namaProgramSekolah,
         idSekolah: values.idSchool,
-        idBidangKeahlian: values.id,
+        idProgramKeahlian: values.id,
       };
 
       console.log("respon data", updatedValues);
-      await editBidangSekolah(updatedValues, currentRowData.idBidangSekolah);
-      setEditBidangSekolahModalVisible(false);
-      setEditBidangSekolahModalLoading(false);
+      await editProgramSekolah(updatedValues, currentRowData.idProgramSekolah);
+      setEditProgramSekolahModalVisible(false);
+      setEditProgramSekolahModalLoading(false);
       message.success("Berhasil mengubah");
-      fetchBidangSekolah();
+      fetchProgramSekolah();
     } catch (error) {
-      setEditBidangSekolahModalLoading(false);
+      setEditProgramSekolahModalLoading(false);
       message.error("Gagal mengubah: " + error.message);
     }
   };
 
   const handleEdit = (row) => {
     setCurrentRowData({ ...row });
-    setEditBidangSekolahModalVisible(true);
+    setEditProgramSekolahModalVisible(true);
   };
 
   const handleCancel = () => {
-    setEditBidangSekolahModalVisible(false);
-    setAddBidangSekolahModalVisible(false);
+    setEditProgramSekolahModalVisible(false);
+    setAddProgramSekolahModalVisible(false);
   };
 
   const handleAdd = () => {
-    setAddBidangSekolahModalVisible(true);
+    setAddProgramSekolahModalVisible(true);
   };
   const handleAddOk = async (values) => {
-    setAddBidangSekolahModalLoading(true);
+    setAddProgramSekolahModalLoading(true);
     try {
       const updatedValues = {
-        idBidangSekolah: null,
-        namaBidangSekolah: values.namaBidangSekolah,
+        idProgramSekolah: null,
+        namaProgramSekolah: values.namaProgramSekolah,
         idSekolah: values.idSchool,
-        idBidangKeahlian: values.id,
+        idProgramKeahlian: values.id,
       };
       console.log("respon data", updatedValues);
-      await addBidangSekolah(updatedValues);
-      setAddBidangSekolahModalLoading(false);
-      setAddBidangSekolahModalLoading(false);
+      await addProgramSekolah(updatedValues);
+      setAddProgramSekolahModalLoading(false);
+      setAddProgramSekolahModalLoading(false);
       message.success("Berhasil menambahkan");
-      fetchBidangSekolah();
+      fetchProgramSekolah();
     } catch (error) {
-      setAddBidangSekolahModalLoading(false);
+      setAddProgramSekolahModalLoading(false);
       message.error("Gagal menambahkan: " + error.message);
     } finally {
-      setAddBidangSekolahModalVisible(false);
+      setAddProgramSekolahModalVisible(false);
     }
   };
 
@@ -210,7 +210,7 @@ const BidangSekolah = () => {
 
   const handleSearch = (keyword) => {
     setSearchKeyword(keyword);
-    getBidangSekolah();
+    getProgramSekolah();
   };
 
   const getColumnSearchProps = (dataIndex, nestedPath) => ({
@@ -313,12 +313,13 @@ const BidangSekolah = () => {
       render: (_, __, index) => index + 1,
     },
     {
-      title: "Bidang Keahlian Sekolah",
-      dataIndex: "namaBidangSekolah",
-      key: "namaBidangSekolah",
+      title: "Program Keahlian Sekolah",
+      dataIndex: "namaProgramSekolah",
+      key: "namaProgramSekolah",
       align: "center",
-      ...getColumnSearchProps("namaBidangSekolah"),
-      sorter: (a, b) => a.namaBidangSekolah.localeCompare(b.namaBidangSekolah),
+      ...getColumnSearchProps("namaProgramSekolah"),
+      sorter: (a, b) =>
+        a.namaProgramSekolah.localeCompare(b.namaProgramSekolah),
     },
     {
       title: "Sekolah",
@@ -329,13 +330,13 @@ const BidangSekolah = () => {
       sorter: (a, b) => a.school.nameSchool.localeCompare(b.school.nameSchool),
     },
     {
-      title: "Bidang Keahlian",
-      dataIndex: ["bidangKeahlian", "bidang"],
-      key: "bidang",
+      title: "Program Keahlian",
+      dataIndex: ["programKeahlian", "program"],
+      key: "program",
       align: "center",
-      ...getColumnSearchProps("bidang", "bidangKeahlian.bidang"),
+      ...getColumnSearchProps("program", "programKeahlian.program"),
       sorter: (a, b) =>
-        a.bidangKeahlian.bidang.localeCompare(b.bidangKeahlian.bidang),
+        a.programKeahlian.program.localeCompare(b.programKeahlian.program),
     },
     {
       title: "Operasi",
@@ -364,7 +365,7 @@ const BidangSekolah = () => {
 
   const renderTable = () => (
     <Table
-      rowKey="idBidangSekolah"
+      rowKey="idProgramSekolah"
       dataSource={filteredData}
       columns={renderColumns()}
       pagination={{ pageSize: 10 }}
@@ -376,9 +377,9 @@ const BidangSekolah = () => {
       <Col>
         <Button
           type="primary"
-          onClick={() => setAddBidangSekolahModalVisible(true)}
+          onClick={() => setAddProgramSekolahModalVisible(true)}
         >
-          Tambahkan Bidang Keahlian Sekolah
+          Tambahkan Program Keahlian Sekolah
         </Button>
       </Col>
       <Col>
@@ -395,8 +396,8 @@ const BidangSekolah = () => {
   return (
     <div className="app-container">
       <TypingCard
-        title="Manajemen Analisa Bidang Keahlian Sekolah"
-        source="Di sini, Anda dapat mengelola Analisa Bidang Keahlian Sekolah di sistem."
+        title="Manajemen Analisa Program Keahlian Sekolah"
+        source="Di sini, Anda dapat mengelola Analisa Program Keahlian Sekolah di sistem."
       />
       <br />
       {loading ? (
@@ -418,7 +419,7 @@ const BidangSekolah = () => {
             <Col>
               <Input.Search
                 key="search"
-                placeholder="Cari bidang keahlian..."
+                placeholder="Cari program keahlian..."
                 allowClear
                 enterButton
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -432,21 +433,21 @@ const BidangSekolah = () => {
         </Card>
       )}
 
-      {/* Modal Tambah Bidang Keahlian Sekolah */}
-      <AddBidangSekolahForm
-        wrappedComponentRef={addBidangSekolahFormRef}
-        visible={addBidangSekolahModalVisible}
-        confirmLoading={addBidangSekolahModalLoading}
+      {/* Modal Tambah Program Keahlian Sekolah */}
+      <AddProgramSekolahForm
+        wrappedComponentRef={addProgramSekolahFormRef}
+        visible={addProgramSekolahModalVisible}
+        confirmLoading={addProgramSekolahModalLoading}
         onCancel={handleCancel}
         onOk={handleAddOk}
       />
 
-      {/* Modal Edit Bidang Keahlian Sekolah */}
-      <EditBidangSekolahForm
-        wrappedComponentRef={editBidangSekolahFormRef}
+      {/* Modal Edit Program Keahlian Sekolah */}
+      <EditProgramSekolahForm
+        wrappedComponentRef={editProgramSekolahFormRef}
         currentRowData={currentRowData}
-        visible={editBidangSekolahModalVisible}
-        confirmLoading={editBidangSekolahModalLoading}
+        visible={editProgramSekolahModalVisible}
+        confirmLoading={editProgramSekolahModalLoading}
         onCancel={handleCancel}
         onOk={handleEditOk}
       />
@@ -454,4 +455,4 @@ const BidangSekolah = () => {
   );
 };
 
-export default BidangSekolah;
+export default ProgramSekolah;
