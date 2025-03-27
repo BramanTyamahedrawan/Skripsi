@@ -213,7 +213,16 @@ const BidangKeahlianSekolah = React.lazy(() =>
     /*webpackChunkName:'BidangKeahlianSekolah'*/ "@/views/bidang-keahlian-sekolah"
   )
 );
-
+const ProgramKeahlianSekolah = React.lazy(() =>
+  import(
+    /*webpackChunkName:'ProgramKeahlianSekolah'*/ "@/views/program-keahlian-sekolah"
+  )
+);
+const KonsentrasiKeahlianSekolah = React.lazy(() =>
+  import(
+    /*webpackChunkName:'KonsentrasiKeahlianSekolah'*/ "@/views/konsentrasi-keahlian-sekolah"
+  )
+);
 const JadwalPelajaran = React.lazy(() =>
   import(/*webpackChunkName:'jadwalPelajaran'*/ "@/views/jadwal-pelajaran")
 );
@@ -384,6 +393,16 @@ export default [
   {
     path: "/bidang-keahlian-sekolah",
     component: BidangKeahlianSekolah,
+    roles: ["ROLE_OPERATOR"],
+  },
+  {
+    path: "/program-keahlian-sekolah",
+    component: ProgramKeahlianSekolah,
+    roles: ["ROLE_OPERATOR"],
+  },
+  {
+    path: "/konsentrasi-keahlian-sekolah",
+    component: KonsentrasiKeahlianSekolah,
     roles: ["ROLE_OPERATOR"],
   },
   { path: "/department", component: Department, roles: ["ROLE_OPERATOR"] },
