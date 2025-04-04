@@ -138,7 +138,7 @@ const EditBidangSekolahForm = ({
     if (userSchoolId) {
       form.setFieldsValue({ idSchool: userSchoolId });
     }
-  }, [userSchoolId]);
+  }, [userSchoolId, form]);
 
   const handleBidangChange = (selectedId) => {
     const selectedBidang = bidangKeahlianList.find(
