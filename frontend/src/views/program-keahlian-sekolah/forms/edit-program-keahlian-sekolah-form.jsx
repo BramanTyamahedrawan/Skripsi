@@ -138,14 +138,16 @@ const EditProgramSekolahForm = ({
     if (userSchoolId) {
       form.setFieldsValue({ idSchool: userSchoolId });
     }
-  }, [userSchoolId]);
+  }, [userSchoolId, form]);
 
   const handleProgramChange = (selectedId) => {
     const selectedProgram = programKeahlianList.find(
       (item) => item.id === selectedId
     );
     if (selectedProgram) {
-      form.setFieldsValue({ namaProgramSekolah: selectedProgram.program });
+      form.setFieldsValue({
+        namaProgramSekolah: selectedProgram.program,
+      });
     }
   };
 
@@ -195,7 +197,10 @@ const EditProgramSekolahForm = ({
               label="Program Keahlian:"
               name="id"
               rules={[
-                { required: true, message: "Silahkan pilih Program Keahlian" },
+                {
+                  required: true,
+                  message: "Silahkan pilih Program Keahlian",
+                },
               ]}
             >
               <Select

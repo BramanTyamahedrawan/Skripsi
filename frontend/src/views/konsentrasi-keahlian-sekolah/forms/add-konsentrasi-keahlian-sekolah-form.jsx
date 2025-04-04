@@ -143,6 +143,9 @@ const AddKonsentrasiSekolahForm = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+
+      console.log("Data yang dikirim:", values); // Debugging
+
       onOk(values);
     } catch (error) {
       console.error("Validation failed:", error);

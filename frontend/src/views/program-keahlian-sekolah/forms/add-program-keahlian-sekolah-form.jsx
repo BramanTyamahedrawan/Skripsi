@@ -129,7 +129,9 @@ const AddProgramSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       (item) => item.id === selectedId
     );
     if (selectedProgram) {
-      form.setFieldsValue({ namaProgramSekolah: selectedProgram.program });
+      form.setFieldsValue({
+        namaProgramSekolah: selectedProgram.program,
+      });
     }
   };
 
@@ -179,7 +181,10 @@ const AddProgramSekolahForm = ({ visible, onCancel, onOk, confirmLoading }) => {
               label="Program Keahlian:"
               name="id"
               rules={[
-                { required: true, message: "Silahkan pilih Program Keahlian" },
+                {
+                  required: true,
+                  message: "Silahkan pilih Program Keahlian",
+                },
               ]}
             >
               <Select

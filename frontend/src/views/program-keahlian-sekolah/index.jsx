@@ -24,7 +24,7 @@ import {
   deleteProgramSekolah,
   editProgramSekolah,
   addProgramSekolah,
-} from "@/api/program-keahlian-sekolah";
+} from "@/api/programKeahlianSekolah";
 import { Skeleton } from "antd";
 import Highlighter from "react-highlight-words";
 import TypingCard from "@/components/TypingCard";
@@ -191,6 +191,9 @@ const ProgramSekolah = () => {
       fetchProgramSekolah();
     } catch (error) {
       setAddProgramSekolahModalLoading(false);
+      if (error.response?.status === 400) {
+        message.error("Data sudah ada" + error.response.data.message);
+      }
       message.error("Gagal menambahkan: " + error.message);
     } finally {
       setAddProgramSekolahModalVisible(false);
