@@ -45,7 +45,6 @@ const Semester = () => {
   const [uploading, setUploading] = useState(false);
   const [currentRowData, setCurrentRowData] = useState({});
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [tableLoading, setTableLoading] = useState(false);
   const [userIdJson, setUserIdJson] = useState("");
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
@@ -391,7 +390,7 @@ const Semester = () => {
             <Col>
               <Input.Search
                 key="search"
-                placeholder="Cari bidang keahlian..."
+                placeholder="Cari bidang semester..."
                 allowClear
                 enterButton
                 onChange={(e) => setSearchQuery(e.target.value)}
