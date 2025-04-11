@@ -390,7 +390,7 @@ const Semester = () => {
             <Col>
               <Input.Search
                 key="search"
-                placeholder="Cari bidang semester..."
+                placeholder="Cari semester..."
                 allowClear
                 enterButton
                 onChange={(e) => setSearchQuery(e.target.value)}
