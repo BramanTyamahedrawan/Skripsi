@@ -298,9 +298,9 @@ const TahunAjaran = () => {
 
   const renderColumns = () => [
     {
-      title: "ID Tahun Ajaran",
-      dataIndex: "idTahun",
-      key: "idTahun",
+      title: "No",
+      dataIndex: "index",
+      key: "index",
       align: "center",
       render: (_, __, index) => index + 1,
     },

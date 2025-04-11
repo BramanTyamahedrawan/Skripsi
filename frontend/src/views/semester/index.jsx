@@ -290,9 +290,9 @@ const Semester = () => {
 
   const renderColumns = () => [
     {
-      title: "ID Semester",
-      dataIndex: "idSemester",
-      key: "idSemester",
+      title: "No",
+      dataIndex: "index",
+      key: "index",
       align: "center",
       render: (_, __, index) => index + 1,
     },

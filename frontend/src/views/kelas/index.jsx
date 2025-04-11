@@ -287,9 +287,9 @@ const Kelas = () => {
 
   const renderColumns = () => [
     {
-      title: "ID Kelas",
-      dataIndex: "idKelas",
-      key: "idKelas",
+      title: "No",
+      dataIndex: "index",
+      key: "index",
       align: "center",
       render: (_, __, index) => index + 1,
     },

@@ -132,7 +132,7 @@ const Elemen = () => {
       const updatedValues = {
         idElemen: null,
         namaElemen: values.namaElemen,
-        idKonsentrasi: values.id,
+        idKonsentrasiSekolah: values.idKonsentrasiSekolah,
         idKelas: values.idKelas,
         idTahun: values.idTahun,
         idSemester: values.idSemester,
@@ -157,7 +157,7 @@ const Elemen = () => {
       const updatedValues = {
         idElemen: values.idElemen,
         namaElemen: values.namaElemen,
-        idKonsentrasi: values.id,
+        idKonsentrasiSekolah: values.idKonsentrasiSekolah,
         idKelas: values.idKelas,
         idTahun: values.idTahun,
         idSemester: values.idSemester,
@@ -291,7 +291,7 @@ const Elemen = () => {
 
   const renderColumns = () => [
     {
-      title: "No.",
+      title: "No",
       dataIndex: "index",
       key: "index",
       align: "center",
