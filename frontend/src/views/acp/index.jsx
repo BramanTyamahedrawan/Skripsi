@@ -145,7 +145,7 @@ const ACP = () => {
     setAddACPModalLoading(true);
     try {
       const updatedValues = {
-        idAcp: values.idAcp,
+        idAcp: null,
         namaAcp: values.namaAcp,
         idElemen: values.idElemen,
         idKonsentrasiSekolah: values.idKonsentrasiSekolah,

@@ -12,11 +12,13 @@ import {
   Col,
   message,
 } from "antd";
+import { getSchool } from "@/api/school";
+import { reqUserInfo } from "@/api/user";
 import { getKelas } from "@/api/kelas";
 import { getTahunAjaran } from "@/api/tahun-ajaran";
 import { getSemester } from "@/api/semester";
 import { getMapel } from "@/api/mapel";
-import { getKonsentrasiKeahlian } from "@/api/konsentrasiKeahlian";
+import { getKonsentrasiKeahlianSekolah } from "@/api/konsentrasiKeahlianSekolah";
 import { getElemen } from "@/api/elemen";
 import { getACP } from "@/api/acp";
 import { getATP } from "@/api/atp";
@@ -57,14 +59,40 @@ const AddATPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const [atp, setATP] = useState([]);
   const [form] = Form.useForm();
 
+  const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
+  const [schoolList, setSchoolList] = useState([]);
   const [kelasList, setKelasList] = useState([]);
   const [tahunAjaranList, setTahunAjaranList] = useState([]);
   const [semesterList, setSemesterList] = useState([]);
   const [mapelList, setMapelList] = useState([]);
-  const [konsentrasiKeahlianList, setKonsentrasiKeahlianList] = useState([]);
+  const [konsentrasiKeahlianSekolahList, setKonsentrasiKeahlianSekolahList] =
+    useState([]);
   const [elemenList, setElemenList] = useState([]);
   const [acpList, setACPList] = useState([]);
   const [tableLoading, setTableLoading] = useState(false);
+
+  const fetchUserInfo = async () => {
+    try {
+      const response = await reqUserInfo(); // Ambil data user dari API
+      setUserSchoolId(response.data.school_id); // Simpan ID sekolah user ke state
+      console.log("User School ID: ", response.data.school_id);
+    } catch (error) {
+      message.error("Gagal mengambil informasi pengguna");
+    }
+  };
+
+  const fetchSchoolList = async () => {
+    try {
+      const result = await getSchool();
+      if (result.data.statusCode === 200) {
+        setSchoolList(result.data.content);
+      } else {
+        message.error("Gagal mengambil data");
+      }
+    } catch (error) {
+      message.error("Terjadi kesalahan: " + error.message);
+    }
+  };
 
   const fetchATP = async () => {
     setTableLoading(true);
@@ -85,111 +113,112 @@ const AddATPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const fetchKelasList = async () => {
     try {
       const result = await getKelas();
-      const { content, statusCode } = result.data;
-      if (statusCode === 200) {
-        setKelasList(content);
+      if (result.data.statusCode === 200) {
+        setKelasList(result.data.content);
       } else {
-        console.log("Error: ", result.data.message);
+        message.error("Gagal mengambil data");
       }
     } catch (error) {
-      console.log("Error: ", error);
+      message.error("Terjadi kesalahan: " + error.message);
     }
   };
 
   const fetchTahunAjaranList = async () => {
     try {
       const result = await getTahunAjaran();
-      const { content, statusCode } = result.data;
-      if (statusCode === 200) {
-        setTahunAjaranList(content);
+      if (result.data.statusCode === 200) {
+        setTahunAjaranList(result.data.content);
       } else {
-        console.log("Error: ", result.data.message);
+        message.error("Gagal mengambil data");
       }
     } catch (error) {
-      console.log("Error: ", error);
+      message.error("Terjadi kesalahan: " + error.message);
     }
   };
 
   const fetchSemesterList = async () => {
     try {
       const result = await getSemester();
-      const { content, statusCode } = result.data;
-      if (statusCode === 200) {
-        setSemesterList(content);
+      if (result.data.statusCode === 200) {
+        setSemesterList(result.data.content);
       } else {
-        console.log("Error: ", result.data.message);
+        message.error("Gagal mengambil data");
       }
     } catch (error) {
-      console.log("Error: ", error);
+      message.error("Terjadi kesalahan: " + error.message);
     }
   };
 
   const fetchMapelList = async () => {
     try {
       const result = await getMapel();
-      const { content, statusCode } = result.data;
-      if (statusCode === 200) {
-        setMapelList(content);
+      if (result.data.statusCode === 200) {
+        setMapelList(result.data.content);
       } else {
-        console.log("Error: ", result.data.message);
+        message.error("Gagal mengambil data");
       }
     } catch (error) {
-      console.log("Error: ", error);
+      message.error("Terjadi kesalahan: " + error.message);
     }
   };
 
-  const fetchKonsentrasiKeahlianList = async () => {
+  const fetchKonsentrasiKeahlianSekolahList = async () => {
     try {
-      const result = await getKonsentrasiKeahlian();
-      const { content, statusCode } = result.data;
-      if (statusCode === 200) {
-        setKonsentrasiKeahlianList(content);
+      const result = await getKonsentrasiKeahlianSekolah();
+      if (result.data.statusCode === 200) {
+        setKonsentrasiKeahlianSekolahList(result.data.content);
       } else {
-        console.log("Error: ", result.data.message);
+        message.error("Gagal mengambil data");
       }
     } catch (error) {
-      console.log("Error: ", error);
+      message.error("Terjadi kesalahan: " + error.message);
     }
   };
 
   const fetchElemenList = async () => {
     try {
       const result = await getElemen();
-      const { content, statusCode } = result.data;
-      if (statusCode === 200) {
-        setElemenList(content);
+      if (result.data.statusCode === 200) {
+        setElemenList(result.data.content);
       } else {
-        console.log("Error: ", result.data.message);
+        message.error("Gagal mengambil data");
       }
     } catch (error) {
-      console.log("Error: ", error);
+      message.error("Terjadi kesalahan: " + error.message);
     }
   };
 
   const fetchACPList = async () => {
     try {
       const result = await getACP();
-      const { content, statusCode } = result.data;
-      if (statusCode === 200) {
-        setACPList(content);
+      if (result.data.statusCode === 200) {
+        setACPList(result.data.content);
       } else {
-        console.log("Error: ", result.data.message);
+        message.error("Gagal mengambil data");
       }
     } catch (error) {
-      console.log("Error: ", error);
+      message.error("Terjadi kesalahan: " + error.message);
     }
   };
 
   useEffect(() => {
+    fetchUserInfo();
+    fetchSchoolList();
     fetchKelasList();
     fetchTahunAjaranList();
     fetchSemesterList();
     fetchMapelList();
-    fetchKonsentrasiKeahlianList();
+    fetchKonsentrasiKeahlianSekolahList();
     fetchElemenList();
     fetchACPList();
     fetchATP();
   }, []);
+
+  useEffect(() => {
+    if (userSchoolId) {
+      form.setFieldsValue({ idSchool: userSchoolId });
+    }
+  }, [userSchoolId, form]);
 
   const handleSubmit = async () => {
     try {
@@ -217,11 +246,19 @@ const AddATPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
         <Row gutter={16}>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
-              label="ID ATP:"
-              name="idAtp"
-              rules={[{ required: true, message: "Silahkan isi ID ATP" }]}
+              label="Sekolah:"
+              name="idSchool"
+              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
             >
-              <Input placeholder="Masukkan ID ATP" />
+              <Select defaultValue={userSchoolId} disabled>
+                {schoolList
+                  .filter(({ idSchool }) => idSchool === userSchoolId) // Hanya menampilkan sekolah user
+                  .map(({ idSchool, nameSchool }) => (
+                    <Option key={idSchool} value={idSchool}>
+                      {nameSchool}
+                    </Option>
+                  ))}
+              </Select>
             </Form.Item>
           </Col>
           <Col xs={24} sm={24} md={12}>
@@ -302,16 +339,26 @@ const AddATPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
-              label="Konsentrasi Keahlian:"
-              name="id"
-              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
+              label="Konsentrasi Keahlian Sekolah:"
+              name="idKonsentrasiSekolah"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan pilih Konsentrasi Keahlian Sekolah",
+                },
+              ]}
             >
-              <Select placeholder="Pilih Konsetrasi Keahlian">
-                {konsentrasiKeahlianList.map(({ id, konsentrasi }) => (
-                  <Option key={id} value={id}>
-                    {konsentrasi}
-                  </Option>
-                ))}
+              <Select placeholder="Pilih Konsentrasi Keahlian Sekolah">
+                {konsentrasiKeahlianSekolahList.map(
+                  ({ idKonsentrasiSekolah, namaKonsentrasiSekolah }) => (
+                    <Option
+                      key={idKonsentrasiSekolah}
+                      value={idKonsentrasiSekolah}
+                    >
+                      {namaKonsentrasiSekolah}
+                    </Option>
+                  )
+                )}
               </Select>
             </Form.Item>
           </Col>

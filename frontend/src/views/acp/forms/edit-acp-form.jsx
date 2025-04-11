@@ -205,7 +205,7 @@ const EditACPForm = ({
         idSemester: currentRowData.semester?.idSemester,
         idMapel: currentRowData.mapel?.idMapel,
         idKonsentrasiSekolah:
-          currentRowData.konsentrasiKeahlian?.idKonsentrasiSekolah,
+          currentRowData.konsentrasiKeahlianSekolah?.idKonsentrasiSekolah,
         idElemen: currentRowData.elemen?.idElemen,
         idSchool: currentRowData.school?.idSchool,
       });

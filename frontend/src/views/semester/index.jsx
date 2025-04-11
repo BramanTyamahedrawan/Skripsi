@@ -165,7 +165,6 @@ const Semester = () => {
       console.log("Updated Data:", updatedData);
       await editSemester(updatedData, currentRowData.idSemester);
       setEditSemesterModalVisible(false);
-      setEditSemesterModalLoading(false);
       message.success("Berhasil mengedit");
       fetchSemesters();
     } catch (error) {
