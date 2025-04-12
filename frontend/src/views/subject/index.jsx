@@ -149,6 +149,7 @@ const Mapel = () => {
       message.error("Gagal menambahkan: " + error.message);
     } finally {
       setAddMapelModalLoading(false);
+      fetchMapel();
     }
   };
 

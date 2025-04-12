@@ -125,7 +125,7 @@ const EditTahunAjaranForm = ({
           <Col xs={24} sm={24} md={12}>
             <Form.Item
               label="Tahun Ajaran:"
-              name="tahun"
+              name="tahunAjaran"
               rules={[
                 { required: true, message: "Silahkan isikan Tahun Ajaran" },
               ]}

@@ -476,25 +476,25 @@ const ATP = () => {
 
           {/* Tabel */}
           {renderTable()}
+
+          <AddATPForm
+            wrappedComponentRef={addATPFormRef}
+            visible={addATPModalVisible}
+            confirmLoading={addATPModalLoading}
+            onCancel={handleCancel}
+            onOk={handleAddOk}
+          />
+
+          <EditATPForm
+            wrappedComponentRef={editATPFormRef}
+            currentRowData={currentRowData}
+            visible={editATPModalVisible}
+            confirmLoading={editATPModalLoading}
+            onCancel={handleCancel}
+            onOk={handleEditOk}
+          />
         </Card>
       )}
-
-      <AddATPForm
-        wrappedComponentRef={addATPFormRef}
-        visible={addATPModalVisible}
-        confirmLoading={addATPModalLoading}
-        onCancel={handleCancel}
-        onOk={handleAddOk}
-      />
-
-      <EditATPForm
-        wrappedComponentRef={editATPFormRef}
-        currentRowData={currentRowData}
-        visible={editATPModalVisible}
-        confirmLoading={editATPModalLoading}
-        onCancel={handleCancel}
-        onOk={handleEditOk}
-      />
 
       <Modal
         title="Import File"

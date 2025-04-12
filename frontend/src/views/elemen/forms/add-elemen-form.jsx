@@ -7,7 +7,7 @@ import { getKelas } from "@/api/kelas";
 import { getTahunAjaran } from "@/api/tahun-ajaran";
 import { getSemester } from "@/api/semester";
 import { getMapel } from "@/api/mapel";
-import { getKonsentrasiKeahlianSekolah } from "@/api/konsentrasiKeahlianSekolah";
+import { getKonsentrasiSekolah } from "@/api/konsentrasiKeahlianSekolah";
 import { getSchool } from "@/api/school";
 import { reqUserInfo } from "@/api/user";
 
@@ -130,7 +130,7 @@ const AddElemen = ({ visible, onCancel, onOk, confirmLoading }) => {
 
   const fetchKonsentrasiKeahlianSekolahList = async () => {
     try {
-      const result = await getKonsentrasiKeahlianSekolah();
+      const result = await getKonsentrasiSekolah();
       if (result.data.statusCode === 200) {
         setKonsentrasiKeahlianSekolahList(result.data.content);
       } else {

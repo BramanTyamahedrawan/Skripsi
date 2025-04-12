@@ -146,7 +146,7 @@ const TahunAjaran = () => {
     try {
       const updatedData = {
         idTahun: null,
-        tahun: values.tahun,
+        tahunAjaran: values.tahunAjaran,
         idSekolah: values.idSchool,
       };
       await addTahunAjaran(updatedData);
@@ -166,7 +166,7 @@ const TahunAjaran = () => {
     try {
       const updatedData = {
         idTahun: values.idTahun,
-        tahun: values.tahun,
+        tahunAjaran: values.tahunAjaran,
         idSekolah: values.idSchool,
       };
       console.log("Updated Data:", updatedData);

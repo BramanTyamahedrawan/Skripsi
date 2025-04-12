@@ -469,25 +469,24 @@ const ACP = () => {
 
           {/* Tabel */}
           {renderTable()}
+          <AddACPForm
+            wrappedComponentRef={addACPFormRef}
+            visible={addACPModalVisible}
+            confirmLoading={addACPModalLoading}
+            onCancel={handleCancel}
+            onOk={handleAddOk}
+          />
+
+          <EditACPForm
+            wrappedComponentRef={editACPFormRef}
+            currentRowData={currentRowData}
+            visible={editACPModalVisible}
+            confirmLoading={editACPModalLoading}
+            onCancel={handleCancel}
+            onOk={handleEditOk}
+          />
         </Card>
       )}
-
-      <AddACPForm
-        wrappedComponentRef={addACPFormRef}
-        visible={addACPModalVisible}
-        confirmLoading={addACPModalLoading}
-        onCancel={handleCancel}
-        onOk={handleAddOk}
-      />
-
-      <EditACPForm
-        wrappedComponentRef={editACPFormRef}
-        currentRowData={currentRowData}
-        visible={editACPModalVisible}
-        confirmLoading={editACPModalLoading}
-        onCancel={handleCancel}
-        onOk={handleEditOk}
-      />
 
       <Modal
         title="Import File"
