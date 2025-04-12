@@ -77,48 +77,48 @@ const menuList = [
     icon: DatabaseOutlined,
     roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],
     children: [
-      {
-        title: "Jurusan",
-        path: "/department",
-        icon: ApartmentOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
-      {
-        title: "Prodi",
-        path: "/study-program",
-        icon: ApartmentOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
-      {
-        title: "Agama",
-        path: "/religion",
-        icon: GlobalOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
+      // {
+      //   title: "Jurusan",
+      //   path: "/department",
+      //   icon: ApartmentOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
+      // {
+      //   title: "Prodi",
+      //   path: "/study-program",
+      //   icon: ApartmentOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
+      // {
+      //   title: "Agama",
+      //   path: "/religion",
+      //   icon: GlobalOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
       {
         title: "Semester",
         path: "/semester",
         icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
-      {
-        title: "Kurikulum",
-        path: "/kurikulum",
-        icon: BranchesOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
+      // {
+      //   title: "Kurikulum",
+      //   path: "/kurikulum",
+      //   icon: BranchesOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
       {
         title: "Mata Pelajaran",
         path: "/subject",
         icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
-      {
-        title: "Jadwal Pelajaran",
-        path: "/jadwal-pelajaran",
-        icon: BranchesOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
+      // {
+      //   title: "Jadwal Pelajaran",
+      //   path: "/jadwal-pelajaran",
+      //   icon: BranchesOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
       {
         title: "Kelas",
         path: "/kelas",
@@ -131,12 +131,12 @@ const menuList = [
         icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
-      {
-        title: "Kelas Ajaran",
-        path: "/season",
-        icon: AuditOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
+      // {
+      //   title: "Kelas Ajaran",
+      //   path: "/season",
+      //   icon: AuditOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
       {
         title: "Elemen Pembelajaran",
         path: "/elemen",
@@ -155,36 +155,36 @@ const menuList = [
         icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
-      {
-        title: "Media Pembelajaran",
-        path: "/learning-media",
-        icon: ApartmentOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
-      {
-        title: "Bentuk Pembelajaran",
-        path: "/form-learning",
-        icon: ContainerOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
-      {
-        title: "Metode Pembelajaran",
-        path: "/learning-method",
-        icon: ControlOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
-      {
-        title: "Kriteria Penilaian",
-        path: "/assessment-criteria",
-        icon: FileDoneOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
-      {
-        title: "Formulir Penilaian",
-        path: "/appraisal-form",
-        icon: FileSyncOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
+      // {
+      //   title: "Media Pembelajaran",
+      //   path: "/learning-media",
+      //   icon: ApartmentOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
+      // {
+      //   title: "Bentuk Pembelajaran",
+      //   path: "/form-learning",
+      //   icon: ContainerOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
+      // {
+      //   title: "Metode Pembelajaran",
+      //   path: "/learning-method",
+      //   icon: ControlOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
+      // {
+      //   title: "Kriteria Penilaian",
+      //   path: "/assessment-criteria",
+      //   icon: FileDoneOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
+      // {
+      //   title: "Formulir Penilaian",
+      //   path: "/appraisal-form",
+      //   icon: FileSyncOutlined,
+      //   roles: ["ROLE_OPERATOR"],
+      // },
     ],
   },
 
@@ -208,32 +208,32 @@ const menuList = [
     roles: ["ROLE_OPERATOR"],
   },
   // Lecture
-  {
-    title: "Master Soal",
-    icon: DatabaseOutlined,
-    roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
-    children: [
-      {
-        title: "Kriteria Pertanyaan",
-        path: "/question-criteria",
-        icon: ApartmentOutlined,
-        roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
-      },
-      {
-        title: "Tabel Nilai Linguistik",
-        path: "/linguistic-value",
-        icon: FileTextOutlined,
-        roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
-      },
-      {
-        title: "Pengujian Soal",
-        path: "/criteria-value",
-        icon: FileSearchOutlined,
-        // roles : ["ROLE_OPERATOR"],
-        roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
-      },
-    ],
-  },
+  // {
+  //   title: "Master Soal",
+  //   icon: DatabaseOutlined,
+  //   roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
+  //   children: [
+  //     {
+  //       title: "Kriteria Pertanyaan",
+  //       path: "/question-criteria",
+  //       icon: ApartmentOutlined,
+  //       roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
+  //     },
+  //     {
+  //       title: "Tabel Nilai Linguistik",
+  //       path: "/linguistic-value",
+  //       icon: FileTextOutlined,
+  //       roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
+  //     },
+  //     {
+  //       title: "Pengujian Soal",
+  //       path: "/criteria-value",
+  //       icon: FileSearchOutlined,
+  //       // roles : ["ROLE_OPERATOR"],
+  //       roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
+  //     },
+  //   ],
+  // },
   {
     title: "List Todo",
     path: "/list-todo",
@@ -254,18 +254,18 @@ const menuList = [
     roles: ["ROLE_ADMINISTRATOR"],
   },
 
-  {
-    title: "RPS",
-    path: "/rps",
-    icon: RadarChartOutlined,
-    roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
-  },
-  {
-    title: "Manajemen Soal",
-    path: "/question",
-    icon: FileSearchOutlined,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-  },
+  // {
+  //   title: "RPS",
+  //   path: "/rps",
+  //   icon: RadarChartOutlined,
+  //   roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
+  // },
+  // {
+  //   title: "Manajemen Soal",
+  //   path: "/question",
+  //   icon: FileSearchOutlined,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  // },
   {
     title: "Setting Ujian",
     path: "/setting-exam",

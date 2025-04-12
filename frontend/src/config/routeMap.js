@@ -119,12 +119,12 @@ const TeamTeaching = React.lazy(() =>
 const CriteriaValue = React.lazy(() =>
   import(/*webpackChunkName:'criteriaValue'*/ "@/views/criteria-value")
 );
-const ListTodo = React.lazy(() =>
-  import(/*webpackChunkName:'criteriaValue'*/ "@/views/list-todo")
-);
-const ListTodoAdmin = React.lazy(() =>
-  import(/*webpackChunkName:'criteriaValue'*/ "@/views/list-todo-admin")
-);
+// const ListTodo = React.lazy(() =>
+//   import(/*webpackChunkName:'criteriaValue'*/ "@/views/list-todo")
+// );
+// const ListTodoAdmin = React.lazy(() =>
+//   import(/*webpackChunkName:'criteriaValue'*/ "@/views/list-todo-admin")
+// );
 const QuestionIndexQuiz1 = React.lazy(() =>
   import(/*webpackChunkName:'questionIndex'*/ "@/views/question-index-quiz1")
 );
@@ -223,9 +223,9 @@ const KonsentrasiKeahlianSekolah = React.lazy(() =>
     /*webpackChunkName:'KonsentrasiKeahlianSekolah'*/ "@/views/konsentrasi-keahlian-sekolah"
   )
 );
-const JadwalPelajaran = React.lazy(() =>
-  import(/*webpackChunkName:'jadwalPelajaran'*/ "@/views/jadwal-pelajaran")
-);
+// const JadwalPelajaran = React.lazy(() =>
+//   import(/*webpackChunkName:'jadwalPelajaran'*/ "@/views/jadwal-pelajaran")
+// );
 const Kelas = React.lazy(() =>
   import(/*webpackChunkName:'kelas'*/ "@/views/kelas")
 );
@@ -235,12 +235,12 @@ const Semester = React.lazy(() =>
 const TahunAjaran = React.lazy(() =>
   import(/*webpackChunkName:'TahunAjaran'*/ "@/views/tahun-ajaran")
 );
-const Season = React.lazy(() =>
-  import(/*webpackChunkName:'Season'*/ "@/views/season")
-);
-const Kurikulum = React.lazy(() =>
-  import(/*webpackChunkName:'Kurikulum'*/ "@/views/kurikulum")
-);
+// const Season = React.lazy(() =>
+//   import(/*webpackChunkName:'Season'*/ "@/views/season")
+// );
+// const Kurikulum = React.lazy(() =>
+//   import(/*webpackChunkName:'Kurikulum'*/ "@/views/kurikulum")
+// );
 const Elemen = React.lazy(() =>
   import(/*webpackChunkName:'Result'*/ "@/views/elemen")
 );
@@ -250,9 +250,9 @@ const ACP = React.lazy(() =>
 const ATP = React.lazy(() =>
   import(/*webpackChunkName:'AlurTujuanPembelajaran'*/ "@/views/atp")
 );
-const Grade = React.lazy(() =>
-  import(/*webpackChunkName:'Grade'*/ "@/views/grade")
-);
+// const Grade = React.lazy(() =>
+//   import(/*webpackChunkName:'Grade'*/ "@/views/grade")
+// );
 const About = React.lazy(() =>
   import(/*webpackChunkName:'About'*/ "@/views/about")
 );
@@ -405,101 +405,101 @@ export default [
     component: KonsentrasiKeahlianSekolah,
     roles: ["ROLE_OPERATOR"],
   },
-  { path: "/department", component: Department, roles: ["ROLE_OPERATOR"] },
+  // { path: "/department", component: Department, roles: ["ROLE_OPERATOR"] },
   { path: "/kelas", component: Kelas, roles: ["ROLE_OPERATOR"] },
   { path: "/semester", component: Semester, roles: ["ROLE_OPERATOR"] },
   { path: "/tahun-ajaran", component: TahunAjaran, roles: ["ROLE_OPERATOR"] },
-  { path: "/season", component: Season, roles: ["ROLE_OPERATOR"] },
+  // { path: "/season", component: Season, roles: ["ROLE_OPERATOR"] },
   { path: "/elemen", component: Elemen, roles: ["ROLE_OPERATOR"] },
   { path: "/acp", component: ACP, roles: ["ROLE_OPERATOR"] },
   { path: "/atp", component: ATP, roles: ["ROLE_OPERATOR"] },
-  {
-    path: "/study-program",
-    component: StudyProgram,
-    roles: ["ROLE_OPERATOR"],
-  },
-  { path: "/religion", component: Religion, roles: ["ROLE_OPERATOR"] },
+  // {
+  //   path: "/study-program",
+  //   component: StudyProgram,
+  //   roles: ["ROLE_OPERATOR"],
+  // },
+  // { path: "/religion", component: Religion, roles: ["ROLE_OPERATOR"] },
   // {
   //   path: "/subject-group",
   //   component: SubjectGroup,
   //   roles: ["ROLE_OPERATOR"],
   // },
   { path: "/subject", component: Subject, roles: ["ROLE_OPERATOR"] },
-  {
-    path: "/jadwal-pelajaran",
-    component: JadwalPelajaran,
-    roles: ["ROLE_OPERATOR"],
-  },
-  { path: "/kurikulum", component: Kurikulum, roles: ["ROLE_OPERATOR"] },
+  // {
+  //   path: "/jadwal-pelajaran",
+  //   component: JadwalPelajaran,
+  //   roles: ["ROLE_OPERATOR"],
+  // },
+  // { path: "/kurikulum", component: Kurikulum, roles: ["ROLE_OPERATOR"] },
   { path: "/lecture", component: Lecture, roles: ["ROLE_OPERATOR"] },
-  {
-    path: "/question-criteria",
-    component: QuestionCriteria,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-  },
-  {
-    path: "/team-teaching",
-    component: TeamTeaching,
-    roles: ["ROLE_OPERATOR"],
-  },
-  {
-    path: "/linguistic-value",
-    component: LinguiticValue,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-  },
-  {
-    path: "/criteria-value",
-    component: CriteriaValue,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-  },
-  {
-    path: "/list-todo",
-    component: ListTodo,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-  },
-  {
-    path: "/list-todo-admin",
-    component: ListTodoAdmin,
-    roles: ["ROLE_OPERATOR"],
-  },
+  // {
+  //   path: "/question-criteria",
+  //   component: QuestionCriteria,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  // },
+  // {
+  //   path: "/team-teaching",
+  //   component: TeamTeaching,
+  //   roles: ["ROLE_OPERATOR"],
+  // },
+  // {
+  //   path: "/linguistic-value",
+  //   component: LinguiticValue,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  // },
+  // {
+  //   path: "/criteria-value",
+  //   component: CriteriaValue,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  // },
+  // {
+  //   path: "/list-todo",
+  //   component: ListTodo,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  // },
+  // {
+  //   path: "/list-todo-admin",
+  //   component: ListTodoAdmin,
+  //   roles: ["ROLE_OPERATOR"],
+  // },
   // {
   //   path: "/index/question/:rpsID",
   //   component : QuestionIndex,
   //   roles: ["ROLE_OPERATOR"]
   // },
-  {
-    path: "/index/question/quiz1/:rpsID",
-    component: QuestionIndexQuiz1,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-  },
-  {
-    path: "/index/question/quiz2/:rpsID",
-    component: QuestionIndexQuiz2,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-  },
-  {
-    path: "/index/criteria/:questionID",
-    component: CriteriaIndex,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-  },
+  // {
+  //   path: "/index/question/quiz1/:rpsID",
+  //   component: QuestionIndexQuiz1,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  // },
+  // {
+  //   path: "/index/question/quiz2/:rpsID",
+  //   component: QuestionIndexQuiz2,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  // },
+  // {
+  //   path: "/index/criteria/:questionID",
+  //   component: CriteriaIndex,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  // },
   {
     path: "/index/exercise/:exerciseID",
     component: ExerciseIndex,
     roles: ["ROLE_OPERATOR"],
   },
   { path: "/student", component: Student, roles: ["ROLE_OPERATOR"] },
-  {
-    path: "/rps",
-    component: RPS,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-    exact: true,
-  },
-  {
-    path: "/rps/:rpsID",
-    component: RPSDetail,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
-    exact: true,
-  },
+  // {
+  //   path: "/rps",
+  //   component: RPS,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  //   exact: true,
+  // },
+  // {
+  //   path: "/rps/:rpsID",
+  //   component: RPSDetail,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
+  //   exact: true,
+  // },
   {
     path: "/question",
     component: Question,
@@ -638,7 +638,7 @@ export default [
     roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
   },
 
-  { path: "/grade", component: Grade, roles: ["ROLE_OPERATOR"] },
+  // { path: "/grade", component: Grade, roles: ["ROLE_OPERATOR"] },
   {
     path: "/about",
     component: About,
