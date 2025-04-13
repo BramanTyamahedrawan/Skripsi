@@ -12,14 +12,23 @@ import {
   Modal,
   Input,
   Space,
+  Steps,
+  Tag,
+  Alert,
+  Select,
 } from "antd";
 import {
   UploadOutlined,
   EditOutlined,
   DeleteOutlined,
   SearchOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
 import { getACP, deleteACP, editACP, addACP } from "@/api/acp";
+import { getMapel } from "@/api/mapel";
+import { getKelas } from "@/api/kelas";
+import { getSemester } from "@/api/semester";
+import { getTahunAjaran } from "@/api/tahun-ajaran";
 import TypingCard from "@/components/TypingCard";
 import EditACPForm from "./forms/edit-acp-form";
 import AddACPForm from "./forms/add-acp-form";
@@ -27,6 +36,7 @@ import { Skeleton } from "antd";
 import Highlighter from "react-highlight-words";
 import { reqUserInfo, getUserById } from "@/api/user";
 import { read, utils } from "xlsx";
+import { set } from "nprogress";
 
 const ACP = () => {
   const [acp, setACP] = useState([]);
@@ -49,10 +59,24 @@ const ACP = () => {
   const [searchedColumn, setSearchedColumn] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedTahunAjaran, setSelectedTahunAjaran] = useState(null);
+  const [selectedKelas, setSelectedKelas] = useState(null);
+  const [selectedSemester, setSelectedSemester] = useState(null);
+  const [selectedMapel, setSelectedMapel] = useState(null);
+  const [kelasList, setKelasList] = useState([]);
+  const [semesterList, setSemesterList] = useState([]);
+  const [tahunAjaranList, setTahunAjaranList] = useState([]);
+  const [allMapelList, setAllMapelList] = useState([]); // Semua data mapel
+  const [filteredMapelList, setFilteredMapelList] = useState([]); // Mapel setelah difilter
+  const [showTable, setShowTable] = useState(false); // State to control table visibility
+
   const searchInput = useRef(null);
 
   const editACPFormRef = useRef(null);
   const addACPFormRef = useRef(null);
+
+  const { Step } = Steps;
 
   useEffect(() => {
     const initializeData = async () => {
@@ -91,13 +115,66 @@ const ACP = () => {
     }
   }, [userIdJson, fetchACP]);
 
-  const filteredData = acp.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (item?.namaAcp?.toLowerCase() || "").includes(query) ||
-      (item?.nameSchool?.toLowerCase() || "").includes(query)
-    );
-  });
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        // Ambil semua data yang diperlukan
+        const [tahunAjaranRes, kelasRes, semesterRes, mapelRes] =
+          await Promise.all([
+            getTahunAjaran(),
+            getKelas(),
+            getSemester(),
+            getMapel(), // Endpoint untuk semua mapel
+          ]);
+
+        setTahunAjaranList(tahunAjaranRes.data.content || []);
+        setKelasList(kelasRes.data.content || []);
+        setSemesterList(semesterRes.data.content || []);
+        setAllMapelList(mapelRes.data.content || []);
+      } catch (error) {
+        message.error("Gagal memuat data awal");
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
+  const filteredData = acp
+    .filter(
+      (item) =>
+        item?.tahunAjaran?.idTahun === selectedTahunAjaran &&
+        item?.kelas?.idKelas === selectedKelas &&
+        item?.semester?.idSemester === selectedSemester &&
+        (!selectedMapel || item?.mapel?.idMapel === selectedMapel) // Optional jika ingin bisa tampilkan semua mapel
+    )
+    .filter((item) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        (item?.namaAcp?.toLowerCase() || "").includes(query) ||
+        (item?.nameSchool?.toLowerCase() || "").includes(query)
+      );
+    });
+
+  useEffect(() => {
+    if (selectedTahunAjaran && selectedKelas && selectedSemester) {
+      // Ambil semua mapel yang sesuai dengan kelas dan semester terpilih
+      const availableMapels = allMapelList.filter((mapel) => {
+        return acp.some(
+          (item) =>
+            item.mapel?.idMapel === mapel.idMapel &&
+            item.semester?.idSemester === selectedSemester &&
+            item.kelas?.idKelas === selectedKelas &&
+            item.tahunAjaran?.idTahun === selectedTahunAjaran
+        );
+      });
+
+      setFilteredMapelList(
+        availableMapels.length > 0 ? availableMapels : allMapelList
+      );
+    } else {
+      setFilteredMapelList(allMapelList);
+    }
+  }, [selectedTahunAjaran, selectedKelas, selectedSemester, acp, allMapelList]);
 
   const getUserInfoJson = async (userId) => {
     const result = await getUserById(userId);
@@ -317,14 +394,6 @@ const ACP = () => {
       sorter: (a, b) => a.namaAcp.localeCompare(b.namaAcp),
     },
     {
-      title: "Sekolah",
-      dataIndex: ["school", "nameSchool"],
-      key: "nameSchool",
-      align: "center",
-      ...getColumnSearchProps("nameSchool", "school.nameSchool"),
-      sorter: (a, b) => a.school.nameSchool.localeCompare(b.school.nameSchool),
-    },
-    {
       title: "Elemen",
       dataIndex: ["elemen", "namaElemen"],
       key: "namaElemen",
@@ -333,38 +402,12 @@ const ACP = () => {
       sorter: (a, b) => a.elemen.namaElemen.localeCompare(b.elemen.namaElemen),
     },
     {
-      title: "Mata Pelajaran",
-      dataIndex: ["mapel", "name"],
-      key: "name",
+      title: "Sekolah",
+      dataIndex: ["school", "nameSchool"],
+      key: "nameSchool",
       align: "center",
-      ...getColumnSearchProps("name", "mapel.name"),
-      sorter: (a, b) => a.mapel.name.localeCompare(b.mapel.name),
-    },
-    {
-      title: "Tahun Ajaran",
-      dataIndex: ["tahunAjaran", "tahunAjaran"],
-      key: "tahunAjaran",
-      align: "center",
-      ...getColumnSearchProps("tahunAjaran", "tahunAjaran.tahunAjaran"),
-      sorter: (a, b) =>
-        a.tahunAjaran.tahunAjaran.localeCompare(b.tahunAjaran.tahunAjaran),
-    },
-    {
-      title: "Semester",
-      dataIndex: ["semester", "namaSemester"],
-      key: "namaSemester",
-      align: "center",
-      ...getColumnSearchProps("namaSemester", "semester.namaSemester"),
-      sorter: (a, b) =>
-        a.semester.namaSemester.localeCompare(b.semester.namaSemester),
-    },
-    {
-      title: "Kelas",
-      dataIndex: ["kelas", "namaKelas"],
-      key: "namaKelas",
-      align: "center",
-      ...getColumnSearchProps("namaKelas", "kelas.namaKelas"),
-      sorter: (a, b) => a.kelas.namaKelas.localeCompare(b.kelas.namaKelas),
+      ...getColumnSearchProps("nameSchool", "school.nameSchool"),
+      sorter: (a, b) => a.school.nameSchool.localeCompare(b.school.nameSchool),
     },
     {
       title: "Konsentrasi Keahlian Sekolah",
@@ -432,6 +475,121 @@ const ACP = () => {
     </Row>
   );
 
+  const renderSelectionSteps = () => (
+    <Card style={{ maxWidth: 600, margin: "20px auto" }}>
+      <Steps current={currentStep - 1} style={{ marginBottom: 24 }}>
+        <Step title="Tahun Ajaran" />
+        <Step title="Kelas" />
+        <Step title="Semester" />
+        <Step title="Mata Pelajaran" />
+      </Steps>
+
+      <div style={{ minHeight: 150 }}>
+        {/* Step 1: Pilih Tahun Ajaran */}
+        {currentStep === 1 && (
+          <Select
+            style={{ width: "100%" }}
+            placeholder="Pilih Tahun Ajaran"
+            onChange={(value) => {
+              setSelectedTahunAjaran(value);
+              setCurrentStep(2);
+            }}
+            options={tahunAjaranList.map((tahunAjaran) => ({
+              value: tahunAjaran.idTahun,
+              label: tahunAjaran.tahunAjaran,
+            }))}
+          />
+        )}
+
+        {/* Step 2: Pilih Kelas */}
+        {currentStep === 2 && (
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => setCurrentStep(1)} // Kembali ke step 1
+              style={{ marginBottom: 16 }}
+            >
+              Kembali ke Pilih Tahun Ajaran
+            </Button>
+            <Select
+              style={{ width: "100%" }}
+              placeholder="Pilih Kelas"
+              onChange={(value) => {
+                setSelectedKelas(value);
+                setCurrentStep(3);
+              }}
+              options={kelasList.map((kelas) => ({
+                value: kelas.idKelas,
+                label: kelas.namaKelas,
+              }))}
+            />
+          </Space>
+        )}
+
+        {/* Step 3: Pilih Semester */}
+        {currentStep === 3 && (
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => setCurrentStep(2)} // Kembali ke step 2
+              style={{ marginBottom: 16 }}
+            >
+              Kembali ke Pilih Kelas
+            </Button>
+            <Select
+              style={{ width: "100%" }}
+              placeholder="Pilih Semester"
+              onChange={(value) => {
+                setSelectedSemester(value);
+                setCurrentStep(4);
+              }}
+              options={semesterList.map((semester) => ({
+                value: semester.idSemester,
+                label: semester.namaSemester,
+              }))}
+            />
+          </Space>
+        )}
+
+        {/* Step 4: Pilih Mata Pelajaran */}
+        {currentStep === 4 && (
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Button
+              type="text"
+              icon={<ArrowLeftOutlined />}
+              onClick={() => setCurrentStep(3)} // Kembali ke step 3
+              style={{ marginBottom: 16 }}
+            >
+              Kembali ke Pilih Semester
+            </Button>
+            {filteredMapelList.length > 0 ? (
+              <Select
+                style={{ width: "100%" }}
+                placeholder="Pilih Mata Pelajaran"
+                onChange={(value) => {
+                  setSelectedMapel(value);
+                  setShowTable(true);
+                }}
+                options={allMapelList.map((mapel) => ({
+                  value: mapel.idMapel,
+                  label: mapel.name,
+                }))}
+              />
+            ) : (
+              <Alert
+                message="Tidak ada mata pelajaran tersedia"
+                type="info"
+                showIcon
+              />
+            )}
+          </Space>
+        )}
+      </div>
+    </Card>
+  );
+
   return (
     <div className="app-container">
       <TypingCard
@@ -439,36 +597,70 @@ const ACP = () => {
         source="Di sini, Anda dapat mengelola Analisa Capaian Pembelajaran di sistem."
       />
       <br />
+
       {loading ? (
         <Card>
           <Skeleton active paragraph={{ rows: 10 }} />
         </Card>
       ) : (
-        <Card style={{ overflowX: "scroll" }}>
-          {/* Baris untuk tombol dan pencarian */}
-          <Row
-            justify="space-between"
-            align="middle"
-            style={{ marginBottom: 16 }}
-          >
-            {/* Tombol Tambah & Import */}
-            {renderButtons()}
+        <>
+          <Card style={{ marginBottom: 16 }}>{renderButtons()}</Card>
 
-            {/* Kolom Pencarian */}
-            <Col>
-              <Input.Search
-                key="search"
-                placeholder="Cari semester..."
-                allowClear
-                enterButton
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: 300 }}
-              />
-            </Col>
-          </Row>
+          {/* Tampilkan selection steps atau tabel */}
+          {!selectedMapel ? (
+            renderSelectionSteps() // Tampilkan alur pemilihan 3 langkah
+          ) : (
+            <>
+              {/* Info Filter Aktif */}
+              <Card style={{ marginBottom: 16 }}>
+                <Row justify="space-between" align="middle">
+                  <Col>
+                    <Button
+                      type="text"
+                      icon={<ArrowLeftOutlined />}
+                      onClick={() => {
+                        setSelectedMapel(null);
+                        setCurrentStep(4);
+                      }}
+                    >
+                      Kembali
+                    </Button>
+                  </Col>
+                  <Col>
+                    <Space>
+                      <Tag color="purple">
+                        Tahun Ajaran:{" "}
+                        {tahunAjaranList.find(
+                          (k) => k.idTahun === selectedTahunAjaran
+                        )?.tahunAjaran || "-"}
+                      </Tag>
+                      <Tag color="blue">
+                        Kelas:{" "}
+                        {kelasList.find((k) => k.idKelas === selectedKelas)
+                          ?.namaKelas || "-"}
+                      </Tag>
+                      <Tag color="geekblue">
+                        Semester:{" "}
+                        {semesterList.find(
+                          (s) => s.idSemester === selectedSemester
+                        )?.namaSemester || "-"}
+                      </Tag>
+                      <Tag color="red">
+                        Mapel:{" "}
+                        {allMapelList.find((m) => m.idMapel === selectedMapel)
+                          ?.name || "-"}
+                      </Tag>
+                    </Space>
+                  </Col>
+                </Row>
+              </Card>
 
-          {/* Tabel */}
-          {renderTable()}
+              {/* Tabel Data */}
+              <Card style={{ overflowX: "scroll" }}>{renderTable()}</Card>
+            </>
+          )}
+
+          {/* Modal Forms */}
           <AddACPForm
             wrappedComponentRef={addACPFormRef}
             visible={addACPModalVisible}
@@ -485,38 +677,8 @@ const ACP = () => {
             onCancel={handleCancel}
             onOk={handleEditOk}
           />
-        </Card>
+        </>
       )}
-
-      <Modal
-        title="Import File"
-        open={importModalVisible}
-        onCancel={() => setImportModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setImportModalVisible(false)}>
-            Cancel
-          </Button>,
-          <Button
-            key="upload"
-            type="primary"
-            loading={uploading}
-            onClick={() => {
-              /* Implementasi Upload */
-            }}
-          >
-            Upload
-          </Button>,
-        ]}
-      >
-        <Upload
-          beforeUpload={() => {
-            /* Implementasi File Upload */ return false;
-          }}
-          accept=".csv,.xlsx,.xls"
-        >
-          <Button>Pilih File</Button>
-        </Upload>
-      </Modal>
     </div>
   );
 };

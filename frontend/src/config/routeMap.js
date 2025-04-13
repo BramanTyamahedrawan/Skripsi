@@ -250,6 +250,9 @@ const ACP = React.lazy(() =>
 const ATP = React.lazy(() =>
   import(/*webpackChunkName:'AlurTujuanPembelajaran'*/ "@/views/atp")
 );
+const TreeView = React.lazy(() =>
+  import(/*webpackChunkName:'TreeView'*/ "@/views/tree-view")
+);
 // const Grade = React.lazy(() =>
 //   import(/*webpackChunkName:'Grade'*/ "@/views/grade")
 // );
@@ -413,6 +416,7 @@ export default [
   { path: "/elemen", component: Elemen, roles: ["ROLE_OPERATOR"] },
   { path: "/acp", component: ACP, roles: ["ROLE_OPERATOR"] },
   { path: "/atp", component: ATP, roles: ["ROLE_OPERATOR"] },
+  { path: "/tree-view", component: TreeView, roles: ["ROLE_OPERATOR"] },
   // {
   //   path: "/study-program",
   //   component: StudyProgram,

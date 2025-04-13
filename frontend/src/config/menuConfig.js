@@ -187,6 +187,12 @@ const menuList = [
       // },
     ],
   },
+  {
+    title: "Manajemen Mata Pelajaran",
+    path: "/tree-view",
+    icon: AppstoreOutlined,
+    roles: ["ROLE_OPERATOR"],
+  },
 
   {
     title: "Guru",
