@@ -388,7 +388,14 @@ const AddATPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                 },
               ]}
             >
-              <Select placeholder="Pilih Capaian Pembelajaran">
+              <Select
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+                placeholder="Pilih Capaian Pembelajaran"
+              >
                 {acpList.map(({ idAcp, namaAcp }) => (
                   <Option key={idAcp} value={idAcp}>
                     {namaAcp}
@@ -397,25 +404,6 @@ const AddATPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
               </Select>
             </Form.Item>
           </Col>
-          <Tabs
-            defaultActiveKey="id"
-            style={{ width: "100%" }}
-            items={[
-              {
-                key: "id",
-                label: "Tujuan Pembelajaran",
-                children: (
-                  <Table
-                    rowKey="id"
-                    dataSource={atp}
-                    columns={renderColumns()}
-                    pagination={{ pageSize: 10 }}
-                    style={{ width: "100%" }}
-                  />
-                ),
-              },
-            ]}
-          />
         </Row>
       </Form>
     </Modal>

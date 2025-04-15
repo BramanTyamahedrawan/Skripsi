@@ -229,6 +229,8 @@ const Elemen = () => {
     } catch (error) {
       setAddModalLoading(false);
       message.error("Gagal menambahkan: " + error.message);
+    } finally {
+      setAddModalLoading(false);
     }
   };
 

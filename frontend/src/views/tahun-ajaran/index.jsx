@@ -309,8 +309,8 @@ const TahunAjaran = () => {
       dataIndex: "tahunAjaran",
       key: "tahunAjaran",
       align: "center",
-      ...getColumnSearchProps("tahun"),
-      sorter: (a, b) => a.tahun.localeCompare(b.tahun),
+      ...getColumnSearchProps("tahunAjaran"),
+      sorter: (a, b) => a.tahunAjaran.localeCompare(b.tahunAjaran),
     },
     {
       title: "Sekolah",

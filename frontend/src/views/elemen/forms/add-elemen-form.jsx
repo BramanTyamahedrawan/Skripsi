@@ -171,7 +171,7 @@ const AddElemen = ({ visible, onCancel, onOk, confirmLoading }) => {
 
   return (
     <Modal
-      title="Tambah Konsentrasi Keahlian"
+      title="Tambah Elemen"
       open={visible}
       onCancel={() => {
         form.resetFields();

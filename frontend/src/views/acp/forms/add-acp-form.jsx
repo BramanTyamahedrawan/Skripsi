@@ -355,25 +355,6 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
               </Select>
             </Form.Item>
           </Col>
-          <Tabs
-            defaultActiveKey="id"
-            style={{ width: "100%" }}
-            items={[
-              {
-                key: "id",
-                label: "Capaian Pembelajaran",
-                children: (
-                  <Table
-                    rowKey="id"
-                    dataSource={acp}
-                    columns={renderColumns()}
-                    pagination={{ pageSize: 10 }}
-                    style={{ width: "100%" }}
-                  />
-                ),
-              },
-            ]}
-          />
         </Row>
       </Form>
     </Modal>

@@ -423,40 +423,7 @@ const ATP = () => {
       ...getColumnSearchProps("namaElemen", "elemen.namaElemen"),
       sorter: (a, b) => a.elemen.namaElemen.localeCompare(b.elemen.namaElemen),
     },
-    {
-      title: "Mata Pelajaran",
-      dataIndex: ["mapel", "name"],
-      key: "name",
-      align: "center",
-      ...getColumnSearchProps("name", "mapel.name"),
-      sorter: (a, b) => a.mapel.name.localeCompare(b.mapel.name),
-    },
-    {
-      title: "Tahun Ajaran",
-      dataIndex: ["tahunAjaran", "tahunAjaran"],
-      key: "tahunAjaran",
-      align: "center",
-      ...getColumnSearchProps("tahunAjaran", "tahunAjaran.tahunAjaran"),
-      sorter: (a, b) =>
-        a.tahunAjaran.tahunAjaran.localeCompare(b.tahunAjaran.tahunAjaran),
-    },
-    {
-      title: "Semester",
-      dataIndex: ["semester", "namaSemester"],
-      key: "namaSemester",
-      align: "center",
-      ...getColumnSearchProps("namaSemester", "semester.namaSemester"),
-      sorter: (a, b) =>
-        a.semester.namaSemester.localeCompare(b.semester.namaSemester),
-    },
-    {
-      title: "Kelas",
-      dataIndex: ["kelas", "namaKelas"],
-      key: "namaKelas",
-      align: "center",
-      ...getColumnSearchProps("namaKelas", "kelas.namaKelas"),
-      sorter: (a, b) => a.kelas.namaKelas.localeCompare(b.kelas.namaKelas),
-    },
+
     {
       title: "Konsentrasi Keahlian Sekolah",
       dataIndex: ["konsentrasiKeahlianSekolah", "namaKonsentrasiSekolah"],
