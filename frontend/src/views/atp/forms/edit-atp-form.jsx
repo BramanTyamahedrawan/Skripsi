@@ -266,10 +266,11 @@ const EditATPForm = ({
     >
       <Form form={form} layout="vertical">
         <Row gutter={16}>
-          <Col xs={24} sm={24} md={12}>
+          <Col xs={24} sm={24} md={24}>
             <Form.Item
               label="Sekolah:"
               name="idSchool"
+              style={{ display: "none" }}
               rules={[{ required: true, message: "Silahkan pilih Sekolah" }]}
             >
               <Select defaultValue={userSchoolId} disabled>
@@ -285,82 +286,6 @@ const EditATPForm = ({
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
-              label="Nama Tujuan Pembelajaran:"
-              name="namaAtp"
-              rules={[
-                {
-                  required: true,
-                  message: "Silahkan isi Nama Tujuan Pembelajaran",
-                },
-              ]}
-            >
-              <Input placeholder="Masukkan Nama ATP" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Kelas:"
-              name="idKelas"
-              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
-            >
-              <Select placeholder="Pilih Kelas">
-                {kelasList.map(({ idKelas, namaKelas }) => (
-                  <Option key={idKelas} value={idKelas}>
-                    {namaKelas}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Tahun Ajaran:"
-              name="idTahun"
-              rules={[
-                { required: true, message: "Silahkan pilih Tahun Ajaran" },
-              ]}
-            >
-              <Select placeholder="Pilih Tahun Ajaran">
-                {tahunAjaranList.map(({ idTahun, tahunAjaran }) => (
-                  <Option key={idTahun} value={idTahun}>
-                    {tahunAjaran}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Semester:"
-              name="idSemester"
-              rules={[{ required: true, message: "Silahkan pilih Semester" }]}
-            >
-              <Select placeholder="Pilih Semester">
-                {semesterList.map(({ idSemester, namaSemester }) => (
-                  <Option key={idSemester} value={idSemester}>
-                    {namaSemester}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Mapel:"
-              name="idMapel"
-              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
-            >
-              <Select placeholder="Pilih Mapel">
-                {mapelList.map(({ idMapel, name }) => (
-                  <Option key={idMapel} value={idMapel}>
-                    {name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
               label="Konsentrasi Keahlian Sekolah:"
               name="idKonsentrasiSekolah"
               rules={[
@@ -370,7 +295,14 @@ const EditATPForm = ({
                 },
               ]}
             >
-              <Select placeholder="Pilih Konsentrasi Keahlian Sekolah">
+              <Select
+                placeholder="Pilih Konsentrasi Keahlian Sekolah"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
                 {konsentrasiKeahlianSekolahList.map(
                   ({ idKonsentrasiSekolah, namaKonsentrasiSekolah }) => (
                     <Option
@@ -386,11 +318,108 @@ const EditATPForm = ({
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
+              label="Tahun Ajaran:"
+              name="idTahun"
+              rules={[
+                { required: true, message: "Silahkan pilih Tahun Ajaran" },
+              ]}
+            >
+              <Select
+                placeholder="Pilih Tahun Ajaran"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {tahunAjaranList.map(({ idTahun, tahunAjaran }) => (
+                  <Option key={idTahun} value={idTahun}>
+                    {tahunAjaran}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Semester:"
+              name="idSemester"
+              rules={[{ required: true, message: "Silahkan pilih Semester" }]}
+            >
+              <Select
+                placeholder="Pilih Semester"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {semesterList.map(({ idSemester, namaSemester }) => (
+                  <Option key={idSemester} value={idSemester}>
+                    {namaSemester}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Kelas:"
+              name="idKelas"
+              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
+            >
+              <Select
+                placeholder="Pilih Kelas"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {kelasList.map(({ idKelas, namaKelas }) => (
+                  <Option key={idKelas} value={idKelas}>
+                    {namaKelas}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Mapel:"
+              name="idMapel"
+              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
+            >
+              <Select
+                placeholder="Pilih Mapel"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {mapelList.map(({ idMapel, name }) => (
+                  <Option key={idMapel} value={idMapel}>
+                    {name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
               label="Elemen:"
               name="idElemen"
               rules={[{ required: true, message: "Silahkan pilih Elemen" }]}
             >
-              <Select placeholder="Pilih Elemen">
+              <Select
+                placeholder="Pilih Elemen"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
                 {elemenList.map(({ idElemen, namaElemen }) => (
                   <Option key={idElemen} value={idElemen}>
                     {namaElemen}
@@ -410,7 +439,14 @@ const EditATPForm = ({
                 },
               ]}
             >
-              <Select placeholder="Pilih Capaian Pembelajaran">
+              <Select
+                placeholder="Pilih Capaian Pembelajaran"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
                 {acpList.map(({ idAcp, namaAcp }) => (
                   <Option key={idAcp} value={idAcp}>
                     {namaAcp}
@@ -419,7 +455,21 @@ const EditATPForm = ({
               </Select>
             </Form.Item>
           </Col>
-          <Tabs
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Nama Tujuan Pembelajaran:"
+              name="namaAtp"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan isi Nama Tujuan Pembelajaran",
+                },
+              ]}
+            >
+              <Input placeholder="Masukkan Nama ATP" />
+            </Form.Item>
+          </Col>
+          {/* <Tabs
             defaultActiveKey="id"
             style={{ width: "100%" }}
             items={[
@@ -437,7 +487,7 @@ const EditATPForm = ({
                 ),
               },
             ]}
-          />
+          /> */}
         </Row>
       </Form>
     </Modal>

@@ -222,10 +222,11 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     >
       <Form form={form} layout="vertical">
         <Row gutter={16}>
-          <Col xs={24} sm={24} md={12}>
+          <Col xs={24} sm={24} md={24}>
             <Form.Item
               label="Sekolah:"
               name="idSchool"
+              style={{ display: "none" }}
               rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
             >
               <Select defaultValue={userSchoolId} disabled>
@@ -241,82 +242,6 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
-              label="Nama Capaian Pembelajaran:"
-              name="namaAcp"
-              rules={[
-                {
-                  required: true,
-                  message: "Silahkan isi Nama Capaian Pembelajaran",
-                },
-              ]}
-            >
-              <Input placeholder="Masukkan Nama ACP" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Kelas:"
-              name="idKelas"
-              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
-            >
-              <Select placeholder="Pilih Kelas">
-                {kelasList.map(({ idKelas, namaKelas }) => (
-                  <Option key={idKelas} value={idKelas}>
-                    {namaKelas}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Tahun Ajaran:"
-              name="idTahun"
-              rules={[
-                { required: true, message: "Silahkan pilih Tahun Ajaran" },
-              ]}
-            >
-              <Select placeholder="Pilih Tahun Ajaran">
-                {tahunAjaranList.map(({ idTahun, tahunAjaran }) => (
-                  <Option key={idTahun} value={idTahun}>
-                    {tahunAjaran}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Semester:"
-              name="idSemester"
-              rules={[{ required: true, message: "Silahkan pilih Semester" }]}
-            >
-              <Select placeholder="Pilih Semester">
-                {semesterList.map(({ idSemester, namaSemester }) => (
-                  <Option key={idSemester} value={idSemester}>
-                    {namaSemester}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Mapel:"
-              name="idMapel"
-              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
-            >
-              <Select placeholder="Pilih Mapel">
-                {mapelList.map(({ idMapel, name }) => (
-                  <Option key={idMapel} value={idMapel}>
-                    {name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
               label="Konsentrasi Keahlian Sekolah:"
               name="idKonsentrasiSekolah"
               rules={[
@@ -326,7 +251,14 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                 },
               ]}
             >
-              <Select placeholder="Pilih Konsetrasi Keahlian">
+              <Select
+                placeholder="Pilih Konsetrasi Keahlian"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
                 {konsentrasiKeahlianSekolahList.map(
                   ({ idKonsentrasiSekolah, namaKonsentrasiSekolah }) => (
                     <Option
@@ -342,17 +274,128 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
+              label="Tahun Ajaran:"
+              name="idTahun"
+              rules={[
+                { required: true, message: "Silahkan pilih Tahun Ajaran" },
+              ]}
+            >
+              <Select
+                placeholder="Pilih Tahun Ajaran"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {tahunAjaranList.map(({ idTahun, tahunAjaran }) => (
+                  <Option key={idTahun} value={idTahun}>
+                    {tahunAjaran}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Semester:"
+              name="idSemester"
+              rules={[{ required: true, message: "Silahkan pilih Semester" }]}
+            >
+              <Select
+                placeholder="Pilih Semester"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {semesterList.map(({ idSemester, namaSemester }) => (
+                  <Option key={idSemester} value={idSemester}>
+                    {namaSemester}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Kelas:"
+              name="idKelas"
+              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
+            >
+              <Select
+                placeholder="Pilih Kelas"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {kelasList.map(({ idKelas, namaKelas }) => (
+                  <Option key={idKelas} value={idKelas}>
+                    {namaKelas}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Mapel:"
+              name="idMapel"
+              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
+            >
+              <Select
+                placeholder="Pilih Mapel"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {mapelList.map(({ idMapel, name }) => (
+                  <Option key={idMapel} value={idMapel}>
+                    {name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
               label="Elemen:"
               name="idElemen"
               rules={[{ required: true, message: "Silahkan pilih Elemen" }]}
             >
-              <Select placeholder="Pilih Elemen">
+              <Select
+                placeholder="Pilih Elemen"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
                 {elemenList.map(({ idElemen, namaElemen }) => (
                   <Option key={idElemen} value={idElemen}>
                     {namaElemen}
                   </Option>
                 ))}
               </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Nama Capaian Pembelajaran:"
+              name="namaAcp"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan isi Nama Capaian Pembelajaran",
+                },
+              ]}
+            >
+              <Input placeholder="Masukkan Nama ACP" />
             </Form.Item>
           </Col>
         </Row>

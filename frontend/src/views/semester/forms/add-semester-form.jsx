@@ -99,37 +99,36 @@ const AddSemesterForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       onOk={handleSubmit}
       confirmLoading={confirmLoading}
       okText="Simpan"
-      width={1000}
+      width={500}
     >
       <Form form={form} layout="vertical">
-        <Row gutter={16}>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Sekolah:"
-              name="idSchool"
-              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
-            >
-              <Select defaultValue={userSchoolId} disabled>
-                {schoolList
-                  .filter(({ idSchool }) => idSchool === userSchoolId) // Hanya menampilkan sekolah user
-                  .map(({ idSchool, nameSchool }) => (
-                    <Option key={idSchool} value={idSchool}>
-                      {nameSchool}
-                    </Option>
-                  ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Nama Semester:"
-              name="namaSemester"
-              rules={[{ required: true, message: "Silahkan isikan Semester" }]}
-            >
-              <Input placeholder="Nama Semester" />
-            </Form.Item>
-          </Col>
-        </Row>
+        <Col xs={24} sm={24} md={24}>
+          <Form.Item
+            label="Sekolah:"
+            name="idSchool"
+            style={{ display: "none" }}
+            rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
+          >
+            <Select defaultValue={userSchoolId} disabled>
+              {schoolList
+                .filter(({ idSchool }) => idSchool === userSchoolId) // Hanya menampilkan sekolah user
+                .map(({ idSchool, nameSchool }) => (
+                  <Option key={idSchool} value={idSchool}>
+                    {nameSchool}
+                  </Option>
+                ))}
+            </Select>
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={24} md={24}>
+          <Form.Item
+            label="Nama Semester:"
+            name="namaSemester"
+            rules={[{ required: true, message: "Silahkan isikan Semester" }]}
+          >
+            <Input placeholder="Nama Semester" />
+          </Form.Item>
+        </Col>
       </Form>
     </Modal>
   );

@@ -113,14 +113,15 @@ const EditSubjectForm = ({
       onOk={handleSubmit}
       confirmLoading={confirmLoading}
       okText="Simpan"
-      width={1000}
+      width={500}
     >
       <Form form={form} layout="vertical">
         <Row gutter={16}>
-          <Col xs={24} sm={24} md={12}>
+          <Col xs={24} sm={24} md={24}>
             <Form.Item
               label="Sekolah:"
               name="idSchool"
+              style={{ display: "none" }}
               rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
             >
               <Select defaultValue={userSchoolId} disabled>
@@ -134,7 +135,7 @@ const EditSubjectForm = ({
               </Select>
             </Form.Item>
           </Col>
-          <Col xs={24} sm={24} md={12}>
+          <Col xs={24} sm={24} md={24}>
             <Form.Item
               label="Nama Mata Pelajaran:"
               name="name"

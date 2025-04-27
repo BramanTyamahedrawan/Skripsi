@@ -204,10 +204,11 @@ const EditElemenForm = ({
     >
       <Form form={form} layout="vertical">
         <Row gutter={16}>
-          <Col xs={24} sm={24} md={12}>
+          <Col xs={24} sm={24} md={24}>
             <Form.Item
               label="Sekolah:"
               name="idSchool"
+              style={{ display: "none" }}
               rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
             >
               <Select defaultValue={userSchoolId} disabled>
@@ -223,25 +224,33 @@ const EditElemenForm = ({
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
-              label="Nama Elemen:"
-              name="namaElemen"
-              rules={[{ required: true, message: "Silahkan isi Nama Elemen" }]}
+              label="Konsentrasi Keahlian Sekolah:"
+              name="id"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan pilih Konsentrasi Keahlian Sekolah",
+                },
+              ]}
             >
-              <Input placeholder="Masukkan Nama Elemen" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Kelas:"
-              name="idKelas"
-              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
-            >
-              <Select placeholder="Pilih Kelas">
-                {kelasList.map(({ idKelas, namaKelas }) => (
-                  <Option key={idKelas} value={idKelas}>
-                    {namaKelas}
-                  </Option>
-                ))}
+              <Select
+                placeholder="Pilih Konsetrasi Keahlian Sekolah"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {konsentrasiKeahlianSekolahList.map(
+                  ({ idKonsentrasiSekolah, namaKonsentrasiSekolah }) => (
+                    <Option
+                      key={idKonsentrasiSekolah}
+                      value={idKonsentrasiSekolah}
+                    >
+                      {namaKonsentrasiSekolah}
+                    </Option>
+                  )
+                )}
               </Select>
             </Form.Item>
           </Col>
@@ -253,7 +262,14 @@ const EditElemenForm = ({
                 { required: true, message: "Silahkan pilih Tahun Ajaran" },
               ]}
             >
-              <Select placeholder="Pilih Tahun Ajaran">
+              <Select
+                placeholder="Pilih Tahun Ajaran"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
                 {tahunAjaranList.map(({ idTahun, tahunAjaran }) => (
                   <Option key={idTahun} value={idTahun}>
                     {tahunAjaran}
@@ -268,10 +284,39 @@ const EditElemenForm = ({
               name="idSemester"
               rules={[{ required: true, message: "Silahkan pilih Semester" }]}
             >
-              <Select placeholder="Pilih Semester">
+              <Select
+                placeholder="Pilih Semester"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
                 {semesterList.map(({ idSemester, namaSemester }) => (
                   <Option key={idSemester} value={idSemester}>
                     {namaSemester}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Kelas:"
+              name="idKelas"
+              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
+            >
+              <Select
+                placeholder="Pilih Kelas"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {kelasList.map(({ idKelas, namaKelas }) => (
+                  <Option key={idKelas} value={idKelas}>
+                    {namaKelas}
                   </Option>
                 ))}
               </Select>
@@ -283,7 +328,14 @@ const EditElemenForm = ({
               name="idMapel"
               rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
             >
-              <Select placeholder="Pilih Mapel">
+              <Select
+                placeholder="Pilih Mapel"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
                 {mapelList.map(({ idMapel, name }) => (
                   <Option key={idMapel} value={idMapel}>
                     {name}
@@ -294,27 +346,11 @@ const EditElemenForm = ({
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
-              label="Konsentrasi Keahlian Sekolah:"
-              name="id"
-              rules={[
-                {
-                  required: true,
-                  message: "Silahkan pilih Konsentrasi Keahlian Sekolah",
-                },
-              ]}
+              label="Nama Elemen:"
+              name="namaElemen"
+              rules={[{ required: true, message: "Silahkan isi Nama Elemen" }]}
             >
-              <Select placeholder="Pilih Konsetrasi Keahlian Sekolah">
-                {konsentrasiKeahlianSekolahList.map(
-                  ({ idKonsentrasiSekolah, namaKonsentrasiSekolah }) => (
-                    <Option
-                      key={idKonsentrasiSekolah}
-                      value={idKonsentrasiSekolah}
-                    >
-                      {namaKonsentrasiSekolah}
-                    </Option>
-                  )
-                )}
-              </Select>
+              <Input placeholder="Masukkan Nama Elemen" />
             </Form.Item>
           </Col>
         </Row>
