@@ -73,9 +73,6 @@ const Semester = () => {
       const result = await getSemester();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        // const filteredContent = content.filter(
-        //   (item) => item.school?.idSchool === userIdJson
-        // );
         setSemesters(content);
       } else {
         message.error("Gagal mengambil data");

@@ -63,6 +63,8 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const [elemenList, setElemenList] = useState([]);
   const [tableLoading, setTableLoading] = useState(false);
 
+  const [selectedMapelId, setSelectedMapelId] = useState(null);
+
   const fetchUserInfo = async () => {
     try {
       const response = await reqUserInfo(); // Ambil data user dari API
@@ -206,6 +208,10 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       console.error("Validation failed:", error);
     }
   };
+
+  const filteredElemenList = elemenList.filter(
+    (elemen) => elemen.mapel?.idMapel === selectedMapelId
+  );
 
   return (
     <Modal
@@ -353,6 +359,7 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                 filterOption={(input, option) =>
                   option.children.toLowerCase().includes(input.toLowerCase())
                 }
+                onChange={(value) => setSelectedMapelId(value)}
               >
                 {mapelList.map(({ idMapel, name }) => (
                   <Option key={idMapel} value={idMapel}>
@@ -375,8 +382,9 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                 filterOption={(input, option) =>
                   option.children.toLowerCase().includes(input.toLowerCase())
                 }
+                disabled={!selectedMapelId}
               >
-                {elemenList.map(({ idElemen, namaElemen }) => (
+                {filteredElemenList.map(({ idElemen, namaElemen }) => (
                   <Option key={idElemen} value={idElemen}>
                     {namaElemen}
                   </Option>

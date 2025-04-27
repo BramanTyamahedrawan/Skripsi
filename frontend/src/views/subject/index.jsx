@@ -12,6 +12,7 @@ import {
   Divider,
   Input,
   Space,
+  Select,
 } from "antd";
 import {
   EditOutlined,
@@ -21,6 +22,8 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { getMapel, deleteMapel, addMapel, editMapel } from "@/api/mapel";
+import { getKelas } from "@/api/kelas";
+import { getSemester } from "@/api/semester";
 import TypingCard from "@/components/TypingCard";
 import AddMapelForm from "./forms/add-mapel-form";
 import EditMapelForm from "./forms/edit-mapel-form";
@@ -45,6 +48,13 @@ const Mapel = () => {
   const [searchedColumn, setSearchedColumn] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [selectedKelas, setSelectedKelas] = useState(null);
+  const [selectedSemester, setSelectedSemester] = useState(null);
+  const [kelasList, setKelasList] = useState([]);
+  const [semesterList, setSemesterList] = useState([]);
+
+  const [filteredMapel, setFilteredMapel] = useState([]);
+
   const searchInput = useRef(null);
 
   const editMapelFormRef = useRef();
@@ -67,10 +77,7 @@ const Mapel = () => {
       const result = await getMapel();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        const filteredContent = content.filter(
-          (item) => item.school?.idSchool === userIdJson
-        );
-        setMapel(filteredContent);
+        setMapel(content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -79,21 +86,13 @@ const Mapel = () => {
     } finally {
       setLoading(false);
     }
-  }, [userIdJson]);
+  }, []);
 
   useEffect(() => {
     if (userIdJson) {
       fetchMapel();
     }
   }, [userIdJson, fetchMapel]);
-
-  const filteredData = mapel.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (item?.name?.toLowerCase() || "").includes(query) ||
-      (item?.nameSchool?.toLowerCase() || "").includes(query)
-    );
-  });
 
   const getUserInfoJson = async (userId) => {
     const result = await getUserById(userId);
@@ -102,6 +101,51 @@ const Mapel = () => {
       setUserIdJson(content[0].school.idSchool); // Ubah dari userId ke schoolId
     }
   };
+
+  useEffect(() => {
+    const fetchKelasAndSemester = async () => {
+      try {
+        const kelasResult = await getKelas();
+        const semesterResult = await getSemester();
+
+        if (kelasResult.data.statusCode === 200) {
+          let kelasContent = kelasResult.data.content || [];
+
+          // Urutkan berdasarkan createdAt ASCENDING
+          kelasContent.sort(
+            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+          );
+
+          setKelasList(kelasContent);
+
+          if (kelasContent.length > 0) {
+            setSelectedKelas(kelasContent[0].idKelas);
+          }
+        }
+
+        if (semesterResult.data.statusCode === 200) {
+          let semesterContent = semesterResult.data.content || [];
+
+          // Urutkan berdasarkan createdAt ASCENDING
+          semesterContent.sort(
+            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+          );
+
+          setSemesterList(semesterContent);
+
+          if (semesterContent.length > 0) {
+            setSelectedSemester(semesterContent[0].idSemester);
+          }
+        }
+      } catch (error) {
+        message.error(
+          "Gagal mengambil data kelas atau semester: " + error.message
+        );
+      }
+    };
+
+    fetchKelasAndSemester();
+  }, []);
 
   const handleDeleteMapel = (row) => {
     const { idMapel } = row;
@@ -139,6 +183,8 @@ const Mapel = () => {
         idMapel: null,
         name: values.name,
         idSekolah: values.idSchool,
+        idKelas: values.idKelas,
+        idSemester: values.idSemester,
       };
       await addMapel(updatedData);
       setAddMapelModalVisible(false);
@@ -160,6 +206,8 @@ const Mapel = () => {
         idMapel: values.idMapel,
         name: values.name,
         idSekolah: values.idSchool,
+        idKelas: values.idKelas,
+        idSemester: values.idSemester,
       };
       await editMapel(updatedData, currentRowData.idMapel);
       setEditMapelModalVisible(false);
@@ -286,6 +334,18 @@ const Mapel = () => {
       ),
   });
 
+  const getFilteredMapelList = () => {
+    return mapel.filter((item) => {
+      const matchKelas = selectedKelas
+        ? item.kelas?.idKelas === selectedKelas
+        : true;
+      const matchSemester = selectedSemester
+        ? item.semester?.idSemester === selectedSemester
+        : true;
+      return matchKelas && matchSemester;
+    });
+  };
+
   const renderColumns = () => [
     {
       title: "No",
@@ -295,20 +355,29 @@ const Mapel = () => {
       render: (_, __, index) => index + 1,
     },
     {
+      title: "Semester",
+      dataIndex: ["semester", "namaSemester"],
+      key: "namaSemester",
+      align: "center",
+      ...getColumnSearchProps("namaSemester", "semester.namaSemester"),
+      sorter: (a, b) =>
+        a.semester.namaSemester.localeCompare(b.semester.namaSemester),
+    },
+    {
+      title: "Kelas",
+      dataIndex: ["kelas", "namaKelas"],
+      key: "namaKelas",
+      align: "center",
+      ...getColumnSearchProps("namaKelas", "kelas.namaKelas"),
+      sorter: (a, b) => a.kelas.namaKelas.localeCompare(b.kelas.namaKelas),
+    },
+    {
       title: "Nama Mapel",
       dataIndex: "name",
       key: "name",
       align: "center",
       ...getColumnSearchProps("name"),
       sorter: (a, b) => a.name.localeCompare(b.name),
-    },
-    {
-      title: "Sekolah",
-      dataIndex: ["school", "nameSchool"],
-      key: "nameSchool",
-      align: "center",
-      ...getColumnSearchProps("nameSchool", "school.nameSchool"),
-      sorter: (a, b) => a.school.nameSchool.localeCompare(b.school.nameSchool),
     },
     {
       title: "Operasi",
@@ -338,7 +407,7 @@ const Mapel = () => {
   const renderTable = () => (
     <Table
       rowKey="idMapel"
-      dataSource={filteredData}
+      dataSource={getFilteredMapelList()}
       columns={renderColumns()}
       pagination={{ pageSize: 10 }}
     />
@@ -358,6 +427,39 @@ const Mapel = () => {
         >
           Import File
         </Button>
+      </Col>
+      <Col>
+        <Select
+          placeholder="Pilih Kelas"
+          value={selectedKelas}
+          style={{ width: 150 }}
+          onChange={(value) => setSelectedKelas(value)}
+          allowClear
+        >
+          {kelasList.map((kelas) => (
+            <Select.Option key={kelas.idKelas} value={kelas.idKelas}>
+              {kelas.namaKelas}
+            </Select.Option>
+          ))}
+        </Select>
+      </Col>
+      <Col>
+        <Select
+          placeholder="Pilih Semester"
+          value={selectedSemester}
+          style={{ width: 150 }}
+          onChange={(value) => setSelectedSemester(value)}
+          allowClear
+        >
+          {semesterList.map((semester) => (
+            <Select.Option
+              key={semester.idSemester}
+              value={semester.idSemester}
+            >
+              {semester.namaSemester}
+            </Select.Option>
+          ))}
+        </Select>
       </Col>
     </Row>
   );
@@ -399,25 +501,25 @@ const Mapel = () => {
 
           {/* Tabel */}
           {renderTable()}
+
+          <AddMapelForm
+            wrappedComponentRef={addMapelFormRef}
+            visible={addMapelModalVisible}
+            confirmLoading={addMapelModalLoading}
+            onCancel={handleCancel}
+            onOk={handleAddMapelOk}
+          />
+
+          <EditMapelForm
+            wrappedComponentRef={editMapelFormRef}
+            currentRowData={currentRowData}
+            visible={editMapelModalVisible}
+            confirmLoading={editMapelModalLoading}
+            onCancel={handleCancel}
+            onOk={handleEditMapelOk}
+          />
         </Card>
       )}
-
-      <AddMapelForm
-        wrappedComponentRef={addMapelFormRef}
-        visible={addMapelModalVisible}
-        confirmLoading={addMapelModalLoading}
-        onCancel={handleCancel}
-        onOk={handleAddMapelOk}
-      />
-
-      <EditMapelForm
-        wrappedComponentRef={editMapelFormRef}
-        currentRowData={currentRowData}
-        visible={editMapelModalVisible}
-        confirmLoading={editMapelModalLoading}
-        onCancel={handleCancel}
-        onOk={handleEditMapelOk}
-      />
 
       <Modal
         title="Import File"

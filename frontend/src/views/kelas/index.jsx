@@ -398,25 +398,25 @@ const Kelas = () => {
 
           {/* Tabel */}
           {renderTable()}
+
+          <AddKelasForm
+            wrappedComponentRef={addKelasFormRef}
+            visible={addKelasModalVisible}
+            confirmLoading={addKelasModalLoading}
+            onCancel={handleCancel}
+            onOk={handleAddKelasOk}
+          />
+
+          <EditKelasForm
+            wrappedComponentRef={editKelasFormRef}
+            currentRowData={currentRowData}
+            visible={editKelasModalVisible}
+            confirmLoading={editKelasModalLoading}
+            onCancel={handleCancel}
+            onOk={handleEditKelasOk}
+          />
         </Card>
       )}
-
-      <AddKelasForm
-        wrappedComponentRef={addKelasFormRef}
-        visible={addKelasModalVisible}
-        confirmLoading={addKelasModalLoading}
-        onCancel={handleCancel}
-        onOk={handleAddKelasOk}
-      />
-
-      <EditKelasForm
-        wrappedComponentRef={editKelasFormRef}
-        currentRowData={currentRowData}
-        visible={editKelasModalVisible}
-        confirmLoading={editKelasModalLoading}
-        onCancel={handleCancel}
-        onOk={handleEditKelasOk}
-      />
     </div>
   );
 };

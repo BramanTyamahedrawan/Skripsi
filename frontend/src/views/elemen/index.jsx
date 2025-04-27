@@ -88,10 +88,7 @@ const Elemen = () => {
       const result = await getElemen();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        const filteredContent = content.filter(
-          (item) => item.school?.idSchool === userIdJson
-        );
-        setElemen(filteredContent);
+        setElemen(content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -100,7 +97,7 @@ const Elemen = () => {
     } finally {
       setLoading(false);
     }
-  }, [userIdJson]);
+  }, []);
 
   useEffect(() => {
     if (userIdJson) {

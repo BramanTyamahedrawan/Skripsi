@@ -443,27 +443,26 @@ const KonsentrasiSekolah = () => {
 
           {/* Tabel */}
           {renderTable()}
+          {/* Modal Tambah Konsentrasi Keahlian Sekolah */}
+          <AddKonsentrasiSekolahForm
+            wrappedComponentRef={addKonsentrasiSekolahFormRef}
+            visible={addKonsentrasiSekolahModalVisible}
+            confirmLoading={addKonsentrasiSekolahModalLoading}
+            onCancel={handleCancel}
+            onOk={handleAddOk}
+          />
+
+          {/* Modal Edit Konsentrasi Keahlian Sekolah */}
+          <EditKonsentrasiSekolahForm
+            wrappedComponentRef={editKonsentrasiSekolahFormRef}
+            currentRowData={currentRowData}
+            visible={editKonsentrasiSekolahModalVisible}
+            confirmLoading={editKonsentrasiSekolahModalLoading}
+            onCancel={handleCancel}
+            onOk={handleEditOk}
+          />
         </Card>
       )}
-
-      {/* Modal Tambah Konsentrasi Keahlian Sekolah */}
-      <AddKonsentrasiSekolahForm
-        wrappedComponentRef={addKonsentrasiSekolahFormRef}
-        visible={addKonsentrasiSekolahModalVisible}
-        confirmLoading={addKonsentrasiSekolahModalLoading}
-        onCancel={handleCancel}
-        onOk={handleAddOk}
-      />
-
-      {/* Modal Edit Konsentrasi Keahlian Sekolah */}
-      <EditKonsentrasiSekolahForm
-        wrappedComponentRef={editKonsentrasiSekolahFormRef}
-        currentRowData={currentRowData}
-        visible={editKonsentrasiSekolahModalVisible}
-        confirmLoading={editKonsentrasiSekolahModalLoading}
-        onCancel={handleCancel}
-        onOk={handleEditOk}
-      />
     </div>
   );
 };

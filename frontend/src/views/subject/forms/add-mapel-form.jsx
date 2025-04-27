@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { Form, Input, Modal, Select, Tabs, Row, Col, message } from "antd";
 import { getMapel } from "@/api/mapel";
+import { getKelas } from "@/api/kelas";
+import { getSemester } from "@/api/semester";
 import { getSchool } from "@/api/school";
 import { reqUserInfo } from "@/api/user";
 
@@ -17,6 +19,8 @@ const AddSubjectForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const [tableLoading, setTableLoading] = useState(false);
   const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
   const [schoolList, setSchoolList] = useState([]);
+  const [kelasList, setKelasList] = useState([]);
+  const [semesterList, setSemesterList] = useState([]);
 
   const fetchUserInfo = async () => {
     try {
@@ -45,8 +49,43 @@ const AddSubjectForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     setTableLoading(true);
     try {
       const result = await getMapel();
-      if (result.data.statusCode === 200) {
-        setMapel(result.data.content);
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setMapel(content);
+      } else {
+        message.error("Gagal mengambil data");
+      }
+    } catch (error) {
+      message.error("Terjadi kesalahan: " + error.message);
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
+  const fetchKelasList = async () => {
+    setTableLoading(true);
+    try {
+      const result = await getKelas();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setKelasList(content);
+      } else {
+        message.error("Gagal mengambil data");
+      }
+    } catch (error) {
+      message.error("Terjadi kesalahan: " + error.message);
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
+  const fetchSemesterList = async () => {
+    setTableLoading(true);
+    try {
+      const result = await getSemester();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setSemesterList(content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -61,6 +100,8 @@ const AddSubjectForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     fetchUserInfo();
     fetchSchoolList();
     fetchMapel();
+    fetchKelasList();
+    fetchSemesterList();
   }, []);
 
   useEffect(() => {
@@ -89,7 +130,7 @@ const AddSubjectForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       onOk={handleSubmit}
       confirmLoading={confirmLoading}
       okText="Simpan"
-      width={500}
+      width={1000}
     >
       <Form form={form} layout="vertical">
         <Row gutter={16}>
@@ -108,6 +149,50 @@ const AddSubjectForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                       {nameSchool}
                     </Option>
                   ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Semester:"
+              name="idSemester"
+              rules={[{ required: true, message: "Silahkan pilih Semester" }]}
+            >
+              <Select
+                placeholder="Pilih Semester"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {semesterList.map(({ idSemester, namaSemester }) => (
+                  <Option key={idSemester} value={idSemester}>
+                    {namaSemester}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Kelas:"
+              name="idKelas"
+              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
+            >
+              <Select
+                placeholder="Pilih Kelas"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {kelasList.map(({ idKelas, namaKelas }) => (
+                  <Option key={idKelas} value={idKelas}>
+                    {namaKelas}
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
           </Col>

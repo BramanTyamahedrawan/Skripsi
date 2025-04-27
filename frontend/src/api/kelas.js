@@ -25,7 +25,7 @@ export function editKelas(data, id) {
 
 export function deleteKelas(data) {
   return request({
-    url: `/kelas/${data.id}`,
+    url: `/kelas/${data.idKelas}`,
     method: "delete",
     data,
   });

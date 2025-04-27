@@ -13,6 +13,8 @@ import {
   message,
 } from "antd";
 import { getMapel } from "@/api/mapel";
+import { getKelas } from "@/api/kelas";
+import { getSemester } from "@/api/semester";
 import { getSchool } from "@/api/school";
 import { reqUserInfo } from "@/api/user";
 
@@ -33,6 +35,8 @@ const EditSubjectForm = ({
   const [tableLoading, setTableLoading] = useState(false);
   const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
   const [schoolList, setSchoolList] = useState([]);
+  const [kelasList, setKelasList] = useState([]);
+  const [semesterList, setSemesterList] = useState([]);
 
   const fetchUserInfo = async () => {
     try {
@@ -73,15 +77,53 @@ const EditSubjectForm = ({
     }
   };
 
+  const fetchKelasList = async () => {
+    setTableLoading(true);
+    try {
+      const result = await getKelas();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setKelasList(content);
+      } else {
+        message.error("Gagal mengambil data");
+      }
+    } catch (error) {
+      message.error("Terjadi kesalahan: " + error.message);
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
+  const fetchSemesterList = async () => {
+    setTableLoading(true);
+    try {
+      const result = await getSemester();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setSemesterList(content);
+      } else {
+        message.error("Gagal mengambil data");
+      }
+    } catch (error) {
+      message.error("Terjadi kesalahan: " + error.message);
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchUserInfo();
     fetchSchoolList();
     fetchMapel();
+    fetchKelasList();
+    fetchSemesterList();
 
     if (currentRowData) {
       form.setFieldsValue({
         idMapel: currentRowData.idMapel,
         idSchool: currentRowData.school?.idSchool,
+        idKelas: currentRowData.kelas?.idKelas,
+        idSemester: currentRowData.semester?.idSemester,
         name: currentRowData.name,
       });
     }
@@ -132,6 +174,50 @@ const EditSubjectForm = ({
                       {nameSchool}
                     </Option>
                   ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Semester:"
+              name="idSemester"
+              rules={[{ required: true, message: "Silahkan pilih Semester" }]}
+            >
+              <Select
+                placeholder="Pilih Semester"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {semesterList.map(({ idSemester, namaSemester }) => (
+                  <Option key={idSemester} value={idSemester}>
+                    {namaSemester}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Kelas:"
+              name="idKelas"
+              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
+            >
+              <Select
+                placeholder="Pilih Kelas"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {kelasList.map(({ idKelas, namaKelas }) => (
+                  <Option key={idKelas} value={idKelas}>
+                    {namaKelas}
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
           </Col>
