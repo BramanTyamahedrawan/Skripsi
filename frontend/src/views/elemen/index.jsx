@@ -71,17 +71,6 @@ const Elemen = () => {
 
   const { Step } = Steps;
 
-  useEffect(() => {
-    const initializeData = async () => {
-      const userInfoResponse = await reqUserInfo();
-      const { id: userId } = userInfoResponse.data;
-
-      await getUserInfoJson(userId);
-    };
-
-    initializeData();
-  }, []);
-
   const fetchELemen = useCallback(async () => {
     setLoading(true);
     try {
@@ -100,10 +89,8 @@ const Elemen = () => {
   }, []);
 
   useEffect(() => {
-    if (userIdJson) {
-      fetchELemen();
-    }
-  }, [userIdJson, fetchELemen]);
+    fetchELemen();
+  }, [fetchELemen]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -134,7 +121,7 @@ const Elemen = () => {
         item?.tahunAjaran?.idTahun === selectedTahunAjaran &&
         item?.kelas?.idKelas === selectedKelas &&
         item?.semester?.idSemester === selectedSemester &&
-        (!selectedMapel || item?.mapel?.idMapel === selectedMapel) // Optional jika ingin bisa tampilkan semua mapel
+        (!selectedMapel || item?.mapel?.idMapel === selectedMapel)
     )
     .filter((item) => {
       const query = searchQuery.toLowerCase();
@@ -170,14 +157,6 @@ const Elemen = () => {
     elemen,
     allMapelList,
   ]);
-
-  const getUserInfoJson = async (userId) => {
-    const result = await getUserById(userId);
-    const { content, statusCode } = result.data;
-    if (statusCode === 200) {
-      setUserIdJson(content[0].school.idSchool); // Ubah dari userId ke schoolId
-    }
-  };
 
   const handleDelete = (row) => {
     const { idElemen } = row;
@@ -656,8 +635,9 @@ const Elemen = () => {
                       </Tag>
                       <Tag color="red">
                         Mapel:{" "}
-                        {allMapelList.find((m) => m.idMapel === selectedMapel)
-                          ?.name || "-"}
+                        {filteredMapelList.find(
+                          (m) => m.idMapel === selectedMapel
+                        )?.name || "-"}
                       </Tag>
                     </Space>
                   </Col>

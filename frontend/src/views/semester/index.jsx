@@ -56,17 +56,6 @@ const Semester = () => {
   const editSemesterFormRef = useRef();
   const addSemesterFormRef = useRef();
 
-  useEffect(() => {
-    const initializeData = async () => {
-      const userInfoResponse = await reqUserInfo();
-      const { id: userId } = userInfoResponse.data;
-
-      await getUserInfoJson(userId);
-    };
-
-    initializeData();
-  }, []);
-
   const fetchSemesters = useCallback(async () => {
     setLoading(true);
     try {
@@ -85,18 +74,8 @@ const Semester = () => {
   }, []);
 
   useEffect(() => {
-    if (userIdJson) {
-      fetchSemesters();
-    }
-  }, [userIdJson, fetchSemesters]);
-
-  const getUserInfoJson = async (userId) => {
-    const result = await getUserById(userId);
-    const { content, statusCode } = result.data;
-    if (statusCode === 200) {
-      setUserIdJson(content[0].school.idSchool); // Ubah dari userId ke schoolId
-    }
-  };
+    fetchSemesters();
+  }, [fetchSemesters]);
 
   const handleDeleteSemester = (row) => {
     const { idSemester } = row;

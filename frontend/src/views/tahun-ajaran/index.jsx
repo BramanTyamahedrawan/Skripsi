@@ -59,27 +59,13 @@ const TahunAjaran = () => {
   const editTahunAjaranFormRef = useRef();
   const addTahunAjaranFormRef = useRef();
 
-  useEffect(() => {
-    const initializeData = async () => {
-      const userInfoResponse = await reqUserInfo();
-      const { id: userId } = userInfoResponse.data;
-
-      await getUserInfoJson(userId);
-    };
-
-    initializeData();
-  }, []);
-
   const fetchTahunAjaran = useCallback(async () => {
     setLoading(true);
     try {
       const response = await getTahunAjaran();
       const { content, statusCode } = response.data;
       if (statusCode === 200) {
-        const filteredContent = content.filter(
-          (item) => item.school?.idSchool == userIdJson
-        );
-        setTahunAjaran(filteredContent);
+        setTahunAjaran(content);
       } else {
         message.error("Gagal mendapatkan data: " + response.message);
       }
@@ -88,29 +74,11 @@ const TahunAjaran = () => {
     } finally {
       setLoading(false);
     }
-  }, [userIdJson]);
+  }, []);
 
   useEffect(() => {
-    if (userIdJson) {
-      fetchTahunAjaran();
-    }
-  }, [userIdJson, fetchTahunAjaran]);
-
-  const filteredData = tahunAjaran.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (item?.tahun?.toLowerCase() || "").includes(query) ||
-      (item?.nameSchool?.toLowerCase() || "").includes(query)
-    );
-  });
-
-  const getUserInfoJson = async (userId) => {
-    const result = await getUserById(userId);
-    const { content, statusCode } = result.data;
-    if (statusCode === 200) {
-      setUserIdJson(content[0].school.idSchool); // Ubah dari userId ke schoolId
-    }
-  };
+    fetchTahunAjaran();
+  }, [fetchTahunAjaran]);
 
   const handleDeleteTahunAjaran = (row) => {
     const { idTahun } = row;
@@ -339,7 +307,7 @@ const TahunAjaran = () => {
   const renderTable = () => (
     <Table
       rowKey="idTahun"
-      dataSource={filteredData}
+      dataSource={tahunAjaran}
       columns={renderColumns()}
       pagination={{ pageSize: 10 }}
     />

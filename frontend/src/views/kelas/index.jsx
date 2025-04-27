@@ -49,27 +49,13 @@ const Kelas = () => {
   const editKelasFormRef = useRef();
   const addKelasFormRef = useRef();
 
-  useEffect(() => {
-    const initializeData = async () => {
-      const userInfoResponse = await reqUserInfo();
-      const { id: userId } = userInfoResponse.data;
-
-      await getUserInfoJson(userId);
-    };
-
-    initializeData();
-  }, []);
-
   const fetchKelas = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getKelas();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        const filteredContent = content.filter(
-          (item) => item.school?.idSchool === userIdJson
-        );
-        setKelas(filteredContent);
+        setKelas(content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -78,29 +64,11 @@ const Kelas = () => {
     } finally {
       setLoading(false);
     }
-  }, [userIdJson]);
+  }, []);
 
   useEffect(() => {
-    if (userIdJson) {
-      fetchKelas();
-    }
-  }, [userIdJson, fetchKelas]);
-
-  const filteredData = kelas.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (item?.namaKelas?.toLowerCase() || "").includes(query) ||
-      (item?.nameSchool?.toLowerCase() || "").includes(query)
-    );
-  });
-
-  const getUserInfoJson = async (userId) => {
-    const result = await getUserById(userId);
-    const { content, statusCode } = result.data;
-    if (statusCode === 200) {
-      setUserIdJson(content[0].school.idSchool); // Ubah dari userId ke schoolId
-    }
-  };
+    fetchKelas();
+  }, [fetchKelas]);
 
   const handleDeleteKelas = (row) => {
     const { idKelas } = row;
@@ -329,7 +297,7 @@ const Kelas = () => {
   const renderTable = () => (
     <Table
       rowKey="idKelas"
-      dataSource={filteredData}
+      dataSource={kelas}
       columns={renderColumns()}
       pagination={{ pageSize: 10 }}
     />
