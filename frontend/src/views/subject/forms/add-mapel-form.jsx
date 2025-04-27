@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Form, Input, Modal, Select, Tabs, Row, Col, message } from "antd";
 import { getMapel } from "@/api/mapel";
+import { getTahunAjaran } from "@/api/tahun-ajaran";
 import { getKelas } from "@/api/kelas";
 import { getSemester } from "@/api/semester";
 import { getSchool } from "@/api/school";
@@ -21,6 +22,7 @@ const AddSubjectForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const [schoolList, setSchoolList] = useState([]);
   const [kelasList, setKelasList] = useState([]);
   const [semesterList, setSemesterList] = useState([]);
+  const [tahunAjaranList, setTahunAjaranList] = useState([]);
 
   const fetchUserInfo = async () => {
     try {
@@ -96,12 +98,30 @@ const AddSubjectForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     }
   };
 
+  const fetchTahunAjaranList = async () => {
+    setTableLoading(true);
+    try {
+      const result = await getTahunAjaran();
+      const { content, statusCode } = result.data;
+      if (statusCode === 200) {
+        setTahunAjaranList(content);
+      } else {
+        message.error("Gagal mengambil data");
+      }
+    } catch (error) {
+      message.error("Terjadi kesalahan: " + error.message);
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchUserInfo();
     fetchSchoolList();
     fetchMapel();
     fetchKelasList();
     fetchSemesterList();
+    fetchTahunAjaranList();
   }, []);
 
   useEffect(() => {
@@ -149,6 +169,30 @@ const AddSubjectForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                       {nameSchool}
                     </Option>
                   ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Tahun Ajaran:"
+              name="idTahun"
+              rules={[
+                { required: true, message: "Silahkan pilih Tahun Ajaran" },
+              ]}
+            >
+              <Select
+                placeholder="Pilih Tahun Ajaran"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {tahunAjaranList.map(({ idTahun, tahunAjaran }) => (
+                  <Option key={idTahun} value={idTahun}>
+                    {tahunAjaran}
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
           </Col>

@@ -360,25 +360,25 @@ const Semester = () => {
 
           {/* Tabel */}
           {renderTable()}
+
+          <AddSemesterForm
+            wrappedComponentRef={addSemesterFormRef}
+            visible={addSemesterModalVisible}
+            confirmLoading={addSemesterModalLoading}
+            onCancel={handleCancel}
+            onOk={handleAddSemesterOk}
+          />
+
+          <EditSemesterForm
+            wrappedComponentRef={editSemesterFormRef}
+            currentRowData={currentRowData}
+            visible={editSemesterModalVisible}
+            confirmLoading={editSemesterModalLoading}
+            onCancel={handleCancel}
+            onOk={handleEditSemesterOk}
+          />
         </Card>
       )}
-
-      <AddSemesterForm
-        wrappedComponentRef={addSemesterFormRef}
-        visible={addSemesterModalVisible}
-        confirmLoading={addSemesterModalLoading}
-        onCancel={handleCancel}
-        onOk={handleAddSemesterOk}
-      />
-
-      <EditSemesterForm
-        wrappedComponentRef={editSemesterFormRef}
-        currentRowData={currentRowData}
-        visible={editSemesterModalVisible}
-        confirmLoading={editSemesterModalLoading}
-        onCancel={handleCancel}
-        onOk={handleEditSemesterOk}
-      />
 
       <Modal
         title="Import File"

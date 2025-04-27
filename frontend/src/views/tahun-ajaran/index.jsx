@@ -371,25 +371,25 @@ const TahunAjaran = () => {
 
           {/* Tabel */}
           {renderTable()}
+
+          <AddTahunAjaranForm
+            wrappedComponentRef={addTahunAjaranFormRef}
+            visible={addTahunAjaranModalVisible}
+            confirmLoading={addTahunAjaranModalLoading}
+            onCancel={handleCancel}
+            onOk={handleAddTahunAjaranOk}
+          />
+
+          <EditTahunAjaranForm
+            wrappedComponentRef={editTahunAjaranFormRef}
+            currentRowData={currentRowData}
+            visible={editTahunAjaranModalVisible}
+            confirmLoading={editTahunAjaranModalLoading}
+            onCancel={handleCancel}
+            onOk={handleEditTahunAjaranOk}
+          />
         </Card>
       )}
-
-      <AddTahunAjaranForm
-        wrappedComponentRef={addTahunAjaranFormRef}
-        visible={addTahunAjaranModalVisible}
-        confirmLoading={addTahunAjaranModalLoading}
-        onCancel={handleCancel}
-        onOk={handleAddTahunAjaranOk}
-      />
-
-      <EditTahunAjaranForm
-        wrappedComponentRef={editTahunAjaranFormRef}
-        currentRowData={currentRowData}
-        visible={editTahunAjaranModalVisible}
-        confirmLoading={editTahunAjaranModalLoading}
-        onCancel={handleCancel}
-        onOk={handleEditTahunAjaranOk}
-      />
     </div>
   );
 };

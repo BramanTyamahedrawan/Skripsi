@@ -24,6 +24,7 @@ import {
 import { getMapel, deleteMapel, addMapel, editMapel } from "@/api/mapel";
 import { getKelas } from "@/api/kelas";
 import { getSemester } from "@/api/semester";
+import { getTahunAjaran } from "@/api/tahun-ajaran";
 import TypingCard from "@/components/TypingCard";
 import AddMapelForm from "./forms/add-mapel-form";
 import EditMapelForm from "./forms/edit-mapel-form";
@@ -48,8 +49,10 @@ const Mapel = () => {
   const [searchedColumn, setSearchedColumn] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [selectedTahunAjaran, setSelectedTahunAjaran] = useState(null);
   const [selectedKelas, setSelectedKelas] = useState(null);
   const [selectedSemester, setSelectedSemester] = useState(null);
+  const [tahunAjaranList, setTahunAjaranList] = useState([]);
   const [kelasList, setKelasList] = useState([]);
   const [semesterList, setSemesterList] = useState([]);
 
@@ -82,48 +85,53 @@ const Mapel = () => {
   }, [fetchMapel]);
 
   useEffect(() => {
-    const fetchKelasAndSemester = async () => {
+    const fetchTahunAjaranAndKelasAndSemester = async () => {
+      setLoading(true);
       try {
+        const tahunAjaranResult = await getTahunAjaran();
         const kelasResult = await getKelas();
         const semesterResult = await getSemester();
 
+        if (tahunAjaranResult.data.statusCode === 200) {
+          let tahunAjaranContent = tahunAjaranResult.data.content || [];
+          // Urutkan berdasarkan createdAt ASCENDING
+          tahunAjaranContent.sort(
+            (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+          );
+          setTahunAjaranList(tahunAjaranContent);
+
+          // JANGAN setSelectedTahunAjaran di sini
+        }
+
         if (kelasResult.data.statusCode === 200) {
           let kelasContent = kelasResult.data.content || [];
-
-          // Urutkan berdasarkan createdAt ASCENDING
           kelasContent.sort(
             (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
           );
-
           setKelasList(kelasContent);
 
-          if (kelasContent.length > 0) {
-            setSelectedKelas(kelasContent[0].idKelas);
-          }
+          // JANGAN setSelectedKelas di sini
         }
 
         if (semesterResult.data.statusCode === 200) {
           let semesterContent = semesterResult.data.content || [];
-
-          // Urutkan berdasarkan createdAt ASCENDING
           semesterContent.sort(
             (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
           );
-
           setSemesterList(semesterContent);
 
-          if (semesterContent.length > 0) {
-            setSelectedSemester(semesterContent[0].idSemester);
-          }
+          // JANGAN setSelectedSemester di sini
         }
       } catch (error) {
         message.error(
           "Gagal mengambil data kelas atau semester: " + error.message
         );
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchKelasAndSemester();
+    fetchTahunAjaranAndKelasAndSemester();
   }, []);
 
   const handleDeleteMapel = (row) => {
@@ -162,6 +170,7 @@ const Mapel = () => {
         idMapel: null,
         name: values.name,
         idSekolah: values.idSchool,
+        idTahun: values.idTahun,
         idKelas: values.idKelas,
         idSemester: values.idSemester,
       };
@@ -185,6 +194,7 @@ const Mapel = () => {
         idMapel: values.idMapel,
         name: values.name,
         idSekolah: values.idSchool,
+        idTahun: values.idTahun,
         idKelas: values.idKelas,
         idSemester: values.idSemester,
       };
@@ -315,13 +325,16 @@ const Mapel = () => {
 
   const getFilteredMapelList = () => {
     return mapel.filter((item) => {
+      const matchTahunAjaran = selectedTahunAjaran
+        ? item.tahunAjaran?.idTahun === selectedTahunAjaran
+        : true;
       const matchKelas = selectedKelas
         ? item.kelas?.idKelas === selectedKelas
         : true;
       const matchSemester = selectedSemester
         ? item.semester?.idSemester === selectedSemester
         : true;
-      return matchKelas && matchSemester;
+      return matchTahunAjaran && matchKelas && matchSemester;
     });
   };
 
@@ -332,6 +345,15 @@ const Mapel = () => {
       key: "index",
       align: "center",
       render: (_, __, index) => index + 1,
+    },
+    {
+      title: "Tahun Ajaran",
+      dataIndex: ["tahunAjaran", "tahunAjaran"],
+      key: "tahunAjaran",
+      align: "center",
+      ...getColumnSearchProps("tahunAjaran", "tahunAjaran.tahunAjaran"),
+      sorter: (a, b) =>
+        a.tahunAjaran.tahunAjaran.localeCompare(b.tahunAjaran.tahunAjaran),
     },
     {
       title: "Semester",
@@ -406,6 +428,24 @@ const Mapel = () => {
         >
           Import File
         </Button>
+      </Col>
+      <Col>
+        <Select
+          placeholder="Pilih Tahun Ajaran"
+          value={selectedTahunAjaran}
+          style={{ width: 150 }}
+          onChange={(value) => setSelectedTahunAjaran(value)}
+          allowClear
+        >
+          {tahunAjaranList.map((tahunAjaran) => (
+            <Select.Option
+              key={tahunAjaran.idTahun}
+              value={tahunAjaran.idTahun}
+            >
+              {tahunAjaran.tahunAjaran}
+            </Select.Option>
+          ))}
+        </Select>
       </Col>
       <Col>
         <Select
