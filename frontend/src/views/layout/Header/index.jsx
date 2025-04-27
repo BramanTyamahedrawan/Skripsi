@@ -20,14 +20,20 @@ const LayoutHeader = (props) => {
 
   useEffect(() => {
     // Fetch user info
-    reqUserInfo()
-      .then((response) => {
-        setUser(response.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching user data:", error);
-      });
-
+    const fetchUserInfo = async () => {
+      try {
+        const response = await reqUserInfo();
+        if (response && response.data) {
+          setUser(response.data);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+        setUser(null);
+      }
+    };
+    fetchUserInfo();
     const { token, getUserInfo } = props;
     if (token) getUserInfo(token);
   }, [props]);
@@ -70,21 +76,14 @@ const LayoutHeader = (props) => {
   const menu = (
     <Menu onClick={onClick}>
       {user ? (
-        <div>
-          <p
-            style={{
-              maxWidth: 180,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {user.name}
-          </p>
+        <div style={{ padding: "8px 12px", minWidth: "220px" }}>
+          <h3>{user.name}</h3>
+          <h3>{user.roles.replace("ROLE_", "").toLowerCase()}</h3>
         </div>
       ) : (
         <p>Loading...</p>
       )}
+      <Menu.Divider />
       <Menu.Item key="dashboard">
         <Link to="/dashboard">Home</Link>
       </Menu.Item>
@@ -103,12 +102,24 @@ const LayoutHeader = (props) => {
       >
         <Hamburger />
         {sidebarCollapsed ? <></> : <BreadCrumb />}
-        <div className="right-menu">
+        <div
+          className="right-menu"
+          style={{ display: "flex", alignItems: "center" }}
+        >
           <FullScreen />
-          {/* {props.showSettings && <Settings />} */}
+          {user && (
+            <div
+              style={{
+                margin: "0 16px",
+                fontWeight: "bold",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {user.schoolName}
+            </div>
+          )}
           <div className="dropdown-wrap">
             <Dropdown overlay={menu} destroyPopupOnHide>
-              {/* Wrap children in a single container */}
               <div style={{ display: "flex", alignItems: "center" }}>
                 {user ? (
                   <Avatar

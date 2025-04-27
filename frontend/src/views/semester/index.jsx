@@ -73,10 +73,10 @@ const Semester = () => {
       const result = await getSemester();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        const filteredContent = content.filter(
-          (item) => item.school?.idSchool === userIdJson
-        );
-        setSemesters(filteredContent);
+        // const filteredContent = content.filter(
+        //   (item) => item.school?.idSchool === userIdJson
+        // );
+        setSemesters(content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -85,21 +85,13 @@ const Semester = () => {
     } finally {
       setLoading(false);
     }
-  }, [userIdJson]);
+  }, []);
 
   useEffect(() => {
     if (userIdJson) {
       fetchSemesters();
     }
   }, [userIdJson, fetchSemesters]);
-
-  const filteredData = semesters.filter((item) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      (item?.namaSemester?.toLowerCase() || "").includes(query) ||
-      (item?.nameSchool?.toLowerCase() || "").includes(query)
-    );
-  });
 
   const getUserInfoJson = async (userId) => {
     const result = await getUserById(userId);
@@ -339,7 +331,7 @@ const Semester = () => {
   const renderTable = () => (
     <Table
       rowKey="idSemester"
-      dataSource={filteredData}
+      dataSource={semesters}
       columns={renderColumns()}
       pagination={{ pageSize: 10 }}
     />
