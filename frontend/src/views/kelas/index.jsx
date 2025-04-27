@@ -302,14 +302,6 @@ const Kelas = () => {
       sorter: (a, b) => a.namaKelas.localeCompare(b.namaKelas),
     },
     {
-      title: "Sekolah",
-      dataIndex: ["school", "nameSchool"],
-      key: "nameSchool",
-      align: "center",
-      ...getColumnSearchProps("nameSchool", "school.nameSchool"),
-      sorter: (a, b) => a.school.nameSchool.localeCompare(b.school.nameSchool),
-    },
-    {
       title: "Operasi",
       key: "action",
       align: "center",

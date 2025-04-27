@@ -402,14 +402,6 @@ const ACP = () => {
       sorter: (a, b) => a.elemen.namaElemen.localeCompare(b.elemen.namaElemen),
     },
     {
-      title: "Sekolah",
-      dataIndex: ["school", "nameSchool"],
-      key: "nameSchool",
-      align: "center",
-      ...getColumnSearchProps("nameSchool", "school.nameSchool"),
-      sorter: (a, b) => a.school.nameSchool.localeCompare(b.school.nameSchool),
-    },
-    {
       title: "Konsentrasi Keahlian Sekolah",
       dataIndex: ["konsentrasiKeahlianSekolah", "namaKonsentrasiSekolah"],
       key: "namaKonsentrasiSekolah",
