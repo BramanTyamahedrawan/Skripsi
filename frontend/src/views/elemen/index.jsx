@@ -21,8 +21,6 @@ import {
   EditOutlined,
   DeleteOutlined,
   UploadOutlined,
-  SearchOutlined,
-  ArrowLeftOutlined,
 } from "@ant-design/icons";
 import {
   fetchInitialData,
@@ -73,8 +71,6 @@ const Elemen = () => {
 
   // Fungsi Helper Table Search
   const { getColumnSearchProps } = useTableSearch();
-
-  const searchInput = useRef(null);
 
   const addFormRef = useRef(null);
   const editFormRef = useRef(null);
