@@ -10,6 +10,7 @@ import { getMapel } from "@/api/mapel";
 import { getKonsentrasiSekolah } from "@/api/konsentrasiKeahlianSekolah";
 import { getSchool } from "@/api/school";
 import { reqUserInfo } from "@/api/user";
+import { useFormFilter } from "@/helper/formFilterMapelHelperAdd";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -28,6 +29,8 @@ const AddElemen = ({ visible, onCancel, onOk, confirmLoading }) => {
     useState([]);
   const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
   const [schoolList, setSchoolList] = useState([]);
+
+  const [initialData, setInitialData] = useState(null);
 
   const fetchUserInfo = async () => {
     try {
@@ -143,6 +146,42 @@ const AddElemen = ({ visible, onCancel, onOk, confirmLoading }) => {
     }
   };
 
+  const {
+    renderTahunAjaranSelect,
+    renderSemesterSelect,
+    renderKelasSelect,
+    renderMapelSelect,
+  } = useFormFilter(initialData);
+
+  // Fetch data awal
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setTableLoading(true);
+        const [tahunAjaranRes, semesterRes, kelasRes, mapelRes] =
+          await Promise.all([
+            getTahunAjaran(),
+            getSemester(),
+            getKelas(),
+            getMapel(),
+          ]);
+
+        setInitialData({
+          tahunAjaranList: tahunAjaranRes.data.content || [],
+          semesterList: semesterRes.data.content || [],
+          kelasList: kelasRes.data.content || [],
+          mapelList: mapelRes.data.content || [],
+        });
+      } catch (error) {
+        message.error("Gagal memuat data");
+      } finally {
+        setTableLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   useEffect(() => {
     fetchUserInfo();
     fetchElemen();
@@ -235,94 +274,16 @@ const AddElemen = ({ visible, onCancel, onOk, confirmLoading }) => {
             </Form.Item>
           </Col>
           <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Tahun Ajaran:"
-              name="idTahun"
-              rules={[
-                { required: true, message: "Silahkan pilih Tahun Ajaran" },
-              ]}
-            >
-              <Select
-                placeholder="Pilih Tahun Ajaran"
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
-              >
-                {tahunAjaranList.map(({ idTahun, tahunAjaran }) => (
-                  <Option key={idTahun} value={idTahun}>
-                    {tahunAjaran}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
+            {renderTahunAjaranSelect(form)}
           </Col>
           <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Semester:"
-              name="idSemester"
-              rules={[{ required: true, message: "Silahkan pilih Semester" }]}
-            >
-              <Select
-                placeholder="Pilih Semester"
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
-              >
-                {semesterList.map(({ idSemester, namaSemester }) => (
-                  <Option key={idSemester} value={idSemester}>
-                    {namaSemester}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
+            {renderSemesterSelect(form)}
           </Col>
           <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Kelas:"
-              name="idKelas"
-              rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
-            >
-              <Select
-                placeholder="Pilih Kelas"
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
-              >
-                {kelasList.map(({ idKelas, namaKelas }) => (
-                  <Option key={idKelas} value={idKelas}>
-                    {namaKelas}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
+            {renderKelasSelect(form)}
           </Col>
           <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Mapel:"
-              name="idMapel"
-              rules={[{ required: true, message: "Silahkan pilih Mapel" }]}
-            >
-              <Select
-                placeholder="Pilih Mapel"
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
-              >
-                {mapelList.map(({ idMapel, name }) => (
-                  <Option key={idMapel} value={idMapel}>
-                    {name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
+            {renderMapelSelect(form)}
           </Col>
           <Col xs={24} sm={24} md={12}>
             <Form.Item
