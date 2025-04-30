@@ -227,7 +227,7 @@ const ACP = () => {
         idTahun: values.idTahun,
         idSemester: values.idSemester,
         idMapel: values.idMapel,
-        idSchool: userIdJson,
+        idSchool: values.idSchool,
       };
       console.log("respon data", updatedValues);
       await addACP(updatedValues);
@@ -253,6 +253,7 @@ const ACP = () => {
         idTahun: values.idTahun,
         idSemester: values.idSemester,
         idMapel: values.idMapel,
+        idSchool: values.idSchool,
       };
 
       console.log("respon data", updatedValues);
