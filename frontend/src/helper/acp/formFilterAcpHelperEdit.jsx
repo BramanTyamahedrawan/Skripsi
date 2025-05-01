@@ -2,17 +2,19 @@
 import { useState, useEffect } from "react";
 import { Form, Select } from "antd";
 
-export const useFormFilterEditElemen = (currentRowData, initialData) => {
+export const useFormFilterEditAcp = (currentRowData, initialData) => {
   const [filterState, setFilterState] = useState({
     tahunAjaranList: [],
     semesterList: [],
     kelasList: [],
     mapelList: [],
     elemenList: [],
+    acpList: [],
     availableSemesters: [],
     availableKelas: [],
     availableMapels: [],
     availableElemen: [],
+    availableAcp: [],
   });
 
   // Inisialisasi data
@@ -24,13 +26,15 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
         kelasList,
         mapelList,
         elemenList,
+        acpList,
       } = initialData;
 
       const availableSemesters = getAvailableSemesters(
         currentRowData?.tahunAjaran?.idTahun,
         semesterList,
         mapelList,
-        elemenList
+        elemenList,
+        acpList
       );
 
       const availableKelas = getAvailableKelas(
@@ -38,7 +42,8 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
         currentRowData?.semester?.idSemester,
         kelasList,
         mapelList,
-        elemenList
+        elemenList,
+        acpList
       );
 
       const availableMapels = getAvailableMapels(
@@ -46,7 +51,8 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
         currentRowData?.semester?.idSemester,
         currentRowData?.kelas?.idKelas,
         mapelList,
-        elemenList
+        elemenList,
+        acpList
       );
 
       const availableElemen = getAvailableElemen(
@@ -54,7 +60,17 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
         currentRowData?.semester?.idSemester,
         currentRowData?.kelas?.idKelas,
         currentRowData?.mapel?.idMapel,
-        elemenList
+        elemenList,
+        acpList
+      );
+
+      const availableAcp = getAvailableAcp(
+        currentRowData?.tahunAjaran?.idTahun,
+        currentRowData?.semester?.idSemester,
+        currentRowData?.kelas?.idKelas,
+        currentRowData?.mapel?.idMapel,
+        currentRowData?.elemen?.idElemen,
+        acpList
       );
 
       setFilterState({
@@ -63,39 +79,36 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
         kelasList,
         mapelList,
         elemenList,
+        acpList,
         availableSemesters,
         availableKelas,
         availableMapels,
         availableElemen,
+        availableAcp,
       });
     }
   }, [initialData, currentRowData]);
 
-  const getAvailableSemesters = (tahunAjaranId, semesterList, elemenList) => {
+  const getAvailableSemesters = (tahunAjaranId, semesterList, acpList) => {
     if (!tahunAjaranId) return [];
     return semesterList.filter((semester) =>
-      elemenList.some(
-        (elemen) =>
-          elemen.tahunAjaran?.idTahun === tahunAjaranId &&
-          elemen.semester?.idSemester === semester.idSemester
+      acpList.some(
+        (acp) =>
+          acp.tahunAjaran?.idTahun === tahunAjaranId &&
+          acp.semester?.idSemester === semester.idSemester
       )
     );
   };
 
-  const getAvailableKelas = (
-    tahunAjaranId,
-    semesterId,
-    kelasList,
-    elemenList
-  ) => {
+  const getAvailableKelas = (tahunAjaranId, semesterId, kelasList, acpList) => {
     if (!tahunAjaranId || !semesterId) return [];
 
     return kelasList.filter((kelas) =>
-      elemenList.some(
-        (elemen) =>
-          elemen.tahunAjaran?.idTahun === tahunAjaranId &&
-          elemen.semester?.idSemester === semesterId &&
-          elemen.kelas?.idKelas === kelas.idKelas
+      acpList.some(
+        (acp) =>
+          acp.tahunAjaran?.idTahun === tahunAjaranId &&
+          acp.semester?.idSemester === semesterId &&
+          acp.kelas?.idKelas === kelas.idKelas
       )
     );
   };
@@ -105,17 +118,17 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
     semesterId,
     kelasId,
     mapelList,
-    elemenList
+    acpList
   ) => {
     if (!tahunAjaranId || !semesterId || !kelasId) return [];
 
     return mapelList.filter((mapel) =>
-      elemenList.some(
-        (elemen) =>
-          elemen.tahunAjaran?.idTahun === tahunAjaranId &&
-          elemen.semester?.idSemester === semesterId &&
-          elemen.kelas?.idKelas === kelasId &&
-          elemen.mapel?.idMapel === mapel.idMapel
+      acpList.some(
+        (acp) =>
+          acp.tahunAjaran?.idTahun === tahunAjaranId &&
+          acp.semester?.idSemester === semesterId &&
+          acp.kelas?.idKelas === kelasId &&
+          acp.mapel?.idMapel === mapel.idMapel
       )
     );
   };
@@ -125,16 +138,41 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
     semesterId,
     kelasId,
     mapelId,
-    elemenList
+    elemenList,
+    acpList
   ) => {
     if (!tahunAjaranId || !semesterId || !kelasId || !mapelId) return [];
 
-    const filtered = elemenList.filter(
-      (elemen) =>
-        elemen.tahunAjaran?.idTahun === tahunAjaranId &&
-        elemen.semester?.idSemester === semesterId &&
-        elemen.kelas?.idKelas === kelasId &&
-        elemen.mapel?.idMapel === mapelId
+    return elemenList.filter((elemen) =>
+      acpList.some(
+        (acp) =>
+          acp.tahunAjaran?.idTahun === tahunAjaranId &&
+          acp.semester?.idSemester === semesterId &&
+          acp.kelas?.idKelas === kelasId &&
+          acp.mapel?.idMapel === mapelId &&
+          acp.elemen?.idElemen === elemen.idElemen
+      )
+    );
+  };
+
+  const getAvailableAcp = (
+    tahunAjaranId,
+    semesterId,
+    kelasId,
+    mapelId,
+    elemenId,
+    acpList
+  ) => {
+    if (!tahunAjaranId || !semesterId || !kelasId || !mapelId || !elemenId)
+      return [];
+
+    const filtered = acpList.filter(
+      (acp) =>
+        acp.tahunAjaran?.idTahun === tahunAjaranId &&
+        acp.semester?.idSemester === semesterId &&
+        acp.kelas?.idKelas === kelasId &&
+        acp.mapel?.idMapel === mapelId &&
+        acp.elemen?.idElemen === elemenId
     );
 
     return filtered.reduce((acc, current) => {
@@ -158,11 +196,12 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
             idKelas: null,
             idMapel: null,
             idElemen: null,
+            idAcp: null,
           });
           const availableSemesters = getAvailableSemesters(
             idTahun,
             filterState.semesterList,
-            filterState.elemenList
+            filterState.acpList
           );
           setFilterState((prev) => ({
             ...prev,
@@ -170,6 +209,7 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
             availableKelas: [],
             availableMapels: [],
             availableElemen: [],
+            availableAcp: [],
           }));
         }}
       >
@@ -198,18 +238,20 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
               idKelas: null,
               idMapel: null,
               idElemen: null,
+              idAcp: null,
             });
             const availableKelas = getAvailableKelas(
               form.getFieldValue("idTahun"),
               idSemester,
               filterState.kelasList,
-              filterState.elemenList
+              filterState.acpList
             );
             setFilterState((prev) => ({
               ...prev,
               availableKelas,
               availableMapels: [],
               availableElemen: [],
+              availableAcp: [],
             }));
           }}
         >
@@ -238,18 +280,19 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
           placeholder="Pilih Kelas"
           disabled={!selectedTahun || !selectedSemester}
           onChange={(idKelas) => {
-            form.setFieldsValue({ idMapel: null, idElemen: null });
+            form.setFieldsValue({ idMapel: null, idElemen: null, idAcp: null });
             const availableMapels = getAvailableMapels(
               form.getFieldValue("idTahun"),
               form.getFieldValue("idSemester"),
               idKelas,
               filterState.mapelList,
-              filterState.elemenList
+              filterState.acpList
             );
             setFilterState((prev) => ({
               ...prev,
               availableMapels,
               availableElemen: [],
+              availableAcp: [],
             }));
           }}
         >
@@ -277,17 +320,19 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
           placeholder="Pilih Mapel"
           disabled={!selectedTahun || !selectedSemester || !selectedKelas}
           onChange={(idMapel) => {
-            form.setFieldsValue({ idElemen: null });
+            form.setFieldsValue({ idElemen: null, idAcp: null });
             const availableElemen = getAvailableElemen(
               form.getFieldValue("idTahun"),
               form.getFieldValue("idSemester"),
               form.getFieldValue("idKelas"),
               idMapel,
-              filterState.elemenList
+              filterState.elemenList,
+              filterState.acpList
             );
             setFilterState((prev) => ({
               ...prev,
               availableElemen,
+              availableAcp: [],
             }));
           }}
         >
@@ -301,19 +346,69 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
     );
   };
 
-  const renderElemenSelect = (form) => (
+  const renderElemenSelect = (form) => {
+    const selectedTahun = form.getFieldValue("idTahun");
+    const selectedSemester = form.getFieldValue("idSemester");
+    const selectedKelas = form.getFieldValue("idKelas");
+    const selectedMapel = form.getFieldValue("idMapel");
+    return (
+      <Form.Item
+        label="Elemen"
+        name="idElemen"
+        rules={[{ required: true, message: "Silahkan pilih Elemen" }]}
+      >
+        <Select
+          placeholder="Pilih Elemen"
+          disabled={
+            !selectedTahun ||
+            !selectedSemester ||
+            !selectedKelas ||
+            !selectedMapel
+          }
+          onChange={(idElemen) => {
+            form.setFieldsValue({ idAcp: null });
+            const availableAcp = getAvailableAcp(
+              form.getFieldValue("idTahun"),
+              form.getFieldValue("idSemester"),
+              form.getFieldValue("idKelas"),
+              form.getFieldValue("idMapel"),
+              idElemen,
+              filterState.acpList
+            );
+            setFilterState((prev) => ({
+              ...prev,
+              availableAcp,
+            }));
+          }}
+        >
+          {filterState.availableElemen.map(({ idElemen, namaElemen }) => (
+            <Select.Option key={idElemen} value={idElemen}>
+              {namaElemen}
+            </Select.Option>
+          ))}
+        </Select>
+      </Form.Item>
+    );
+  };
+
+  const renderAcpSelect = (form) => (
     <Form.Item
-      label="Elemen"
-      name="idElemen"
-      rules={[{ required: true, message: "Silahkan pilih Elemen" }]}
+      label="Acp"
+      name="idAcp"
+      rules={[
+        {
+          required: true,
+          message: "Silahkan pilih Analisi Capaian Pembelajaran",
+        },
+      ]}
     >
       <Select
-        placeholder="Pilih Elemen"
-        disabled={filterState.availableElemen.length === 0}
+        placeholder="Pilih Acp"
+        disabled={filterState.availableAcp.length === 0}
       >
-        {filterState.availableElemen.map(({ idElemen, namaElemen }) => (
-          <Select.Option key={idElemen} value={idElemen}>
-            {namaElemen}
+        {filterState.availableAcp.map(({ idAcp, namaAcp }) => (
+          <Select.Option key={idAcp} value={idAcp}>
+            {namaAcp}
           </Select.Option>
         ))}
       </Select>
@@ -327,5 +422,6 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
     renderKelasSelect,
     renderMapelSelect,
     renderElemenSelect,
+    renderAcpSelect,
   };
 };
