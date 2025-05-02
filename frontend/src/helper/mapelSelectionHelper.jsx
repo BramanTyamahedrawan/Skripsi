@@ -294,11 +294,11 @@ export const renderActiveFilters = ({
               {kelasList.find((k) => k.idKelas === selectedKelas)?.namaKelas ||
                 "-"}
             </Tag>
-            <Tag color="red">
+            {/* <Tag color="red">
               Mapel:{" "}
               {filteredMapelList.find((m) => m.idMapel === selectedMapel)
                 ?.name || "-"}
-            </Tag>
+            </Tag> */}
           </Space>
         </Col>
       </Row>

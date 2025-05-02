@@ -96,6 +96,12 @@ const menuList = [
       //   roles: ["ROLE_OPERATOR"],
       // },
       {
+        title: "Tahun Ajaran",
+        path: "/tahun-ajaran",
+        icon: AuditOutlined,
+        roles: ["ROLE_OPERATOR"],
+      },
+      {
         title: "Semester",
         path: "/semester",
         icon: AuditOutlined,
@@ -108,8 +114,20 @@ const menuList = [
       //   roles: ["ROLE_OPERATOR"],
       // },
       {
+        title: "Kelas",
+        path: "/kelas",
+        icon: AuditOutlined,
+        roles: ["ROLE_OPERATOR"],
+      },
+      {
         title: "Mata Pelajaran",
         path: "/subject",
+        icon: AuditOutlined,
+        roles: ["ROLE_OPERATOR"],
+      },
+      {
+        title: "Modul",
+        path: "/modul",
         icon: AuditOutlined,
         roles: ["ROLE_OPERATOR"],
       },
@@ -119,18 +137,6 @@ const menuList = [
       //   icon: BranchesOutlined,
       //   roles: ["ROLE_OPERATOR"],
       // },
-      {
-        title: "Kelas",
-        path: "/kelas",
-        icon: AuditOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
-      {
-        title: "Tahun Ajaran",
-        path: "/tahun-ajaran",
-        icon: AuditOutlined,
-        roles: ["ROLE_OPERATOR"],
-      },
       // {
       //   title: "Kelas Ajaran",
       //   path: "/season",

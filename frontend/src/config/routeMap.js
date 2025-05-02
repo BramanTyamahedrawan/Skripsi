@@ -235,6 +235,9 @@ const Semester = React.lazy(() =>
 const TahunAjaran = React.lazy(() =>
   import(/*webpackChunkName:'TahunAjaran'*/ "@/views/tahun-ajaran")
 );
+const Modul = React.lazy(() =>
+  import(/*webpackChunkName:'Modul'*/ "@/views/modul")
+);
 // const Season = React.lazy(() =>
 //   import(/*webpackChunkName:'Season'*/ "@/views/season")
 // );
@@ -411,6 +414,7 @@ export default [
   { path: "/semester", component: Semester, roles: ["ROLE_OPERATOR"] },
   { path: "/tahun-ajaran", component: TahunAjaran, roles: ["ROLE_OPERATOR"] },
   // { path: "/season", component: Season, roles: ["ROLE_OPERATOR"] },
+  { path: "/modul", component: Modul, roles: ["ROLE_OPERATOR"] },
   { path: "/elemen", component: Elemen, roles: ["ROLE_OPERATOR"] },
   { path: "/acp", component: ACP, roles: ["ROLE_OPERATOR"] },
   { path: "/atp", component: ATP, roles: ["ROLE_OPERATOR"] },

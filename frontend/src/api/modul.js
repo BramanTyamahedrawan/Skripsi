@@ -1,31 +1,31 @@
 import request from "@/utils/request";
 
-export function addMapel(data) {
+export function addModul(data) {
   return request({
-    url: "/mapel",
+    url: "/modul",
     method: "post",
     data,
   });
 }
 
-export function getMapel() {
+export function getModul() {
   return request({
-    url: "/mapel",
+    url: "/modul",
     method: "get",
   });
 }
 
-export function editMapel(data, id) {
+export function editModul(data, id) {
   return request({
-    url: `/mapel/${id}`,
+    url: `/modul/${id}`,
     method: "put",
     data,
   });
 }
 
-export function deleteMapel(data) {
+export function deleteModul(data) {
   return request({
-    url: `/mapel/${data.idMapel}`,
+    url: `/modul/${data.idModul}`,
     method: "delete",
     data,
   });
