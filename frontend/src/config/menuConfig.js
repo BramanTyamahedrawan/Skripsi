@@ -195,6 +195,20 @@ const menuList = [
   },
 
   {
+    title: "Data Soal",
+    icon: DatabaseOutlined,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+    children: [
+      {
+        title: "Taksonomi",
+        path: "/taksonomi",
+        icon: AuditOutlined,
+        roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+      },
+    ],
+  },
+
+  {
     title: "Guru",
     path: "/lecture",
     icon: TeamOutlined,

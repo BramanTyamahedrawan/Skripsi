@@ -254,6 +254,11 @@ const ATP = React.lazy(() =>
   import(/*webpackChunkName:'AlurTujuanPembelajaran'*/ "@/views/atp")
 );
 
+// Data Soal
+const Taksonomi = React.lazy(() =>
+  import(/*webpackChunkName:'Taksonomi'*/ "@/views/taksonomi")
+);
+
 // const Grade = React.lazy(() =>
 //   import(/*webpackChunkName:'Grade'*/ "@/views/grade")
 // );
@@ -418,6 +423,11 @@ export default [
   { path: "/elemen", component: Elemen, roles: ["ROLE_OPERATOR"] },
   { path: "/acp", component: ACP, roles: ["ROLE_OPERATOR"] },
   { path: "/atp", component: ATP, roles: ["ROLE_OPERATOR"] },
+  {
+    path: "/taksonomi",
+    component: Taksonomi,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
   // {
   //   path: "/study-program",
   //   component: StudyProgram,
