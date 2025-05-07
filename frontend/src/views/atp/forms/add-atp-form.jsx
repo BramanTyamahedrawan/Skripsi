@@ -377,6 +377,20 @@ const AddATPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
               <Input placeholder="Masukkan Nama ATP" />
             </Form.Item>
           </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Jumlah Jam Pelajaran:"
+              name="jumlahJpl"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan isi Jumlah Jam Pelajaran",
+                },
+              ]}
+            >
+              <Input placeholder="Masukkan Nama JPL" />
+            </Form.Item>
+          </Col>
         </Row>
       </Form>
     </Modal>

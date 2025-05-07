@@ -214,6 +214,7 @@ const ATP = () => {
       const updatedValues = {
         idAtp: null,
         namaAtp: values.namaAtp,
+        jumlahJpl: values.jumlahJpl,
         idAcp: values.idAcp,
         idElemen: values.idElemen,
         idKonsentrasiSekolah: values.idKonsentrasiSekolah,
@@ -242,6 +243,7 @@ const ATP = () => {
       const updatedValues = {
         idAtp: values.idAtp,
         namaAtp: values.namaAtp,
+        jumlahJpl: values.jumlahJpl,
         idAcp: values.idAcp,
         idElemen: values.idElemen,
         idKonsentrasiSekolah: values.idKonsentrasiSekolah,
@@ -299,6 +301,14 @@ const ATP = () => {
       align: "center",
       ...getColumnSearchProps("namaAtp"),
       sorter: (a, b) => a.namaAtp.localeCompare(b.namaAtp),
+    },
+    {
+      title: "Jumlah JPL",
+      dataIndex: "jumlahJpl",
+      key: "jumlahJpl",
+      align: "center",
+      ...getColumnSearchProps("jumlahJpl"),
+      sorter: (a, b) => a.jumlahJpl.localeCompare(b.jumlahJpl),
     },
     {
       title: "Capaian Pembelajaran",
