@@ -109,15 +109,20 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
   ) => {
     if (!tahunAjaranId || !semesterId || !kelasId) return [];
 
-    return mapelList.filter((mapel) =>
-      elemenList.some(
-        (elemen) =>
-          elemen.tahunAjaran?.idTahun === tahunAjaranId &&
-          elemen.semester?.idSemester === semesterId &&
-          elemen.kelas?.idKelas === kelasId &&
-          elemen.mapel?.idMapel === mapel.idMapel
-      )
+    // Menghapus duplikat berdasarkan nama mapel
+    const filtered = mapelList.filter(
+      (mapel) =>
+        mapel.tahunAjaran?.idTahun === tahunAjaranId &&
+        mapel.semester?.idSemester === semesterId &&
+        mapel.kelas?.idKelas === kelasId
     );
+
+    // Menghapus duplikat berdasarkan nama mapel
+    return filtered.reduce((acc, current) => {
+      const x = acc.find((item) => item.name === current.name);
+      if (!x) return acc.concat([current]);
+      return acc;
+    }, []);
   };
 
   const getAvailableElemen = (
@@ -137,8 +142,9 @@ export const useFormFilterEditElemen = (currentRowData, initialData) => {
         elemen.mapel?.idMapel === mapelId
     );
 
+    // Menghapus duplikat berdasarkan nama elemen
     return filtered.reduce((acc, current) => {
-      const x = acc.find((item) => item.name === current.name);
+      const x = acc.find((item) => item.namaElemen === current.namaElemen);
       if (!x) return acc.concat([current]);
       return acc;
     }, []);

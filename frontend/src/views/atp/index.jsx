@@ -211,26 +211,55 @@ const ATP = () => {
   const handleAddOk = async (values) => {
     setAddATPModalLoading(true);
     try {
-      const updatedValues = {
-        idAtp: null,
-        namaAtp: values.namaAtp,
-        jumlahJpl: values.jumlahJpl,
-        idAcp: values.idAcp,
-        idElemen: values.idElemen,
-        idKonsentrasiSekolah: values.idKonsentrasiSekolah,
-        idKelas: values.idKelas,
-        idTahun: values.idTahun,
-        idSemester: values.idSemester,
-        idMapel: values.idMapel,
-        idSekolah: values.idSchool,
-      };
-      console.log("respon data", updatedValues);
-      await addATP(updatedValues);
+      // Jika kita menerima data dalam format baru (array atpList)
+      if (values.atpList && values.atpList.length > 0) {
+        // Opsi 1: Kirim satu per satu ATP ke server
+        const promises = values.atpList.map((atpItem) => {
+          const atpData = {
+            idAtp: null,
+            namaAtp: atpItem.namaAtp,
+            jumlahJpl: atpItem.jumlahJpl,
+            idAcp: values.idAcp,
+            idElemen: values.idElemen,
+            idKonsentrasiSekolah: values.idKonsentrasiSekolah,
+            idKelas: values.idKelas,
+            idTahun: values.idTahun,
+            idSemester: values.idSemester,
+            idMapel: values.idMapel,
+            idSekolah: values.idSchool,
+          };
+          console.log("Mengirim data ATP:", atpData);
+          return addATP(atpData); // Uncomment jika API mendukung
+        });
+
+        await Promise.all(promises);
+        message.success(
+          `Berhasil menambahkan ${values.atpList.length} Tujuan Pembelajaran`
+        );
+      }
+      // Fallback ke format lama jika tidak ada atpList
+      else {
+        const updatedValues = {
+          idAtp: null,
+          namaAtp: values.namaAtp,
+          jumlahJpl: values.jumlahJpl,
+          idAcp: values.idAcp,
+          idElemen: values.idElemen,
+          idKonsentrasiSekolah: values.idKonsentrasiSekolah,
+          idKelas: values.idKelas,
+          idTahun: values.idTahun,
+          idSemester: values.idSemester,
+          idMapel: values.idMapel,
+          idSekolah: values.idSchool,
+        };
+        console.log("Mengirim data ATP tunggal:", updatedValues);
+        await addATP(updatedValues); // Uncomment untuk menjalankan API call
+        message.success("Berhasil menambahkan Tujuan Pembelajaran");
+      }
+
       setAddATPModalVisible(false);
-      message.success("Berhasil menambahkan");
       fetchATP();
     } catch (error) {
-      setAddATPModalLoading(false);
       message.error("Gagal menambahkan: " + error.message);
     } finally {
       setAddATPModalLoading(false);

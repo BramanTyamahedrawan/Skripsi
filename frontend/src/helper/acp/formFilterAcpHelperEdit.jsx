@@ -122,15 +122,20 @@ export const useFormFilterEditAcp = (currentRowData, initialData) => {
   ) => {
     if (!tahunAjaranId || !semesterId || !kelasId) return [];
 
-    return mapelList.filter((mapel) =>
-      acpList.some(
-        (acp) =>
-          acp.tahunAjaran?.idTahun === tahunAjaranId &&
-          acp.semester?.idSemester === semesterId &&
-          acp.kelas?.idKelas === kelasId &&
-          acp.mapel?.idMapel === mapel.idMapel
-      )
+    // Menghapus duplikat berdasarkan nama mapel
+    const filtered = mapelList.filter(
+      (mapel) =>
+        mapel.tahunAjaran?.idTahun === tahunAjaranId &&
+        mapel.semester?.idSemester === semesterId &&
+        mapel.kelas?.idKelas === kelasId
     );
+
+    // Menghapus duplikat berdasarkan nama mapel
+    return filtered.reduce((acc, current) => {
+      const x = acc.find((item) => item.name === current.name);
+      if (!x) return acc.concat([current]);
+      return acc;
+    }, []);
   };
 
   const getAvailableElemen = (
@@ -143,16 +148,20 @@ export const useFormFilterEditAcp = (currentRowData, initialData) => {
   ) => {
     if (!tahunAjaranId || !semesterId || !kelasId || !mapelId) return [];
 
-    return elemenList.filter((elemen) =>
-      acpList.some(
-        (acp) =>
-          acp.tahunAjaran?.idTahun === tahunAjaranId &&
-          acp.semester?.idSemester === semesterId &&
-          acp.kelas?.idKelas === kelasId &&
-          acp.mapel?.idMapel === mapelId &&
-          acp.elemen?.idElemen === elemen.idElemen
-      )
+    const filtered = elemenList.filter(
+      (elemen) =>
+        elemen.tahunAjaran?.idTahun === tahunAjaranId &&
+        elemen.semester?.idSemester === semesterId &&
+        elemen.kelas?.idKelas === kelasId &&
+        elemen.mapel?.idMapel === mapelId
     );
+
+    // Menghapus duplikat berdasarkan nama elemen
+    return filtered.reduce((acc, current) => {
+      const x = acc.find((item) => item.namaElemen === current.namaElemen);
+      if (!x) return acc.concat([current]);
+      return acc;
+    }, []);
   };
 
   const getAvailableAcp = (
@@ -175,8 +184,10 @@ export const useFormFilterEditAcp = (currentRowData, initialData) => {
         acp.elemen?.idElemen === elemenId
     );
 
+    // Menggunakan reduce untuk menghapus duplikat berdasarkan nama acp
     return filtered.reduce((acc, current) => {
-      const x = acc.find((item) => item.name === current.name);
+      // Perbaikan: Menggunakan namaAcp bukan nama, dan memeriksa namaAcp yang sama
+      const x = acc.find((item) => item.namaAcp === current.namaAcp);
       if (!x) return acc.concat([current]);
       return acc;
     }, []);
@@ -393,22 +404,44 @@ export const useFormFilterEditAcp = (currentRowData, initialData) => {
 
   const renderAcpSelect = (form) => (
     <Form.Item
-      label="Acp"
+      label="Analisis Capaian Pembelajaran"
       name="idAcp"
-      rules={[
-        {
-          required: true,
-          message: "Silahkan pilih Analisi Capaian Pembelajaran",
-        },
-      ]}
+      rules={[{ required: true, message: "Silahkan pilih ACP" }]}
     >
       <Select
-        placeholder="Pilih Acp"
+        placeholder="Pilih Analisis Capaian Pembelajaran"
         disabled={filterState.availableAcp.length === 0}
+        showSearch
+        optionFilterProp="children"
+        filterOption={(input, option) =>
+          option.children.toLowerCase().includes(input.toLowerCase())
+        }
+        style={{ width: "100%" }}
+        optionLabelProp="label"
+        dropdownStyle={{
+          maxWidth: "1000px",
+          maxHeight: "400px",
+          overflowY: "auto",
+        }}
       >
-        {filterState.availableAcp.map(({ idAcp, namaAcp }) => (
-          <Select.Option key={idAcp} value={idAcp}>
-            {namaAcp}
+        {filterState.availableAcp.map(({ idAcp, namaAcp }, index) => (
+          <Select.Option key={idAcp} value={idAcp} label={namaAcp}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "50px 1fr",
+                alignItems: "start",
+                gap: "6px",
+                padding: "2px 0",
+                whiteSpace: "normal",
+                wordWrap: "break-word",
+              }}
+            >
+              <div style={{ fontWeight: "bold", color: "#888" }}>
+                {index + 1}.
+              </div>
+              <div>{namaAcp}</div>
+            </div>
           </Select.Option>
         ))}
       </Select>

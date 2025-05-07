@@ -413,12 +413,7 @@ export const useFormFilterACP = (initialData) => {
         filterOption={(input, option) =>
           option.children.toLowerCase().includes(input.toLowerCase())
         }
-        style={{
-          width: "100%",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
+        style={{ width: "100%" }}
         optionLabelProp="label"
         dropdownStyle={{
           maxWidth: "1000px",
@@ -426,16 +421,23 @@ export const useFormFilterACP = (initialData) => {
           overflowY: "auto",
         }}
       >
-        {filterState.availableAcp.map(({ idAcp, namaAcp }) => (
+        {filterState.availableAcp.map(({ idAcp, namaAcp }, index) => (
           <Select.Option key={idAcp} value={idAcp} label={namaAcp}>
             <div
               style={{
+                display: "grid",
+                gridTemplateColumns: "50px 1fr",
+                alignItems: "start",
+                gap: "6px",
+                padding: "2px 0",
                 whiteSpace: "normal",
                 wordWrap: "break-word",
-                maxWidth: "100%",
               }}
             >
-              {namaAcp}
+              <div style={{ fontWeight: "bold", color: "#888" }}>
+                {index + 1}.
+              </div>
+              <div>{namaAcp}</div>
             </div>
           </Select.Option>
         ))}

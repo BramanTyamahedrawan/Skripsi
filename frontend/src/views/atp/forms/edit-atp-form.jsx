@@ -10,8 +10,10 @@ import {
   Tabs,
   Row,
   Col,
+  Button,
   message,
 } from "antd";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { getSchool } from "@/api/school";
 import { reqUserInfo } from "@/api/user";
 import { getKelas } from "@/api/kelas";
@@ -28,34 +30,6 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { TabPane } = Tabs;
 
-const renderColumns = () => [
-  {
-    title: "No.",
-    dataIndex: "index",
-    key: "index",
-    align: "center",
-    render: (_, __, index) => index + 1,
-  },
-  {
-    title: "Elemen",
-    dataIndex: ["elemen", "namaElemen"],
-    key: "namaElemen",
-    align: "center",
-  },
-  {
-    title: "Capaian Pembelajaran",
-    dataIndex: ["acp", "namaAcp"],
-    key: "namaAcp",
-    align: "center",
-  },
-  {
-    title: "Tujuan Pembelajaran",
-    dataIndex: "namaAtp",
-    key: "namaAtp",
-    align: "center",
-  },
-];
-
 const EditATPForm = ({
   visible,
   onCancel,
@@ -66,16 +40,15 @@ const EditATPForm = ({
   const [atp, setATP] = useState([]);
   const [form] = Form.useForm();
 
+  // State untuk menyimpan daftar ATP yang ditambahkan
+  const [atpItems, setAtpItems] = useState([
+    { id: 1, namaAtp: "", jumlahJpl: "" },
+  ]);
+
   const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
   const [schoolList, setSchoolList] = useState([]);
-  const [kelasList, setKelasList] = useState([]);
-  const [tahunAjaranList, setTahunAjaranList] = useState([]);
-  const [semesterList, setSemesterList] = useState([]);
-  const [mapelList, setMapelList] = useState([]);
   const [konsentrasiKeahlianSekolahList, setKonsentrasiKeahlianSekolahList] =
     useState([]);
-  const [elemenList, setElemenList] = useState([]);
-  const [acpList, setACPList] = useState([]);
   const [tableLoading, setTableLoading] = useState(false);
 
   const [initialData, setInitialData] = useState(null);
@@ -119,89 +92,11 @@ const EditATPForm = ({
     }
   };
 
-  const fetchKelasList = async () => {
-    try {
-      const result = await getKelas();
-      if (result.data.statusCode === 200) {
-        setKelasList(result.data.content);
-      } else {
-        message.error("Gagal mengambil data");
-      }
-    } catch (error) {
-      message.error("Terjadi kesalahan: " + error.message);
-    }
-  };
-
-  const fetchTahunAjaranList = async () => {
-    try {
-      const result = await getTahunAjaran();
-      if (result.data.statusCode === 200) {
-        setTahunAjaranList(result.data.content);
-      } else {
-        message.error("Gagal mengambil data");
-      }
-    } catch (error) {
-      message.error("Terjadi kesalahan: " + error.message);
-    }
-  };
-
-  const fetchSemesterList = async () => {
-    try {
-      const result = await getSemester();
-      if (result.data.statusCode === 200) {
-        setSemesterList(result.data.content);
-      } else {
-        message.error("Gagal mengambil data");
-      }
-    } catch (error) {
-      message.error("Terjadi kesalahan: " + error.message);
-    }
-  };
-
-  const fetchMapelList = async () => {
-    try {
-      const result = await getMapel();
-      if (result.data.statusCode === 200) {
-        setMapelList(result.data.content);
-      } else {
-        message.error("Gagal mengambil data");
-      }
-    } catch (error) {
-      message.error("Terjadi kesalahan: " + error.message);
-    }
-  };
-
   const fetchKonsentrasiKeahlianSekolahList = async () => {
     try {
       const result = await getKonsentrasiSekolah();
       if (result.data.statusCode === 200) {
         setKonsentrasiKeahlianSekolahList(result.data.content);
-      } else {
-        message.error("Gagal mengambil data");
-      }
-    } catch (error) {
-      message.error("Terjadi kesalahan: " + error.message);
-    }
-  };
-
-  const fetchElemenList = async () => {
-    try {
-      const result = await getElemen();
-      if (result.data.statusCode === 200) {
-        setElemenList(result.data.content);
-      } else {
-        message.error("Gagal mengambil data");
-      }
-    } catch (error) {
-      message.error("Terjadi kesalahan: " + error.message);
-    }
-  };
-
-  const fetchACPList = async () => {
-    try {
-      const result = await getACP();
-      if (result.data.statusCode === 200) {
-        setACPList(result.data.content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -261,19 +156,14 @@ const EditATPForm = ({
   useEffect(() => {
     fetchUserInfo();
     fetchSchoolList();
-    fetchKelasList();
-    fetchTahunAjaranList();
-    fetchSemesterList();
-    fetchMapelList();
     fetchKonsentrasiKeahlianSekolahList();
-    fetchElemenList();
-    fetchACPList();
     fetchATP();
 
     if (currentRowData) {
       form.setFieldsValue({
         idAtp: currentRowData.idAtp,
         namaAtp: currentRowData.namaAtp,
+        jumlahJpl: currentRowData.jumlahJpl,
         idKelas: currentRowData.kelas?.idKelas,
         idTahun: currentRowData.tahunAjaran?.idTahun,
         idSemester: currentRowData.semester?.idSemester,
@@ -293,14 +183,111 @@ const EditATPForm = ({
     }
   }, [userSchoolId, form]);
 
+  // Fungsi untuk menambah baris ATP baru
+  const addAtpItem = () => {
+    const newId =
+      atpItems.length > 0
+        ? Math.max(...atpItems.map((item) => item.id)) + 1
+        : 1;
+    setAtpItems([...atpItems, { id: newId, namaAtp: "", jumlahJpl: "" }]);
+  };
+
+  // Fungsi untuk menghapus baris ATP
+  const removeAtpItem = (id) => {
+    if (atpItems.length > 1) {
+      setAtpItems(atpItems.filter((item) => item.id !== id));
+    } else {
+      message.warning("Minimal harus ada satu Tujuan Pembelajaran");
+    }
+  };
+
+  // Fungsi untuk update nilai ATP
+  const updateAtpItem = (id, field, value) => {
+    setAtpItems(
+      atpItems.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      onOk(values);
+
+      // Validasi input ATP
+      const invalidAtp = atpItems.some(
+        (item) => !item.namaAtp || !item.jumlahJpl
+      );
+      if (invalidAtp) {
+        message.error("Mohon lengkapi semua Nama ATP dan Jumlah JPL");
+        return;
+      }
+
+      // Jika kita hanya mengirim data ATP pertama untuk kompatibilitas dengan kode lama
+      // (untuk menghindari undefined)
+      if (atpItems.length > 0) {
+        values.namaAtp = atpItems[0].namaAtp;
+        values.jumlahJpl = atpItems[0].jumlahJpl;
+      }
+
+      // Gabungkan data form dengan data ATP lengkap
+      const completeValues = {
+        ...values,
+        atpList: atpItems,
+      };
+
+      onOk(completeValues);
     } catch (error) {
       console.error("Validation failed:", error);
     }
   };
+
+  const atpColumns = [
+    {
+      title: "No.",
+      key: "index",
+      width: "50px",
+      render: (_, __, index) => index + 1,
+    },
+    {
+      title: "Nama Tujuan Pembelajaran",
+      key: "namaAtp",
+      render: (_, record) => (
+        <Input
+          placeholder="Masukkan Nama ATP"
+          value={record.namaAtp}
+          onChange={(e) => updateAtpItem(record.id, "namaAtp", e.target.value)}
+        />
+      ),
+    },
+    {
+      title: "Jumlah Jam Pelajaran",
+      key: "jumlahJpl",
+      width: "200px",
+      render: (_, record) => (
+        <Input
+          placeholder="Masukkan JPL"
+          value={record.jumlahJpl}
+          onChange={(e) =>
+            updateAtpItem(record.id, "jumlahJpl", e.target.value)
+          }
+        />
+      ),
+    },
+    {
+      title: "Aksi",
+      key: "action",
+      width: "70px",
+      render: (_, record) => (
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => removeAtpItem(record.id)}
+        />
+      ),
+    },
+  ];
 
   return (
     <Modal
@@ -382,42 +369,32 @@ const EditATPForm = ({
           <Col xs={24} sm={24} md={12}>
             {renderElemenSelect(form)}
           </Col>
-          <Col xs={24} sm={24} md={12}>
+          <Col xs={24} sm={24} md={24}>
             {renderAcpSelect(form)}
           </Col>
-          <Col xs={24} sm={24} md={12}>
-            <Form.Item
-              label="Nama Tujuan Pembelajaran:"
-              name="namaAtp"
-              rules={[
-                {
-                  required: true,
-                  message: "Silahkan isi Nama Tujuan Pembelajaran",
-                },
-              ]}
+          <Col xs={24} sm={24} md={24} style={{ marginTop: "20px" }}>
+            <div style={{ marginBottom: "10px" }}>
+              <span style={{ fontSize: "16px", fontWeight: "500" }}>
+                Tujuan Pembelajaran:
+              </span>
+            </div>
+            <Table
+              dataSource={atpItems}
+              columns={atpColumns}
+              pagination={false}
+              rowKey="id"
+              size="middle"
+              bordered
+            />
+            <Button
+              type="dashed"
+              onClick={addAtpItem}
+              style={{ width: "100%", marginTop: "10px" }}
+              icon={<PlusOutlined />}
             >
-              <Input placeholder="Masukkan Nama ATP" />
-            </Form.Item>
+              Tambah Tujuan Pembelajaran
+            </Button>
           </Col>
-          {/* <Tabs
-            defaultActiveKey="id"
-            style={{ width: "100%" }}
-            items={[
-              {
-                key: "id",
-                label: "Tujuan Pembelajaran",
-                children: (
-                  <Table
-                    rowKey="id"
-                    dataSource={atp}
-                    columns={renderColumns()}
-                    pagination={{ pageSize: 10 }}
-                    style={{ width: "100%" }}
-                  />
-                ),
-              },
-            ]}
-          /> */}
         </Row>
       </Form>
     </Modal>

@@ -331,7 +331,7 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           <Col xs={24} sm={24} md={12}>
             {renderElemenSelect(form)}
           </Col>
-          <Col xs={24} sm={24} md={12}>
+          <Col xs={24} sm={24} md={24}>
             <Form.Item
               label="Nama Capaian Pembelajaran:"
               name="namaAcp"
@@ -342,7 +342,7 @@ const AddACPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                 },
               ]}
             >
-              <Input placeholder="Masukkan Nama ACP" />
+              <TextArea rows={4} placeholder="Masukkan Nama ACP" />
             </Form.Item>
           </Col>
         </Row>
