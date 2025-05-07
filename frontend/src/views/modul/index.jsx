@@ -206,7 +206,6 @@ const Modul = () => {
       const updatedValues = {
         idModul: null,
         namaModul: values.namaModul,
-        jumlahJpl: values.jumlahJpl,
         idKelas: values.idKelas,
         idTahun: values.idTahun,
         idSemester: values.idSemester,
@@ -277,14 +276,6 @@ const Modul = () => {
       align: "center",
       ...getColumnSearchProps("namaModul"),
       sorter: (a, b) => a.namaModul.localeCompare(b.namaModul),
-    },
-    {
-      title: "Jumlah JPL",
-      dataIndex: "jumlahJpl",
-      key: "jumlahJpl",
-      align: "center",
-      ...getColumnSearchProps("jumlahJpl"),
-      sorter: (a, b) => a.jumlahJpl.localeCompare(b.jumlahJpl),
     },
     {
       title: "Mata Pelajaran",
