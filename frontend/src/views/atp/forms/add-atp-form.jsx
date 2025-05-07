@@ -360,7 +360,7 @@ const AddATPForm = ({ visible, onCancel, onOk, confirmLoading }) => {
           <Col xs={24} sm={24} md={12}>
             {renderElemenSelect(form)}
           </Col>
-          <Col xs={24} sm={24} md={12}>
+          <Col xs={24} sm={24} md={24}>
             {renderAcpSelect(form)}
           </Col>
           <Col xs={24} sm={24} md={12}>

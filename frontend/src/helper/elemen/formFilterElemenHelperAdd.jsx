@@ -43,8 +43,7 @@ export const useFormFilterElemen = (initialData) => {
       availableSemesters: getAvailableSemesters(
         value,
         filterState.semesterList,
-        filterState.mapelList,
-        filterState.elemenList
+        filterState.mapelList
       ),
       availableKelas: [],
       availableMapels: [],
@@ -69,8 +68,7 @@ export const useFormFilterElemen = (initialData) => {
         filterState.selectedTahunAjaran,
         value,
         filterState.kelasList,
-        filterState.mapelList,
-        filterState.elemenList
+        filterState.mapelList
       ),
       availableMapels: [],
       availableElemen: [],
@@ -92,8 +90,7 @@ export const useFormFilterElemen = (initialData) => {
         filterState.selectedTahunAjaran,
         filterState.selectedSemester,
         value,
-        filterState.mapelList,
-        filterState.elemenList
+        filterState.mapelList
       ),
       availableElemen: [],
     };
@@ -118,15 +115,15 @@ export const useFormFilterElemen = (initialData) => {
     form?.setFieldsValue({ idElemen: undefined });
   };
 
-  // Fungsi filter
-  const getAvailableSemesters = (tahunAjaranId, semesterList, elemenList) => {
+  // Fungsi filter - memperbaiki logika filter
+  const getAvailableSemesters = (tahunAjaranId, semesterList, mapelList) => {
     if (!tahunAjaranId) return [];
 
     return semesterList.filter((semester) =>
-      elemenList.some(
-        (elemen) =>
-          elemen.tahunAjaran?.idTahun === tahunAjaranId &&
-          elemen.semester?.idSemester === semester.idSemester
+      mapelList.some(
+        (mapel) =>
+          mapel.tahunAjaran?.idTahun === tahunAjaranId &&
+          mapel.semester?.idSemester === semester.idSemester
       )
     );
   };
@@ -135,16 +132,16 @@ export const useFormFilterElemen = (initialData) => {
     tahunAjaranId,
     semesterId,
     kelasList,
-    elemenList
+    mapelList
   ) => {
     if (!tahunAjaranId || !semesterId) return [];
 
     return kelasList.filter((kelas) =>
-      elemenList.some(
-        (elemen) =>
-          elemen.tahunAjaran?.idTahun === tahunAjaranId &&
-          elemen.semester?.idSemester === semesterId &&
-          elemen.kelas?.idKelas === kelas.idKelas
+      mapelList.some(
+        (mapel) =>
+          mapel.tahunAjaran?.idTahun === tahunAjaranId &&
+          mapel.semester?.idSemester === semesterId &&
+          mapel.kelas?.idKelas === kelas.idKelas
       )
     );
   };
@@ -153,20 +150,23 @@ export const useFormFilterElemen = (initialData) => {
     tahunAjaranId,
     semesterId,
     kelasId,
-    mapelList,
-    elemenList
+    mapelList
   ) => {
     if (!tahunAjaranId || !semesterId || !kelasId) return [];
 
-    return mapelList.filter((mapel) =>
-      elemenList.some(
-        (elemen) =>
-          elemen.tahunAjaran?.idTahun === tahunAjaranId &&
-          elemen.semester?.idSemester === semesterId &&
-          elemen.kelas?.idKelas === kelasId &&
-          elemen.mapel?.idMapel === mapel.idMapel
-      )
+    const filtered = mapelList.filter(
+      (mapel) =>
+        mapel.tahunAjaran?.idTahun === tahunAjaranId &&
+        mapel.semester?.idSemester === semesterId &&
+        mapel.kelas?.idKelas === kelasId
     );
+
+    // Menghapus duplikat berdasarkan nama mapel
+    return filtered.reduce((acc, current) => {
+      const x = acc.find((item) => item.name === current.name);
+      if (!x) return acc.concat([current]);
+      return acc;
+    }, []);
   };
 
   const getAvailableElemens = (
@@ -186,9 +186,9 @@ export const useFormFilterElemen = (initialData) => {
         elemen.mapel?.idMapel === mapelId
     );
 
-    // Menggunakan reduce untuk menghapus duplikat berdasarkan nama elemen
+    // Menghapus duplikat berdasarkan nama elemen
     return filtered.reduce((acc, current) => {
-      const x = acc.find((item) => item.name === current.name);
+      const x = acc.find((item) => item.namaElemen === current.namaElemen);
       if (!x) return acc.concat([current]);
       return acc;
     }, []);
@@ -309,10 +309,10 @@ export const useFormFilterElemen = (initialData) => {
     <Form.Item
       label="Elemen"
       name="idElemen"
-      rules={[{ required: true, message: "Silahkan pilih ELemen" }]}
+      rules={[{ required: true, message: "Silahkan pilih Elemen" }]}
     >
       <Select
-        placeholder="Pilih ELemen"
+        placeholder="Pilih Elemen"
         disabled={
           !filterState.selectedMapel || filterState.availableElemen.length === 0
         }

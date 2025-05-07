@@ -48,9 +48,7 @@ export const useFormFilterACP = (initialData) => {
       availableSemesters: getAvailableSemesters(
         value,
         filterState.semesterList,
-        filterState.mapelList,
-        filterState.elemenList,
-        filterState.acpList
+        filterState.mapelList
       ),
       availableKelas: [],
       availableMapels: [],
@@ -78,9 +76,7 @@ export const useFormFilterACP = (initialData) => {
         filterState.selectedTahunAjaran,
         value,
         filterState.kelasList,
-        filterState.mapelList,
-        filterState.elemenList,
-        filterState.acpList
+        filterState.mapelList
       ),
       availableMapels: [],
       availableElemen: [],
@@ -105,11 +101,10 @@ export const useFormFilterACP = (initialData) => {
         filterState.selectedTahunAjaran,
         filterState.selectedSemester,
         value,
-        filterState.mapelList,
-        filterState.elemenList,
-        filterState.acpList
+        filterState.mapelList
       ),
       availableElemen: [],
+      availableAcp: [],
     };
 
     setFilterState((prev) => ({ ...prev, ...newState }));
@@ -129,9 +124,9 @@ export const useFormFilterACP = (initialData) => {
         filterState.selectedSemester,
         filterState.selectedKelas,
         value,
-        filterState.elemenList,
-        filterState.acpList
+        filterState.elemenList
       ),
+      availableAcp: [],
     };
 
     setFilterState((prev) => ({ ...prev, ...newState }));
@@ -156,27 +151,32 @@ export const useFormFilterACP = (initialData) => {
   };
 
   // Fungsi filter
-  const getAvailableSemesters = (tahunAjaranId, semesterList, acpList) => {
+  const getAvailableSemesters = (tahunAjaranId, semesterList, mapelList) => {
     if (!tahunAjaranId) return [];
 
     return semesterList.filter((semester) =>
-      acpList.some(
-        (acp) =>
-          acp.tahunAjaran?.idTahun === tahunAjaranId &&
-          acp.semester?.idSemester === semester.idSemester
+      mapelList.some(
+        (mapel) =>
+          mapel.tahunAjaran?.idTahun === tahunAjaranId &&
+          mapel.semester?.idSemester === semester.idSemester
       )
     );
   };
 
-  const getAvailableKelas = (tahunAjaranId, semesterId, kelasList, acpList) => {
+  const getAvailableKelas = (
+    tahunAjaranId,
+    semesterId,
+    kelasList,
+    mapelList
+  ) => {
     if (!tahunAjaranId || !semesterId) return [];
 
     return kelasList.filter((kelas) =>
-      acpList.some(
-        (acp) =>
-          acp.tahunAjaran?.idTahun === tahunAjaranId &&
-          acp.semester?.idSemester === semesterId &&
-          acp.kelas?.idKelas === kelas.idKelas
+      mapelList.some(
+        (mapel) =>
+          mapel.tahunAjaran?.idTahun === tahunAjaranId &&
+          mapel.semester?.idSemester === semesterId &&
+          mapel.kelas?.idKelas === kelas.idKelas
       )
     );
   };
@@ -185,20 +185,23 @@ export const useFormFilterACP = (initialData) => {
     tahunAjaranId,
     semesterId,
     kelasId,
-    mapelList,
-    acpList
+    mapelList
   ) => {
     if (!tahunAjaranId || !semesterId || !kelasId) return [];
 
-    return mapelList.filter((mapel) =>
-      acpList.some(
-        (acp) =>
-          acp.tahunAjaran?.idTahun === tahunAjaranId &&
-          acp.semester?.idSemester === semesterId &&
-          acp.kelas?.idKelas === kelasId &&
-          acp.mapel?.idMapel === mapel.idMapel
-      )
+    const filtered = mapelList.filter(
+      (mapel) =>
+        mapel.tahunAjaran?.idTahun === tahunAjaranId &&
+        mapel.semester?.idSemester === semesterId &&
+        mapel.kelas?.idKelas === kelasId
     );
+
+    // Menghapus duplikat berdasarkan nama mapel
+    return filtered.reduce((acc, current) => {
+      const x = acc.find((item) => item.name === current.name);
+      if (!x) return acc.concat([current]);
+      return acc;
+    }, []);
   };
 
   const getAvailableElemens = (
@@ -206,20 +209,24 @@ export const useFormFilterACP = (initialData) => {
     semesterId,
     kelasId,
     mapelId,
-    elemenList,
-    acpList
+    elemenList
   ) => {
     if (!tahunAjaranId || !semesterId || !kelasId || !mapelId) return [];
-    return elemenList.filter((elemen) =>
-      acpList.some(
-        (acp) =>
-          acp.tahunAjaran?.idTahun === tahunAjaranId &&
-          acp.semester?.idSemester === semesterId &&
-          acp.kelas?.idKelas === kelasId &&
-          acp.mapel?.idMapel === mapelId &&
-          acp.elemen?.idElemen === elemen.idElemen
-      )
+
+    const filtered = elemenList.filter(
+      (elemen) =>
+        elemen.tahunAjaran?.idTahun === tahunAjaranId &&
+        elemen.semester?.idSemester === semesterId &&
+        elemen.kelas?.idKelas === kelasId &&
+        elemen.mapel?.idMapel === mapelId
     );
+
+    // Menghapus duplikat berdasarkan nama elemen
+    return filtered.reduce((acc, current) => {
+      const x = acc.find((item) => item.namaElemen === current.namaElemen);
+      if (!x) return acc.concat([current]);
+      return acc;
+    }, []);
   };
 
   const getAvailableAcp = (
@@ -242,9 +249,10 @@ export const useFormFilterACP = (initialData) => {
         acp.elemen?.idElemen === elemenId
     );
 
-    // Menggunakan reduce untuk menghapus duplikat berdasarkan nama elemen
+    // Menggunakan reduce untuk menghapus duplikat berdasarkan nama acp
     return filtered.reduce((acc, current) => {
-      const x = acc.find((item) => item.name === current.name);
+      // Perbaikan: Menggunakan namaAcp bukan nama, dan memeriksa namaAcp yang sama
+      const x = acc.find((item) => item.namaAcp === current.namaAcp);
       if (!x) return acc.concat([current]);
       return acc;
     }, []);
@@ -389,7 +397,7 @@ export const useFormFilterACP = (initialData) => {
     </Form.Item>
   );
 
-  const rendeAcpSelect = (form) => (
+  const renderAcpSelect = (form) => (
     <Form.Item
       label="Analisis Capaian Pembelajaran"
       name="idAcp"
@@ -405,10 +413,30 @@ export const useFormFilterACP = (initialData) => {
         filterOption={(input, option) =>
           option.children.toLowerCase().includes(input.toLowerCase())
         }
+        style={{
+          width: "100%",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+        optionLabelProp="label"
+        dropdownStyle={{
+          maxWidth: "1000px",
+          maxHeight: "400px",
+          overflowY: "auto",
+        }}
       >
         {filterState.availableAcp.map(({ idAcp, namaAcp }) => (
-          <Select.Option key={idAcp} value={idAcp}>
-            {namaAcp}
+          <Select.Option key={idAcp} value={idAcp} label={namaAcp}>
+            <div
+              style={{
+                whiteSpace: "normal",
+                wordWrap: "break-word",
+                maxWidth: "100%",
+              }}
+            >
+              {namaAcp}
+            </div>
           </Select.Option>
         ))}
       </Select>
@@ -422,7 +450,7 @@ export const useFormFilterACP = (initialData) => {
     renderKelasSelect,
     renderMapelSelect,
     renderElemenSelect,
-    rendeAcpSelect,
+    renderAcpSelect,
     getAvailableSemesters,
     getAvailableKelas,
     getAvailableMapels,
