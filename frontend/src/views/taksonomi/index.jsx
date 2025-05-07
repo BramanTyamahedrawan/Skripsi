@@ -109,8 +109,10 @@ const Taksonomi = () => {
       const updatedData = {
         idTaksonomi: null,
         namaTaksonomi: values.namaTaksonomi,
+        deskripsiTaksonomi: values.deskripsiTaksonomi,
         idSekolah: values.idSchool,
       };
+      console.log("Updated Data:", updatedData);
       await addTaksonomi(updatedData);
       setAddTaksonomiModalVisible(false);
       message.success("Berhasil menambahkan");
@@ -129,6 +131,7 @@ const Taksonomi = () => {
       const updatedData = {
         idTaksonomi: values.idTaksonomi,
         namaTaksonomi: values.namaTaksonomi,
+        deskripsiTaksonomi: values.deskripsiTaksonomi,
         idSekolah: values.idSchool,
       };
       console.log("Updated Data:", updatedData);
@@ -169,6 +172,15 @@ const Taksonomi = () => {
       align: "center",
       ...getColumnSearchProps("namaTaksonomi"),
       sorter: (a, b) => a.namaTaksonomi.localeCompare(b.namaTaksonomi),
+    },
+    {
+      title: "Deskripsi Taksonomi",
+      dataIndex: "deskripsiTaksonomi",
+      key: "deskripsiTaksonomi",
+      align: "center",
+      ...getColumnSearchProps("deskripsiTaksonomi"),
+      sorter: (a, b) =>
+        a.deskripsiTaksonomi.localeCompare(b.deskripsiTaksonomi),
     },
     {
       title: "Operasi",

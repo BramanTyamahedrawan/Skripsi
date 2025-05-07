@@ -129,6 +129,20 @@ const AddTaksonomiForm = ({ visible, onCancel, onOk, confirmLoading }) => {
             <Input placeholder="Nama Taksonomi" />
           </Form.Item>
         </Col>
+        <Col xs={24} sm={24} md={24}>
+          <Form.Item
+            label="Deskripsi Taksonomi:"
+            name="deskripsiTaksonomi"
+            rules={[
+              {
+                required: true,
+                message: "Silahkan isikan Deskripsi Taksonomi",
+              },
+            ]}
+          >
+            <Input placeholder="Deskripsi Taksonomi" />
+          </Form.Item>
+        </Col>
       </Form>
     </Modal>
   );
