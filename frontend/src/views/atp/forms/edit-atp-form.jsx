@@ -40,11 +40,6 @@ const EditATPForm = ({
   const [atp, setATP] = useState([]);
   const [form] = Form.useForm();
 
-  // State untuk menyimpan daftar ATP yang ditambahkan
-  const [atpItems, setAtpItems] = useState([
-    { id: 1, namaAtp: "", jumlahJpl: "" },
-  ]);
-
   const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
   const [schoolList, setSchoolList] = useState([]);
   const [konsentrasiKeahlianSekolahList, setKonsentrasiKeahlianSekolahList] =
@@ -183,111 +178,14 @@ const EditATPForm = ({
     }
   }, [userSchoolId, form]);
 
-  // Fungsi untuk menambah baris ATP baru
-  const addAtpItem = () => {
-    const newId =
-      atpItems.length > 0
-        ? Math.max(...atpItems.map((item) => item.id)) + 1
-        : 1;
-    setAtpItems([...atpItems, { id: newId, namaAtp: "", jumlahJpl: "" }]);
-  };
-
-  // Fungsi untuk menghapus baris ATP
-  const removeAtpItem = (id) => {
-    if (atpItems.length > 1) {
-      setAtpItems(atpItems.filter((item) => item.id !== id));
-    } else {
-      message.warning("Minimal harus ada satu Tujuan Pembelajaran");
-    }
-  };
-
-  // Fungsi untuk update nilai ATP
-  const updateAtpItem = (id, field, value) => {
-    setAtpItems(
-      atpItems.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
-      )
-    );
-  };
-
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-
-      // Validasi input ATP
-      const invalidAtp = atpItems.some(
-        (item) => !item.namaAtp || !item.jumlahJpl
-      );
-      if (invalidAtp) {
-        message.error("Mohon lengkapi semua Nama ATP dan Jumlah JPL");
-        return;
-      }
-
-      // Jika kita hanya mengirim data ATP pertama untuk kompatibilitas dengan kode lama
-      // (untuk menghindari undefined)
-      if (atpItems.length > 0) {
-        values.namaAtp = atpItems[0].namaAtp;
-        values.jumlahJpl = atpItems[0].jumlahJpl;
-      }
-
-      // Gabungkan data form dengan data ATP lengkap
-      const completeValues = {
-        ...values,
-        atpList: atpItems,
-      };
-
-      onOk(completeValues);
+      onOk(values);
     } catch (error) {
       console.error("Validation failed:", error);
     }
   };
-
-  const atpColumns = [
-    {
-      title: "No.",
-      key: "index",
-      width: "50px",
-      render: (_, __, index) => index + 1,
-    },
-    {
-      title: "Nama Tujuan Pembelajaran",
-      key: "namaAtp",
-      render: (_, record) => (
-        <Input
-          placeholder="Masukkan Nama ATP"
-          value={record.namaAtp}
-          onChange={(e) => updateAtpItem(record.id, "namaAtp", e.target.value)}
-        />
-      ),
-    },
-    {
-      title: "Jumlah Jam Pelajaran",
-      key: "jumlahJpl",
-      width: "200px",
-      render: (_, record) => (
-        <Input
-          placeholder="Masukkan JPL"
-          value={record.jumlahJpl}
-          onChange={(e) =>
-            updateAtpItem(record.id, "jumlahJpl", e.target.value)
-          }
-        />
-      ),
-    },
-    {
-      title: "Aksi",
-      key: "action",
-      width: "70px",
-      render: (_, record) => (
-        <Button
-          type="text"
-          danger
-          icon={<DeleteOutlined />}
-          onClick={() => removeAtpItem(record.id)}
-        />
-      ),
-    },
-  ];
 
   return (
     <Modal
@@ -372,28 +270,33 @@ const EditATPForm = ({
           <Col xs={24} sm={24} md={24}>
             {renderAcpSelect(form)}
           </Col>
-          <Col xs={24} sm={24} md={24} style={{ marginTop: "20px" }}>
-            <div style={{ marginBottom: "10px" }}>
-              <span style={{ fontSize: "16px", fontWeight: "500" }}>
-                Tujuan Pembelajaran:
-              </span>
-            </div>
-            <Table
-              dataSource={atpItems}
-              columns={atpColumns}
-              pagination={false}
-              rowKey="id"
-              size="middle"
-              bordered
-            />
-            <Button
-              type="dashed"
-              onClick={addAtpItem}
-              style={{ width: "100%", marginTop: "10px" }}
-              icon={<PlusOutlined />}
+          <Col xs={24} sm={24} md={24}>
+            <Form.Item
+              label="Jumlah JPL:"
+              name="jumlahJpl"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan isi Jumlah JPL",
+                },
+              ]}
             >
-              Tambah Tujuan Pembelajaran
-            </Button>
+              <Input placeholder="Masukkan Jumlah JPL" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={24}>
+            <Form.Item
+              label="Nama Tujuan Pembelajaran:"
+              name="namaAtp"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan isi Nama Tujuan Pembelajaran",
+                },
+              ]}
+            >
+              <TextArea rows={2} placeholder="Masukkan Nama ATP" />
+            </Form.Item>
           </Col>
         </Row>
       </Form>

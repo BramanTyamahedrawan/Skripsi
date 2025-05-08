@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unknown-property */
+/* eslint-disable react/prop-types */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -85,6 +87,9 @@ const ATP = () => {
 
   // Fungsi Helper Table Search
   const { getColumnSearchProps } = useTableSearch();
+
+  const [currentGroupData, setCurrentGroupData] = useState(null);
+  const [editGroupModalVisible, setEditGroupModalVisible] = useState(false);
 
   const editATPFormRef = useRef();
   const addATPFormRef = useRef();
@@ -188,26 +193,6 @@ const ATP = () => {
     selectedMapel
   );
 
-  const handleDelete = (row) => {
-    const { idAtp } = row;
-    Modal.confirm({
-      title: "Konfirmasi",
-      content: "Apakah Anda yakin ingin menghapus data ini?",
-      okText: "Ya",
-      okType: "danger",
-      cancelText: "Tidak",
-      onOk: async () => {
-        try {
-          await deleteATP({ idAtp });
-          message.success("Berhasil dihapus");
-          fetchATP();
-        } catch (error) {
-          message.error("Gagal menghapus: " + error.message);
-        }
-      },
-    });
-  };
-
   const handleAddOk = async (values) => {
     setAddATPModalLoading(true);
     try {
@@ -269,8 +254,15 @@ const ATP = () => {
   const handleEditOk = async (values) => {
     setEditATPModalLoading(true);
     try {
+      const idAtp = values.idAtp || currentRowData.idAtp;
+
+      if (!idAtp) {
+        throw new Error(
+          "ID ATP tidak ditemukan. Tidak dapat melakukan update."
+        );
+      }
       const updatedValues = {
-        idAtp: values.idAtp,
+        idAtp: idAtp,
         namaAtp: values.namaAtp,
         jumlahJpl: values.jumlahJpl,
         idAcp: values.idAcp,
@@ -284,7 +276,7 @@ const ATP = () => {
       };
 
       console.log("respon data", updatedValues);
-      await editATP(updatedValues, currentRowData.idAtp);
+      await editATP(updatedValues, idAtp);
       setEditATPModalVisible(false);
       message.success("Berhasil mengubah");
       fetchATP();
@@ -294,11 +286,6 @@ const ATP = () => {
     } finally {
       setEditATPModalLoading(false);
     }
-  };
-
-  const handleEditATP = (row) => {
-    setCurrentRowData({ ...row });
-    setEditATPModalVisible(true);
   };
 
   const handleCancel = () => {
@@ -387,14 +374,188 @@ const ATP = () => {
     },
   ];
 
-  const renderTable = () => (
-    <Table
-      rowKey="idAtp"
-      dataSource={filteredData}
-      columns={renderColumns()}
-      pagination={{ pageSize: 10 }}
-    />
-  );
+  // Handler untuk mengedit item ATP
+  const handleEditATP = (row) => {
+    setCurrentRowData({ ...row });
+    setEditATPModalVisible(true);
+  };
+
+  // Handler untuk menghapus item ATP
+  const handleDelete = (row) => {
+    const { idAtp } = row;
+    Modal.confirm({
+      title: "Konfirmasi",
+      content: "Apakah Anda yakin ingin menghapus data ini?",
+      okText: "Ya",
+      okType: "danger",
+      cancelText: "Tidak",
+      onOk: async () => {
+        try {
+          await deleteATP({ idAtp });
+          message.success("Berhasil dihapus");
+          fetchATP();
+        } catch (error) {
+          message.error("Gagal menghapus: " + error.message);
+        }
+      },
+    });
+  };
+
+  // Fungsi untuk menyusun data dalam format hierarkis sesuai tabel yang diminta
+  const prepareHierarchicalData = (data) => {
+    // Kelompokkan data berdasarkan Elemen dan ACP
+    const groupedData = {};
+
+    data.forEach((item) => {
+      const atpId = item.idAtp;
+      const elemenId = item.elemen.idElemen;
+      const elemenName = item.elemen.namaElemen;
+      const acpId = item.acp.idAcp;
+      const acpName = item.acp.namaAcp;
+      const konsentrasiSekolah =
+        item.konsentrasiKeahlianSekolah?.namaKonsentrasiSekolah || "";
+
+      // Buat kunci unik untuk kombinasi Elemen-ACP
+      const key = `${elemenId}-${acpId}`;
+
+      if (!groupedData[key]) {
+        groupedData[key] = {
+          elemenName,
+          acpName,
+          konsentrasiSekolah,
+          atpItems: [],
+        };
+      }
+
+      // Tambahkan ATP ke grup
+      groupedData[key].atpItems.push({
+        ...item,
+        idElemen: elemenId,
+        idAcp: acpId,
+        atpId,
+      });
+    });
+
+    // Konversi ke format array
+    return Object.values(groupedData).map((group, index) => ({
+      ...group,
+      no: index + 1, // Nomor urut sesuai index + 1
+    }));
+  };
+
+  // Komponen untuk menampilkan tabel hierarkis sesuai layout yang diberikan
+  const HierarchicalAtpTable = ({ data }) => {
+    const hierarchicalData = prepareHierarchicalData(data);
+
+    return (
+      <table className="hierarchical-table">
+        <thead>
+          <tr>
+            <th rowSpan="2">No</th>
+            <th rowSpan="2">Konsentrasi Sekolah</th>
+            <th colSpan="3">Master Data</th>
+            <th rowSpan="2">Jumlah JPL</th>
+            <th rowSpan="2">Operasi</th>
+          </tr>
+          <tr>
+            <th>Elemen</th>
+            <th>ACP</th>
+            <th>ATP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {hierarchicalData.map((entry) => {
+            const rowCount = entry.atpItems.length;
+
+            return entry.atpItems.map((atpItem, atpIndex) => {
+              if (atpIndex === 0) {
+                // Baris pertama dengan no, konsentrasi sekolah, elemen, dan acp
+                return (
+                  <tr key={`${entry.no}-${atpIndex}`}>
+                    <td rowSpan={rowCount}>{entry.no}</td>
+                    <td rowSpan={rowCount}>{entry.konsentrasiSekolah}</td>
+                    <td rowSpan={rowCount}>{entry.elemenName}</td>
+                    <td rowSpan={rowCount}>{entry.acpName}</td>
+                    <td>{atpItem.namaAtp}</td>
+                    <td>{atpItem.jumlahJpl}</td>
+                    <td>
+                      <Button
+                        type="primary"
+                        shape="circle"
+                        icon={<EditOutlined />}
+                        onClick={() => handleEditATP(atpItem)}
+                        style={{ marginRight: "8px" }}
+                      />
+                      <Button
+                        type="primary"
+                        danger
+                        shape="circle"
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleDelete(atpItem)}
+                      />
+                    </td>
+                  </tr>
+                );
+              } else {
+                // Baris selanjutnya hanya dengan ATP
+                return (
+                  <tr key={`${entry.no}-${atpIndex}`}>
+                    <td>{atpItem.namaAtp}</td>
+                    <td>{atpItem.jumlahJpl}</td>
+                    <td>
+                      <Button
+                        type="primary"
+                        shape="circle"
+                        icon={<EditOutlined />}
+                        onClick={() => handleEditATP(atpItem)}
+                        style={{ marginRight: "8px" }}
+                      />
+                      <Button
+                        type="primary"
+                        danger
+                        shape="circle"
+                        icon={<DeleteOutlined />}
+                        onClick={() => handleDelete(atpItem)}
+                      />
+                    </td>
+                  </tr>
+                );
+              }
+            });
+          })}
+        </tbody>
+      </table>
+    );
+  };
+
+  // Ganti fungsi renderTable dengan tabel hierarkis yang sudah diperbaiki
+  const renderTable = () => {
+    return (
+      <div className="table-container">
+        <style jsx>{`
+          .hierarchical-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+          }
+
+          .hierarchical-table th,
+          .hierarchical-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            vertical-align: middle;
+          }
+
+          .hierarchical-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+          }
+        `}</style>
+
+        <HierarchicalAtpTable data={filteredData} />
+      </div>
+    );
+  };
 
   const renderButtons = () => (
     <Row gutter={[16, 16]} justify="start">
@@ -490,34 +651,3 @@ const ATP = () => {
 };
 
 export default ATP;
-{
-  /* <Modal
-        title="Import File"
-        visible={importModalVisible}
-        onCancel={() => setImportModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setImportModalVisible(false)}>
-            Cancel
-          </Button>,
-          <Button
-            key="upload"
-            type="primary"
-            loading={uploading}
-            onClick={() => {
-             
-            }}
-          >
-            Upload
-          </Button>,
-        ]}
-      >
-        <Upload
-          beforeUpload={() => {
-           return false;
-          }}
-          accept=".csv,.xlsx,.xls"
-        >
-          <Button>Pilih File</Button>
-        </Upload>
-      </Modal> */
-}
