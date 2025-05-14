@@ -23,15 +23,7 @@ const Router = ({ token, role, getUserInfo }) => {
           <Route
             path="/*"
             element={
-              token ? (
-                role ? (
-                  <Layout />
-                ) : (
-                  <div>Loading...</div>
-                )
-              ) : (
-                <Navigate to="/login" />
-              )
+              token ? role ? <Layout /> : <Loading /> : <Navigate to="/login" />
             }
           />
         </Routes>

@@ -1,9 +1,12 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect } from "react";
-import { Spin } from "antd";
-import NProgress from "nprogress"; // progress bar
-import "nprogress/nprogress.css"; // progress bar style
+import NProgress from "nprogress";
+import "nprogress/nprogress.css";
+import Lottie from "lottie-react";
+import animationData from "@/assets/lottie/loading-animation.json";
+import "./Loading.css";
 
-NProgress.configure({ showSpinner: false }); // NProgress Configuration
+NProgress.configure({ showSpinner: false });
 
 const Loading = () => {
   useEffect(() => {
@@ -14,8 +17,11 @@ const Loading = () => {
   }, []);
 
   return (
-    <div className="app-container">
-      <Spin />
+    <div className="loading-wrapper">
+      <div className="lottie-container">
+        <Lottie animationData={animationData} loop={true} />
+        <p className="loading-text">Loading, please wait...</p>
+      </div>
     </div>
   );
 };
