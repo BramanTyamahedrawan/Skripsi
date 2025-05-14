@@ -48,7 +48,7 @@ export function reqValidatUserID(data) {
 
 export function addUser(data) {
   return request({
-    url: "/auth/signup",
+    url: "/users/add",
     method: "post",
     data,
   });

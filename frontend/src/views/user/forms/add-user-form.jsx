@@ -1,116 +1,186 @@
-/* eslint-disable react/prop-types */
 /* eslint-disable no-unused-vars */
+/* eslint-disable react/prop-types */
 import React, { useState, useEffect } from "react";
-import { Form, Input, Select, Modal } from "antd";
-import { reqUserInfo } from "../../../api/user";
+import {
+  Form,
+  Input,
+  Modal,
+  Select,
+  Table,
+  Tabs,
+  Row,
+  Col,
+  message,
+} from "antd";
+import { getUsers } from "@/api/user";
+import { getSchool } from "@/api/school";
+import { reqUserInfo } from "@/api/user";
 
-const AddUserForm = ({ visible, onCancel, onOk, confirmLoading }) => {
+const { TextArea } = Input;
+const { Option } = Select;
+const { TabPane } = Tabs;
+
+const AdduserForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const [form] = Form.useForm();
-  const [userSummary, setUserSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setuser] = useState([]);
+
+  const [tableLoading, setTableLoading] = useState(false);
+  const [userSchoolId, setUserSchoolId] = useState([]); // State untuk menyimpan ID sekolah user
+  const [schoolList, setSchoolList] = useState([]);
+
+  const fetchUserInfo = async () => {
+    try {
+      const response = await reqUserInfo(); // Ambil data user dari API
+      setUserSchoolId(response.data.school_id); // Simpan ID sekolah user ke state
+      console.log("User School ID: ", response.data.school_id);
+    } catch (error) {
+      message.error("Gagal mengambil informasi pengguna");
+    }
+  };
+
+  const fetchSchoolList = async () => {
+    try {
+      const result = await getSchool();
+      if (result.data.statusCode === 200) {
+        setSchoolList(result.data.content);
+      } else {
+        message.error("Gagal mengambil data");
+      }
+    } catch (error) {
+      message.error("Terjadi kesalahan: " + error.message);
+    }
+  };
+
+  const fetchuser = async () => {
+    setTableLoading(true);
+    try {
+      const result = await getUsers();
+      if (result.data.statusCode === 200) {
+        setuser(result.data.content);
+      } else {
+        message.error("Gagal mengambil data");
+      }
+    } catch (error) {
+      message.error("Terjadi kesalahan: " + error.message);
+    } finally {
+      setTableLoading(false);
+    }
+  };
 
   useEffect(() => {
-    reqUserInfo()
-      .then((response) => {
-        setUserSummary(response.data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error fetching user info:", error);
-        setLoading(false);
-      });
+    fetchUserInfo();
+    fetchSchoolList();
+    fetchuser();
   }, []);
 
-  const isAdministrator =
-    userSummary && userSummary.roles === "ROLE_ADMINISTRATOR";
-  const roleOptions = isAdministrator
-    ? [
-        { value: "1", label: "Administrator" },
-        { value: "2", label: "Operator" },
-      ]
-    : [
-        { value: "3", label: "Guru" },
-        { value: "4", label: "Du/Di" },
-        { value: "5", label: "Siswa" },
-      ];
-  const initialRoleValue = isAdministrator ? "1" : "3";
+  useEffect(() => {
+    if (userSchoolId) {
+      form.setFieldsValue({ idSchool: userSchoolId });
+    }
+  }, [userSchoolId, form]);
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      onOk(values);
+    } catch (error) {
+      console.error("Validation failed:", error);
+    }
+  };
 
   return (
     <Modal
-      title="Tambah Pengguna"
-      visible={visible}
-      onCancel={onCancel}
-      onOk={() => {
-        form
-          .validateFields()
-          .then((values) => {
-            onOk(values);
-          })
-          .catch((info) => {
-            console.log("Validate Failed:", info);
-          });
+      title="Tambah user"
+      open={visible}
+      onCancel={() => {
+        form.resetFields();
+        onCancel();
       }}
+      onOk={handleSubmit}
       confirmLoading={confirmLoading}
+      okText="Simpan"
+      width={1000}
     >
       <Form form={form} layout="vertical">
-        <Form.Item
-          label="Nama:"
-          name="name"
-          rules={[{ required: true, message: "Silahkan isi nama pengguna!" }]}
-        >
-          <Input placeholder="Nama Pengguna" />
-        </Form.Item>
-        <Form.Item
-          label="Username:"
-          name="username"
-          rules={[
-            { required: true, message: "Silahkan isi username pengguna!" },
-          ]}
-        >
-          <Input placeholder="Username Pengguna" />
-        </Form.Item>
-        <Form.Item
-          label="Email:"
-          name="email"
-          rules={[
-            {
-              required: true,
-              type: "email",
-              message: "Silahkan isi email pengguna!",
-            },
-          ]}
-        >
-          <Input placeholder="Email Pengguna" />
-        </Form.Item>
-        <Form.Item
-          label="Kata sandi:"
-          name="password"
-          rules={[
-            { required: true, message: "Silahkan isi kata sandi pengguna!" },
-          ]}
-        >
-          <Input type="password" placeholder="Kata sandi" />
-        </Form.Item>
-        <Form.Item label="Peran:" name="roles" initialValue={initialRoleValue}>
-          <Select style={{ width: 120 }}>
-            {roleOptions.map((option) => (
-              <Select.Option key={option.value} value={option.value}>
-                {option.label}
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
-        <Form.Item label="Sekolah:" name="schoolId" initialValue="RWK001">
-          <Select style={{ width: 240 }}>
-            <Select.Option value="RWK001">
-              SMK Negeri Rowokangkung
-            </Select.Option>
-            <Select.Option value="TMP001">SMK Negeri Tempeh</Select.Option>
-          </Select>
-        </Form.Item>
+        <Row gutter={16}>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Sekolah:"
+              name="schoolId"
+              rules={[{ required: true, message: "Silahkan pilih Sekolah" }]}
+            >
+              <Select
+                placeholder="Pilih Sekolah"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {schoolList.map(({ idSchool, nameSchool }) => (
+                  <Option key={idSchool} value={idSchool}>
+                    {nameSchool}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Username: "
+              name="username"
+              rules={[{ required: true, message: "Silahkan isikan username" }]}
+            >
+              <Input placeholder="username" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Nama Lengkap: "
+              name="name"
+              rules={[
+                { required: true, message: "Silahkan isikan nama lengkap" },
+              ]}
+            >
+              <Input placeholder="Nama Lengkap" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Email: "
+              name="email"
+              rules={[{ required: true, message: "Silahkan isikan email" }]}
+            >
+              <Input placeholder="Email" />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Password: "
+              name="password"
+              rules={[{ required: true, message: "Silahkan isikan password" }]}
+            >
+              <Input.Password placeholder="Password" />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} sm={24} md={12}>
+            <Form.Item
+              label="Roles: "
+              name="roles"
+              rules={[{ required: true, message: "Silahkan pilih roles" }]}
+            >
+              <Select placeholder="Pilih Roles">
+                <Option value="2">Admin Sekolah</Option>
+                <Option value="3">Guru</Option>
+                <Option value="5">Siswa</Option>
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
       </Form>
     </Modal>
   );
 };
 
-export default AddUserForm;
+export default AdduserForm;

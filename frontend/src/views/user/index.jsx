@@ -1,148 +1,234 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
-import { Card, Button, Table, message, Col, Row, Divider } from "antd";
-import { getUsers, deleteUser, editUser, addUser } from "@/api/user";
-import TypingCard from "@/components/TypingCard";
-import EditUserForm from "./forms/edit-user-form";
-import AddUserForm from "./forms/add-user-form";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-  DeleteOutlined,
+  Card,
+  Button,
+  Table,
+  message,
+  Upload,
+  Row,
+  Col,
+  Divider,
+  Modal,
+  Input,
+  Space,
+} from "antd";
+import {
   EditOutlined,
+  DeleteOutlined,
   UploadOutlined,
-  DownloadOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
-
-const { Column } = Table;
+import { getUsers, deleteUser, addUser, editUser } from "@/api/user";
+import { Skeleton } from "antd";
+import Highlighter from "react-highlight-words";
+import TypingCard from "@/components/TypingCard";
+import AddUserForm from "./forms/add-user-form";
+import EditUserForm from "./forms/edit-user-form";
+import { useTableSearch } from "@/helper/tableSearchHelper.jsx";
+import { reqUserInfo, getUserById } from "@/api/user";
+import { set } from "nprogress";
 
 const User = () => {
   const [users, setUsers] = useState([]);
-  const [modalState, setModalState] = useState({
-    editVisible: false,
-    editLoading: false,
-    addVisible: false,
-    addLoading: false,
-  });
+  const [addUserModalVisible, setAddUserModalVisible] = useState(false);
+  const [addUserModalLoading, setAddUserModalLoading] = useState(false);
+  const [editUserModalVisible, setEditUserModalVisible] = useState(false);
+  const [editUserModalLoading, setEditUserModalLoading] = useState(false);
+  const [importModalVisible, setImportModalVisible] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [currentRowData, setCurrentRowData] = useState({});
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [userIdJson, setUserIdJson] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState("");
+  const [searchedColumn, setSearchedColumn] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const editFormRef = useRef();
-  const addFormRef = useRef();
+  // Fungsi Helper Table Search
+  const { getColumnSearchProps } = useTableSearch();
 
-  const fetchUsers = async () => {
+  const editUserFormRef = useRef();
+  const addUserFormRef = useRef();
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
     try {
       const result = await getUsers();
-      if (result.data.statusCode === 200) {
-        setUsers(result.data.content);
+      const { content, statusCode } = result.data;
+
+      if (statusCode === 200) {
+        // Filter hanya user yang memiliki school (bukan administrator)
+        const filteredUsers = content
+          .filter((user) => user.school !== null)
+          .map((user) => ({
+            ...user,
+            roles: mapRoleToName(user.roles), // mapping angka role jadi string
+          }));
+
+        setUsers(filteredUsers);
+      } else {
+        message.error("Gagal mengambil data");
       }
     } catch (error) {
-      console.error("Error fetching users:", error);
+      message.error("Terjadi kesalahan: " + error.message);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
+
+  const handleDeleteUser = (row) => {
+    const { idUser } = row;
+    Modal.confirm({
+      title: "Konfirmasi",
+      content: "Apakah Anda yakin ingin menghapus data ini?",
+      okText: "Ya",
+      okType: "danger",
+      cancelText: "Tidak",
+      onOk: async () => {
+        try {
+          await deleteUser({ idUser });
+          message.success("Berhasil dihapus");
+          fetchUsers();
+        } catch (error) {
+          message.error("Gagal menghapus: " + error.message);
+        }
+      },
+    });
+  };
 
   const handleEditUser = (row) => {
     setCurrentRowData({ ...row });
-    setModalState((prev) => ({ ...prev, editVisible: true }));
+    setEditUserModalVisible(true);
   };
 
-  const handleDeleteUser = async (row) => {
-    if (row.id === "admin") {
-      message.error("Tidak dapat menghapus Admin!");
-      return;
-    }
-
+  const handleAddUserOk = async (values) => {
+    setAddUserModalLoading(true);
     try {
-      await deleteUser({ id: row.id });
-      message.success("Berhasil dihapus");
+      const updatedData = {
+        idUser: null,
+        name: values.name,
+        username: values.username,
+        email: values.email,
+        password: values.password,
+        school: values.school,
+        roles: values.roles,
+        schoolId: values.schoolId,
+      };
+      // console.log("Updated Data:", updatedData);
+      await addUser(updatedData);
+      setAddUserModalVisible(false);
+      message.success("Berhasil menambahkan");
       fetchUsers();
     } catch (error) {
-      message.error("Gagal menghapus");
+      setAddUserModalVisible(false);
+      message.error("Gagal menambahkan: " + error.message);
+    } finally {
+      setAddUserModalLoading(false);
     }
   };
 
-  const handleEditUserOk = () => {
-    const form = editFormRef.current?.props.form;
-    form?.validateFields(async (err, values) => {
-      if (err) return;
-
-      setModalState((prev) => ({ ...prev, editLoading: true }));
-      try {
-        await editUser(values);
-        form.resetFields();
-        setModalState((prev) => ({
-          ...prev,
-          editVisible: false,
-          editLoading: false,
-        }));
-        message.success("Berhasil memperbarui pengguna!");
-        fetchUsers();
-      } catch (error) {
-        message.error("Gagal memperbarui");
-        setModalState((prev) => ({ ...prev, editLoading: false }));
-      }
-    });
+  const handleEditUserOk = async (values) => {
+    setEditUserModalLoading(true);
+    try {
+      const updatedData = {
+        idUser: values.idUser,
+        namaUser: values.namaUser,
+        idSekolah: values.idSchool,
+      };
+      console.log("Updated Data:", updatedData);
+      await editUser(updatedData, currentRowData.idUser);
+      setEditUserModalVisible(false);
+      message.success("Berhasil mengedit");
+      fetchUsers();
+    } catch (error) {
+      setEditUserModalVisible(false);
+      message.error("Gagal mengedit: " + error.message);
+    } finally {
+      setEditUserModalLoading(false);
+    }
   };
 
   const handleCancel = () => {
-    setModalState((prev) => ({
-      ...prev,
-      editVisible: false,
-      addVisible: false,
-    }));
+    setAddUserModalVisible(false);
+    setEditUserModalVisible(false);
   };
 
-  const handleAddUser = () => {
-    setModalState((prev) => ({ ...prev, addVisible: true }));
+  const handleSearch = (keyword) => {
+    setSearchKeyword(keyword);
+    getUsers();
   };
 
-  const handleAddUserOk = () => {
-    const form = addFormRef.current?.props.form;
-    form?.validateFields(async (err, values) => {
-      if (err) return;
-
-      setModalState((prev) => ({ ...prev, addLoading: true }));
-      try {
-        await addUser(values);
-        form.resetFields();
-        setModalState((prev) => ({
-          ...prev,
-          addVisible: false,
-          addLoading: false,
-        }));
-        message.success("Berhasil menambahkan pengguna!");
-        fetchUsers();
-      } catch (error) {
-        console.error(error.response?.data);
-        message.error("Gagal menambahkan pengguna, silakan coba lagi!");
-        setModalState((prev) => ({ ...prev, addLoading: false }));
-      }
-    });
+  const mapRoleToName = (roleId) => {
+    switch (roleId) {
+      case "1":
+        return "Administrator";
+      case "2":
+        return "Operator";
+      case "3":
+        return "Guru";
+      case "4":
+        return "Siswa";
+      case "5":
+        return "Wali Kelas";
+      default:
+        return "Tidak Diketahui";
+    }
   };
-
-  const cardContent = `Di sini, Anda dapat mengelola pengguna di sistem, seperti menambahkan pengguna baru, atau mengubah pengguna yang sudah ada di sistem.`;
 
   const renderColumns = () => [
-    { title: "Nama", dataIndex: "name", key: "name", align: "center" },
+    {
+      title: "No",
+      dataIndex: "index",
+      key: "index",
+      align: "center",
+      render: (_, __, index) => index + 1,
+    },
+    {
+      title: "Nama",
+      dataIndex: "name",
+      key: "name",
+      align: "center",
+      ...getColumnSearchProps("name"),
+      sorter: (a, b) => a.name.localeCompare(b.name),
+    },
     {
       title: "Username",
       dataIndex: "username",
       key: "username",
       align: "center",
+      ...getColumnSearchProps("username"),
+      sorter: (a, b) => a.username.localeCompare(b.username),
     },
-    { title: "Email", dataIndex: "email", key: "email", align: "center" },
-    { title: "Peran", dataIndex: "roles", key: "roles", align: "center" },
     {
-      title: "Sekolah",
-      key: "school",
+      title: "Email",
+      dataIndex: "email",
+      key: "email",
       align: "center",
-      dataIndex: ["school", "nameSchool"],
+      ...getColumnSearchProps("email"),
+      sorter: (a, b) => a.email.localeCompare(b.email),
+    },
+    {
+      title: "Roles",
+      dataIndex: "roles",
+      key: "roles",
+      align: "center",
+      filters: [
+        { text: "Operator", value: "Operator" },
+        { text: "Guru", value: "Guru" },
+        { text: "Siswa", value: "Siswa" },
+        { text: "Wali Kelas", value: "Wali Kelas" },
+      ],
+      ...getColumnSearchProps("roles"),
+      sorter: (a, b) => a.roles.localeCompare(b.roles),
     },
     {
       title: "Operasi",
       key: "action",
-      width: 120,
       align: "center",
       render: (_, row) => (
         <span>
@@ -167,35 +253,26 @@ const User = () => {
 
   const renderTable = () => (
     <Table
-      rowKey="id"
+      rowKey="idUser"
       dataSource={users}
-      bordered
       columns={renderColumns()}
-      pagination={false}
+      pagination={{ pageSize: 10 }}
     />
   );
 
   const renderButtons = () => (
     <Row gutter={[16, 16]} justify="start">
       <Col>
+        <Button type="primary" onClick={() => setAddUserModalVisible(true)}>
+          Tambahkan User
+        </Button>
+      </Col>
+      <Col>
         <Button
-          type="primary"
-          onClick={() =>
-            setModalState((prev) => ({ ...prev, addVisible: true }))
-          }
-          block
+          icon={<UploadOutlined />}
+          onClick={() => setImportModalVisible(true)}
         >
-          Tambah Pengguna
-        </Button>
-      </Col>
-      <Col>
-        <Button icon={<UploadOutlined />} block>
           Import File
-        </Button>
-      </Col>
-      <Col>
-        <Button icon={<DownloadOutlined />} block>
-          Download Format CSV
         </Button>
       </Col>
     </Row>
@@ -204,32 +281,82 @@ const User = () => {
   return (
     <div className="app-container">
       <TypingCard
-        title="Manajemen Pengguna"
-        source="Di sini, Anda dapat mengelola daftar pengguna di sistem."
+        title="Manajemen User"
+        source="Di sini, Anda dapat mengelola user di sistem."
       />
       <br />
-      <Card title={renderButtons()} style={{ overflowX: "scroll" }}>
-        {renderTable()}
-      </Card>
-      <EditUserForm
-        wrappedComponentRef={editFormRef}
-        currentRowData={currentRowData}
-        visible={modalState.editVisible}
-        confirmLoading={modalState.editLoading}
-        onCancel={() =>
-          setModalState((prev) => ({ ...prev, editVisible: false }))
-        }
-        onOk={fetchUsers}
-      />
-      <AddUserForm
-        wrappedComponentRef={addFormRef}
-        visible={modalState.addVisible}
-        confirmLoading={modalState.addLoading}
-        onCancel={() =>
-          setModalState((prev) => ({ ...prev, addVisible: false }))
-        }
-        onOk={fetchUsers}
-      />
+      {loading ? (
+        <Card>
+          <Skeleton active paragraph={{ rows: 10 }} />
+        </Card>
+      ) : (
+        <Card style={{ overflowX: "scroll" }}>
+          {/* Baris untuk tombol dan pencarian */}
+          <Row
+            justify="space-between"
+            align="middle"
+            style={{ marginBottom: 16 }}
+          >
+            {/* Tombol Tambah & Import */}
+            {renderButtons()}
+
+            {/* Kolom Pencarian */}
+            <Col>
+              <Input.Search
+                key="search"
+                placeholder="Cari user..."
+                allowClear
+                enterButton
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ width: 300 }}
+              />
+            </Col>
+          </Row>
+
+          {/* Tabel */}
+          {renderTable()}
+
+          <AddUserForm
+            wrappedComponentRef={addUserFormRef}
+            visible={addUserModalVisible}
+            confirmLoading={addUserModalLoading}
+            onCancel={handleCancel}
+            onOk={handleAddUserOk}
+          />
+
+          {/* <EditUserForm
+            wrappedComponentRef={editUserFormRef}
+            currentRowData={currentRowData}
+            visible={editUserModalVisible}
+            confirmLoading={editUserModalLoading}
+            onCancel={handleCancel}
+            onOk={handleEditUserOk}
+          /> */}
+        </Card>
+      )}
+
+      <Modal
+        title="Import File"
+        open={importModalVisible}
+        onCancel={() => setImportModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setImportModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button
+            key="upload"
+            type="primary"
+            loading={uploading}
+            onClick={() => {}}
+          >
+            Upload
+          </Button>,
+        ]}
+      >
+        <Upload beforeUpload={() => false} accept=".csv,.xlsx,.xls">
+          <Button>Pilih File</Button>
+        </Upload>
+      </Modal>
     </div>
   );
 };
