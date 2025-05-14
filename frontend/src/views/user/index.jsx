@@ -44,6 +44,8 @@ const User = () => {
   const [searchText, setSearchText] = useState("");
   const [searchedColumn, setSearchedColumn] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentUserRole, setCurrentUserRole] = useState("");
+  const [user, setUser] = useState(null);
 
   // Fungsi Helper Table Search
   const { getColumnSearchProps } = useTableSearch();
@@ -51,22 +53,34 @@ const User = () => {
   const editUserFormRef = useRef();
   const addUserFormRef = useRef();
 
+  const fetchUserInfo = async () => {
+    try {
+      const response = await reqUserInfo();
+      if (response && response.data) {
+        setUser(response.data);
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error("Error fetching user info:", error);
+      setUser(null);
+    }
+  };
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getUsers();
       const { content, statusCode } = result.data;
-
       if (statusCode === 200) {
-        // Filter hanya user yang memiliki school (bukan administrator)
-        const filteredUsers = content
-          .filter((user) => user.school !== null)
-          .map((user) => ({
-            ...user,
-            roles: mapRoleToName(user.roles), // mapping angka role jadi string
-          }));
+        let filteredUsers = content;
+        // ✅ Ubah ID role menjadi nama
+        const transformedUsers = filteredUsers.map((user) => ({
+          ...user,
+          roles: mapRoleToName(user.roles), // ubah ID jadi nama
+        }));
 
-        setUsers(filteredUsers);
+        setUsers(transformedUsers);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -79,10 +93,11 @@ const User = () => {
 
   useEffect(() => {
     fetchUsers();
+    fetchUserInfo();
   }, [fetchUsers]);
 
   const handleDeleteUser = (row) => {
-    const { idUser } = row;
+    const { id } = row;
     Modal.confirm({
       title: "Konfirmasi",
       content: "Apakah Anda yakin ingin menghapus data ini?",
@@ -91,7 +106,8 @@ const User = () => {
       cancelText: "Tidak",
       onOk: async () => {
         try {
-          await deleteUser({ idUser });
+          console.log("ID User yang akan dihapus:", id);
+          await deleteUser({ id });
           message.success("Berhasil dihapus");
           fetchUsers();
         } catch (error) {
@@ -115,7 +131,6 @@ const User = () => {
         username: values.username,
         email: values.email,
         password: values.password,
-        school: values.school,
         roles: values.roles,
         schoolId: values.schoolId,
       };
@@ -136,12 +151,22 @@ const User = () => {
     setEditUserModalLoading(true);
     try {
       const updatedData = {
-        idUser: values.idUser,
-        namaUser: values.namaUser,
-        idSekolah: values.idSchool,
+        idUser: values.id || currentRowData.id,
+        name: values.name,
+        username: values.username,
+        email: values.email,
+        roles: values.roles,
+        schoolId: values.idSchool,
       };
+
+      // Tambahkan password jika ada
+      if (values.password && values.password.trim() !== "") {
+        updatedData.password = values.password;
+      }
+
       console.log("Updated Data:", updatedData);
-      await editUser(updatedData, currentRowData.idUser);
+      await editUser(updatedData, updatedData.idUser);
+
       setEditUserModalVisible(false);
       message.success("Berhasil mengedit");
       fetchUsers();
@@ -188,6 +213,19 @@ const User = () => {
       align: "center",
       render: (_, __, index) => index + 1,
     },
+    ...(user?.roles === "ROLE_ADMINISTRATOR"
+      ? [
+          {
+            title: "Sekolah",
+            dataIndex: ["school", "nameSchool"],
+            key: "nameSchool",
+            align: "center",
+            ...getColumnSearchProps("school", "school.nameSchool"),
+            sorter: (a, b) =>
+              a.school.nameSchool.localeCompare(b.school.nameSchool),
+          },
+        ]
+      : []),
     {
       title: "Nama",
       dataIndex: "name",
@@ -217,12 +255,6 @@ const User = () => {
       dataIndex: "roles",
       key: "roles",
       align: "center",
-      filters: [
-        { text: "Operator", value: "Operator" },
-        { text: "Guru", value: "Guru" },
-        { text: "Siswa", value: "Siswa" },
-        { text: "Wali Kelas", value: "Wali Kelas" },
-      ],
       ...getColumnSearchProps("roles"),
       sorter: (a, b) => a.roles.localeCompare(b.roles),
     },
@@ -253,7 +285,7 @@ const User = () => {
 
   const renderTable = () => (
     <Table
-      rowKey="idUser"
+      rowKey="id"
       dataSource={users}
       columns={renderColumns()}
       pagination={{ pageSize: 10 }}
@@ -324,14 +356,14 @@ const User = () => {
             onOk={handleAddUserOk}
           />
 
-          {/* <EditUserForm
+          <EditUserForm
             wrappedComponentRef={editUserFormRef}
             currentRowData={currentRowData}
             visible={editUserModalVisible}
             confirmLoading={editUserModalLoading}
             onCancel={handleCancel}
             onOk={handleEditUserOk}
-          /> */}
+          />
         </Card>
       )}
 

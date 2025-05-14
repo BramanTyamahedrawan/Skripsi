@@ -24,16 +24,16 @@ export function getUsersNotUsedInLectures() {
 
 export function deleteUser(data) {
   return request({
-    url: "/user/delete",
-    method: "post",
+    url: `/users/delete/${data.id}`,
+    method: "delete",
     data,
   });
 }
 
-export function editUser(data) {
+export function editUser(data, id) {
   return request({
-    url: "/user/edit",
-    method: "post",
+    url: `/users/edit/${id}`,
+    method: "put",
     data,
   });
 }
