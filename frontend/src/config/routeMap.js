@@ -258,6 +258,9 @@ const ATP = React.lazy(() =>
 const Taksonomi = React.lazy(() =>
   import(/*webpackChunkName:'Taksonomi'*/ "@/views/taksonomi")
 );
+const SoalUjian = React.lazy(() =>
+  import(/*webpackChunkName:'SoalUjian'*/ "@/views/soal-ujian")
+);
 
 // const Grade = React.lazy(() =>
 //   import(/*webpackChunkName:'Grade'*/ "@/views/grade")
@@ -428,6 +431,12 @@ export default [
     component: Taksonomi,
     roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
   },
+  {
+    path: "/soal-ujian",
+    component: SoalUjian,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
+
   // {
   //   path: "/study-program",
   //   component: StudyProgram,

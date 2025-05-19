@@ -205,6 +205,12 @@ const menuList = [
         icon: AuditOutlined,
         roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
       },
+      {
+        title: "Soal Ujian",
+        path: "/soal-ujian",
+        icon: AuditOutlined,
+        roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+      },
     ],
   },
 
