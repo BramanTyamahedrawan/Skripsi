@@ -144,7 +144,7 @@ const SoalUjian = () => {
   const handleEditSoalUjianOk = async (values) => {
     setEditSoalUjianModalLoading(true);
     try {
-      await editSoalUjian(values, currentRowData.idSoalUjian);
+      // await editSoalUjian(values, currentRowData.idSoalUjian);
       setEditSoalUjianModalVisible(false);
       message.success("Berhasil mengedit");
       fetchSoalUjians();
@@ -390,16 +390,17 @@ const SoalUjian = () => {
             </p>
             <ul>
               {previewData.jawabanBenar &&
-                previewData.jawabanBenar.map((pair, index) => {
-                  const [kiri, kanan] = pair.split("=");
-                  const kiriValue = previewData.pasangan[kiri];
-                  const kananValue = previewData.pasangan[kanan];
-                  return (
-                    <li key={index}>
-                      {kiriValue} - {kananValue}
-                    </li>
-                  );
-                })}
+                previewData.jawabanBenar.map((item, index) => (
+                  <li key={index}>
+                    {item}
+                    {previewData.jawabanBenar &&
+                      previewData.jawabanBenar.includes(item) && (
+                        <Tag color="green" style={{ marginLeft: 8 }}>
+                          Jawaban Benar
+                        </Tag>
+                      )}
+                  </li>
+                ))}
             </ul>
           </div>
         )}
@@ -468,14 +469,14 @@ const SoalUjian = () => {
           />
 
           {/* Modal untuk edit soal ujian */}
-          {/* <EditSoalUjianForm
-          wrappedComponentRef={editSoalUjianFormRef}
-          currentRowData={currentRowData}
-          visible={editSoalUjianModalVisible}
-          confirmLoading={editSoalUjianModalLoading}
-          onCancel={handleCancel}
-          onOk={handleEditSoalUjianOk}
-        /> */}
+          <EditSoalUjianForm
+            wrappedComponentRef={editSoalUjianFormRef}
+            currentRowData={currentRowData}
+            visible={editSoalUjianModalVisible}
+            confirmLoading={editSoalUjianModalLoading}
+            onCancel={handleCancel}
+            onOk={handleEditSoalUjianOk}
+          />
 
           {/* Modal untuk preview soal ujian */}
           <Modal

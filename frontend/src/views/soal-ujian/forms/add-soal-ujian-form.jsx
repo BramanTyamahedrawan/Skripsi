@@ -29,6 +29,18 @@ const { TextArea } = Input;
 const { Option } = Select;
 const { TabPane } = Tabs;
 
+// Define available colors for matching
+const MATCH_COLORS = [
+  { name: "blue", bg: "#BAD7F2", key: "blue" },
+  { name: "green", bg: "#C2E0C9", key: "green" },
+  { name: "orange", bg: "#F2C4B3", key: "orange" },
+  { name: "purple", bg: "#D4C1EC", key: "purple" },
+  { name: "yellow", bg: "#F2E2B3", key: "yellow" },
+  { name: "pink", bg: "#F2B3D6", key: "pink" },
+  { name: "teal", bg: "#B3F2E2", key: "teal" },
+  { name: "brown", bg: "#D9C4B1", key: "brown" },
+];
+
 const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const [form] = Form.useForm();
   const [soalUjian, setSoalUjian] = useState([]);
@@ -40,6 +52,12 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const [taksonomiList, setTaksonomiList] = useState([]);
   const [atpList, setAtpList] = useState([]);
   const [options, setOptions] = useState(["A", "B"]); // Default to 2 options: A and B
+
+  // New state for managing color matching
+  const [kiriItems, setKiriItems] = useState(["", "", ""]);
+  const [kananItems, setKananItems] = useState(["", "", ""]);
+  const [kiriColors, setKiriColors] = useState(["", "", ""]);
+  const [kananColors, setKananColors] = useState(["", "", ""]);
 
   const addOption = () => {
     if (options.length < 5) {
@@ -149,6 +167,14 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       setOptions(["A", "B"]);
     }
 
+    // Reset color matching states when switching to COCOK
+    if (value === "COCOK") {
+      setKiriItems(["", "", ""]);
+      setKananItems(["", "", ""]);
+      setKiriColors(["", "", ""]);
+      setKananColors(["", "", ""]);
+    }
+
     // Reset answer fields when changing question type
     form.setFieldsValue({
       opsiA: undefined,
@@ -164,6 +190,109 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       jawabanIsian: undefined,
       toleransiTypo: undefined,
     });
+  };
+
+  // Add item to kiri side
+  const addKiriItem = () => {
+    setKiriItems([...kiriItems, ""]);
+    setKiriColors([...kiriColors, ""]);
+  };
+
+  // Remove item from kiri side
+  const removeKiriItem = (index) => {
+    if (kiriItems.length > 2) {
+      const newItems = [...kiriItems];
+      const newColors = [...kiriColors];
+      newItems.splice(index, 1);
+      newColors.splice(index, 1);
+      setKiriItems(newItems);
+      setKiriColors(newColors);
+    }
+  };
+
+  // Add item to kanan side
+  const addKananItem = () => {
+    setKananItems([...kananItems, ""]);
+    setKananColors([...kananColors, ""]);
+  };
+
+  // Remove item from kanan side
+  const removeKananItem = (index) => {
+    if (kananItems.length > 2) {
+      const newItems = [...kananItems];
+      const newColors = [...kananColors];
+      newItems.splice(index, 1);
+      newColors.splice(index, 1);
+      setKananItems(newItems);
+      setKananColors(newColors);
+    }
+  };
+
+  // Update kiri item text
+  const updateKiriItem = (index, value) => {
+    const newItems = [...kiriItems];
+    newItems[index] = value;
+    setKiriItems(newItems);
+  };
+
+  // Update kanan item text
+  const updateKananItem = (index, value) => {
+    const newItems = [...kananItems];
+    newItems[index] = value;
+    setKananItems(newItems);
+  };
+
+  // Update kiri item color
+  const updateKiriColor = (index, color) => {
+    const newColors = [...kiriColors];
+    newColors[index] = color;
+    setKiriColors(newColors);
+  };
+
+  // Update kanan item color
+  const updateKananColor = (index, color) => {
+    const newColors = [...kananColors];
+    newColors[index] = color;
+    setKananColors(newColors);
+  };
+
+  // Generate color pairs data from selections
+  const generateColorPairs = () => {
+    const positionPairs = [];
+    const contentPairs = [];
+
+    // Create a map to store items by color
+    const colorMap = {};
+
+    // Add kiri items to the map
+    kiriItems.forEach((item, index) => {
+      const color = kiriColors[index];
+      if (color && item) {
+        if (!colorMap[color]) colorMap[color] = { kiri: [], kanan: [] };
+        colorMap[color].kiri.push({ index, text: item });
+      }
+    });
+
+    // Add kanan items to the map
+    kananItems.forEach((item, index) => {
+      const color = kananColors[index];
+      if (color && item) {
+        if (!colorMap[color]) colorMap[color] = { kiri: [], kanan: [] };
+        colorMap[color].kanan.push({ index, text: item });
+      }
+    });
+
+    // Generate pairs from the map
+    Object.values(colorMap).forEach(({ kiri, kanan }) => {
+      kiri.forEach((kiriItem) => {
+        kanan.forEach((kananItem) => {
+          positionPairs.push(`${kiriItem.index}-${kananItem.index}`);
+          contentPairs.push(`${kiriItem.text}=${kananItem.text}`);
+        });
+      });
+    });
+
+    return { positionPairs, contentPairs };
   };
 
   // Submit handler
@@ -209,25 +338,27 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
         case "COCOK": {
           // Process left side items
           const kiri = {};
-          values.pasanganKiri.forEach((item, index) => {
-            kiri[`${index + 1}_kiri`] = item;
+          kiriItems.forEach((item, index) => {
+            if (item.trim() !== "") {
+              kiri[`${index + 1}_kiri`] = item;
+            }
           });
 
           // Process right side items
           const kanan = {};
-          values.pasanganKanan.forEach((item, index) => {
-            kanan[`${index + values.pasanganKiri.length + 1}_kanan`] = item;
+          kananItems.forEach((item, index) => {
+            if (item.trim() !== "") {
+              kanan[`${index + kiriItems.length + 1}_kanan`] = item;
+            }
           });
 
           payload.pasangan = { ...kiri, ...kanan };
 
-          // Process pairings
-          payload.jawabanBenar = values.pasanganJawaban.map((pair) => {
-            const [kiriIdx, kananIdx] = pair.split("-");
-            return `${parseInt(kiriIdx) + 1}_kiri=${
-              parseInt(kananIdx) + values.pasanganKiri.length + 1
-            }_kanan`;
-          });
+          // Generate pairs based on matching colors
+          const { contentPairs } = generateColorPairs();
+
+          // Using content pairs (actual text values) instead of position references
+          payload.jawabanBenar = contentPairs;
           break;
         }
 
@@ -381,198 +512,150 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       case "COCOK":
         return (
           <>
-            <Divider orientation="left">Sisi Kiri</Divider>
-            <Form.List
-              name="pasanganKiri"
-              initialValue={["", "", ""]} // Default 3 items
-              rules={[
-                {
-                  validator: async (_, values) => {
-                    if (!values || values.length < 2) {
-                      return Promise.reject(
-                        new Error("Minimal 2 item di sisi kiri")
-                      );
-                    }
-                  },
-                },
-              ]}
-            >
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item
-                      required={false}
-                      key={field.key}
-                      label={`Item ${index + 1}`}
-                    >
-                      <Form.Item
-                        {...field}
-                        rules={[
-                          {
-                            required: true,
-                            message: "Item tidak boleh kosong",
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <Input
-                          style={{ width: "85%" }}
-                          placeholder={`Item ${index + 1}`}
-                        />
-                      </Form.Item>
-                      {fields.length > 2 ? (
-                        <MinusCircleOutlined
-                          className="dynamic-delete-button"
-                          style={{ margin: "0 8px" }}
-                          onClick={() => remove(field.name)}
-                        />
-                      ) : null}
-                    </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add()}
-                      icon={<PlusOutlined />}
-                    >
-                      Tambah Item Kiri
-                    </Button>
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
+            <Row gutter={24}>
+              {/* Left column */}
+              <Col span={12}>
+                <Divider orientation="left">Sisi Kiri</Divider>
 
-            <Divider orientation="left">Sisi Kanan</Divider>
-            <Form.List
-              name="pasanganKanan"
-              initialValue={["", "", ""]} // Default 3 items
-              rules={[
-                {
-                  validator: async (_, values) => {
-                    if (!values || values.length < 2) {
-                      return Promise.reject(
-                        new Error("Minimal 2 item di sisi kanan")
-                      );
-                    }
-                  },
-                },
-              ]}
-            >
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item
-                      required={false}
-                      key={field.key}
-                      label={`Item ${index + 1}`}
+                {kiriItems.map((item, index) => (
+                  <div
+                    key={`kiri-${index}`}
+                    style={{
+                      marginBottom: 16,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Select
+                      value={kiriColors[index] || undefined}
+                      onChange={(color) => updateKiriColor(index, color)}
+                      placeholder="Pilih warna"
+                      style={{ width: 120, marginRight: 8 }}
+                      dropdownRender={(menu) => <div>{menu}</div>}
                     >
-                      <Form.Item
-                        {...field}
-                        rules={[
-                          {
-                            required: true,
-                            message: "Item tidak boleh kosong",
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <Input
-                          style={{ width: "85%" }}
-                          placeholder={`Item ${index + 1}`}
-                        />
-                      </Form.Item>
-                      {fields.length > 2 ? (
-                        <MinusCircleOutlined
-                          className="dynamic-delete-button"
-                          style={{ margin: "0 8px" }}
-                          onClick={() => remove(field.name)}
-                        />
-                      ) : null}
-                    </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add()}
-                      icon={<PlusOutlined />}
-                    >
-                      Tambah Item Kanan
-                    </Button>
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
+                      {MATCH_COLORS.map((color) => (
+                        <Option key={color.key} value={color.key}>
+                          <div
+                            style={{
+                              backgroundColor: color.bg,
+                              width: 80,
+                              height: 20,
+                              borderRadius: 4,
+                            }}
+                          ></div>
+                        </Option>
+                      ))}
+                    </Select>
 
-            <Divider orientation="left">Pasangan Jawaban</Divider>
-            <Form.List
-              name="pasanganJawaban"
-              initialValue={["0-0", "1-1", "2-2"]} // Default pairing
-              rules={[
-                {
-                  validator: async (_, values) => {
-                    if (!values || values.length < 1) {
-                      return Promise.reject(
-                        new Error("Harus ada minimal 1 pasangan")
-                      );
-                    }
-                  },
-                },
-              ]}
-            >
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item
-                      required={false}
-                      key={field.key}
-                      label={`Pasangan ${index + 1}`}
+                    <Input
+                      value={item}
+                      onChange={(e) => updateKiriItem(index, e.target.value)}
+                      placeholder={`Item ${index + 1}`}
+                      style={{
+                        flex: 1,
+                        backgroundColor: kiriColors[index]
+                          ? MATCH_COLORS.find(
+                              (c) => c.key === kiriColors[index]
+                            )?.bg
+                          : "white",
+                      }}
+                    />
+
+                    {kiriItems.length > 2 && (
+                      <Button
+                        type="text"
+                        icon={<MinusCircleOutlined />}
+                        onClick={() => removeKiriItem(index)}
+                        style={{ marginLeft: 8 }}
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <Button
+                  type="dashed"
+                  onClick={addKiriItem}
+                  icon={<PlusOutlined />}
+                  style={{ width: "100%" }}
+                >
+                  Tambah Item Kiri
+                </Button>
+              </Col>
+
+              {/* Right column */}
+              <Col span={12}>
+                <Divider orientation="left">Sisi Kanan</Divider>
+
+                {kananItems.map((item, index) => (
+                  <div
+                    key={`kanan-${index}`}
+                    style={{
+                      marginBottom: 16,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Select
+                      value={kananColors[index] || undefined}
+                      onChange={(color) => updateKananColor(index, color)}
+                      placeholder="Pilih warna"
+                      style={{ width: 120, marginRight: 8 }}
+                      dropdownRender={(menu) => <div>{menu}</div>}
                     >
-                      <Form.Item
-                        {...field}
-                        rules={[
-                          { required: true, message: "Pasangan harus dipilih" },
-                        ]}
-                        noStyle
-                      >
-                        <Select style={{ width: "85%" }}>
-                          {form
-                            .getFieldValue("pasanganKiri")
-                            ?.map((kiri, kiriIdx) =>
-                              form
-                                .getFieldValue("pasanganKanan")
-                                ?.map((kanan, kananIdx) => (
-                                  <Option
-                                    key={`${kiriIdx}-${kananIdx}`}
-                                    value={`${kiriIdx}-${kananIdx}`}
-                                  >
-                                    {kiri || `Item Kiri ${kiriIdx + 1}`} -{" "}
-                                    {kanan || `Item Kanan ${kananIdx + 1}`}
-                                  </Option>
-                                ))
-                            )}
-                        </Select>
-                      </Form.Item>
-                      {fields.length > 1 ? (
-                        <MinusCircleOutlined
-                          className="dynamic-delete-button"
-                          style={{ margin: "0 8px" }}
-                          onClick={() => remove(field.name)}
-                        />
-                      ) : null}
-                    </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add()}
-                      icon={<PlusOutlined />}
-                    >
-                      Tambah Pasangan
-                    </Button>
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
+                      {MATCH_COLORS.map((color) => (
+                        <Option key={color.key} value={color.key}>
+                          <div
+                            style={{
+                              backgroundColor: color.bg,
+                              width: 80,
+                              height: 20,
+                              borderRadius: 4,
+                            }}
+                          ></div>
+                        </Option>
+                      ))}
+                    </Select>
+
+                    <Input
+                      value={item}
+                      onChange={(e) => updateKananItem(index, e.target.value)}
+                      placeholder={`Item ${index + 1}`}
+                      style={{
+                        flex: 1,
+                        backgroundColor: kananColors[index]
+                          ? MATCH_COLORS.find(
+                              (c) => c.key === kananColors[index]
+                            )?.bg
+                          : "white",
+                      }}
+                    />
+
+                    {kananItems.length > 2 && (
+                      <Button
+                        type="text"
+                        icon={<MinusCircleOutlined />}
+                        onClick={() => removeKananItem(index)}
+                        style={{ marginLeft: 8 }}
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <Button
+                  type="dashed"
+                  onClick={addKananItem}
+                  icon={<PlusOutlined />}
+                  style={{ width: "100%" }}
+                >
+                  Tambah Item Kanan
+                </Button>
+              </Col>
+            </Row>
+
+            <Divider>
+              Petunjuk: Item dengan warna yang sama akan dipasangkan secara
+              otomatis
+            </Divider>
           </>
         );
 
