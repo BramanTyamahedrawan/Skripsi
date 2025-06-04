@@ -706,7 +706,7 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
         <Tabs defaultActiveKey="1">
           <TabPane tab="Informasi Soal" key="1">
             <Row gutter={16}>
-              <Col xs={24} sm={24} md={12}>
+              <Col xs={24} sm={24} md={24}>
                 <Form.Item
                   label="Konsentrasi Keahlian Sekolah:"
                   name="idKonsentrasiSekolah"
