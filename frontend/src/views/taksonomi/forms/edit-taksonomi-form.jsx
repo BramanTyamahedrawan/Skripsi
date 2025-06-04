@@ -83,6 +83,7 @@ const EditTaksonomiForm = ({
         idTaksonomi: currentRowData.idTaksonomi,
         idSchool: currentRowData.school?.idSchool,
         namaTaksonomi: currentRowData.namaTaksonomi,
+        deskripsiTaksonomi: currentRowData.deskripsiTaksonomi,
       });
     }
   }, [currentRowData, form]);

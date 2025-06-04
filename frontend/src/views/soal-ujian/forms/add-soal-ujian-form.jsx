@@ -22,8 +22,8 @@ import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
 import { getSoalUjian } from "@/api/soalUjian";
 import { getSchool } from "@/api/school";
 import { reqUserInfo } from "@/api/user";
+import { getKonsentrasiSekolah } from "@/api/konsentrasiKeahlianSekolah";
 import { getTaksonomi } from "@/api/taksonomi";
-import { getATP } from "@/api/atp";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -50,7 +50,8 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   const [userId, setUserId] = useState(null);
   const [schoolList, setSchoolList] = useState([]);
   const [taksonomiList, setTaksonomiList] = useState([]);
-  const [atpList, setAtpList] = useState([]);
+  const [konsentrasiKeahlianSekolahList, setKonsentrasiKeahlianSekolahList] =
+    useState([]);
   const [options, setOptions] = useState(["A", "B"]); // Default to 2 options: A and B
 
   // New state for managing color matching
@@ -116,14 +117,16 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     }
   };
 
-  const fetchAtpList = async () => {
+  const fetchKonsentrasiKeahlianSekolahList = async () => {
     try {
-      const result = await getATP();
+      const result = await getKonsentrasiSekolah();
       if (result.data.statusCode === 200) {
-        setAtpList(result.data.content);
+        setKonsentrasiKeahlianSekolahList(result.data.content);
+      } else {
+        message.error("Gagal mengambil data");
       }
     } catch (error) {
-      message.error("Gagal mengambil data ATP");
+      message.error("Terjadi kesalahan: " + error.message);
     }
   };
 
@@ -144,9 +147,9 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
   useEffect(() => {
     fetchUserInfo();
     fetchSchoolList();
-    fetchSoalUjian();
     fetchTaksonomiList();
-    fetchAtpList();
+    fetchKonsentrasiKeahlianSekolahList();
+    fetchSoalUjian();
   }, []);
 
   useEffect(() => {
@@ -309,7 +312,7 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
         jenisSoal: values.jenisSoal,
         idUser: userId,
         idTaksonomi: values.idTaksonomi,
-        idAtp: values.idAtp,
+        idKonsentrasiSekolah: values.idKonsentrasiSekolah,
         idSchool: values.idSchool,
       };
 
@@ -703,6 +706,40 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
         <Tabs defaultActiveKey="1">
           <TabPane tab="Informasi Soal" key="1">
             <Row gutter={16}>
+              <Col xs={24} sm={24} md={12}>
+                <Form.Item
+                  label="Konsentrasi Keahlian Sekolah:"
+                  name="idKonsentrasiSekolah"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Silahkan pilih Konsentrasi Keahlian Sekolah",
+                    },
+                  ]}
+                >
+                  <Select
+                    placeholder="Pilih Konsentrasi Keahlian Sekolah"
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) =>
+                      option.children
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                    }
+                  >
+                    {konsentrasiKeahlianSekolahList.map(
+                      ({ idKonsentrasiSekolah, namaKonsentrasiSekolah }) => (
+                        <Option
+                          key={idKonsentrasiSekolah}
+                          value={idKonsentrasiSekolah}
+                        >
+                          {namaKonsentrasiSekolah}
+                        </Option>
+                      )
+                    )}
+                  </Select>
+                </Form.Item>
+              </Col>
               <Col span={24}>
                 <Form.Item
                   label="Jenis Soal"
@@ -763,21 +800,6 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                     {taksonomiList.map(({ idTaksonomi, namaTaksonomi }) => (
                       <Option key={idTaksonomi} value={idTaksonomi}>
                         {namaTaksonomi}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="ATP"
-                  name="idAtp"
-                  rules={[{ required: true, message: "ATP wajib diisi" }]}
-                >
-                  <Select placeholder="Pilih ATP">
-                    {atpList.map(({ idAtp, namaAtp }) => (
-                      <Option key={idAtp} value={idAtp}>
-                        {namaAtp}
                       </Option>
                     ))}
                   </Select>

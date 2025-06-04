@@ -214,25 +214,25 @@ const menuList = [
     ],
   },
 
-  {
-    title: "Guru",
-    path: "/lecture",
-    icon: TeamOutlined,
-    roles: ["ROLE_OPERATOR"],
-  },
+  // {
+  //   title: "Guru",
+  //   path: "/lecture",
+  //   icon: TeamOutlined,
+  //   roles: ["ROLE_OPERATOR"],
+  // },
 
-  {
-    title: "Siswa",
-    path: "/student",
-    icon: TeamOutlined,
-    roles: ["ROLE_OPERATOR"],
-  },
-  {
-    title: "List Todo",
-    path: "/list-todo-admin",
-    icon: SolutionOutlined,
-    roles: ["ROLE_OPERATOR"],
-  },
+  // {
+  //   title: "Siswa",
+  //   path: "/student",
+  //   icon: TeamOutlined,
+  //   roles: ["ROLE_OPERATOR"],
+  // },
+  // {
+  //   title: "List Todo",
+  //   path: "/list-todo-admin",
+  //   icon: SolutionOutlined,
+  //   roles: ["ROLE_OPERATOR"],
+  // },
   // Lecture
   // {
   //   title: "Master Soal",
@@ -260,12 +260,12 @@ const menuList = [
   //     },
   //   ],
   // },
-  {
-    title: "List Todo",
-    path: "/list-todo",
-    icon: SolutionOutlined,
-    roles: ["ROLE_TEACHER", "ROLE_DUDI"],
-  },
+  // {
+  //   title: "List Todo",
+  //   path: "/list-todo",
+  //   icon: SolutionOutlined,
+  //   roles: ["ROLE_TEACHER", "ROLE_DUDI"],
+  // },
   {
     title: "Pengguna",
     path: "/user",
@@ -298,36 +298,36 @@ const menuList = [
     icon: SolutionOutlined,
     roles: ["ROLE_OPERATOR"],
   },
-  {
-    title: "Setting Kuis",
-    path: "/setting-quiz",
-    icon: SolutionOutlined,
-    roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
-  },
-  {
-    title: "Setting Latihan",
-    path: "/setting-exercise",
-    icon: SolutionOutlined,
-    roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
-  },
+  // {
+  //   title: "Setting Kuis",
+  //   path: "/setting-quiz",
+  //   icon: SolutionOutlined,
+  //   roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
+  // },
+  // {
+  //   title: "Setting Latihan",
+  //   path: "/setting-exercise",
+  //   icon: SolutionOutlined,
+  //   roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
+  // },
   {
     title: "Ujian",
     path: "/exam",
     icon: SolutionOutlined,
     roles: ["ROLE_STUDENT"],
   },
-  {
-    title: "Kuis",
-    path: "/quiz",
-    icon: SolutionOutlined,
-    roles: ["ROLE_STUDENT"],
-  },
-  {
-    title: "Latihan",
-    path: "/exercise",
-    icon: SolutionOutlined,
-    roles: ["ROLE_STUDENT"],
-  },
+  // {
+  //   title: "Kuis",
+  //   path: "/quiz",
+  //   icon: SolutionOutlined,
+  //   roles: ["ROLE_STUDENT"],
+  // },
+  // {
+  //   title: "Latihan",
+  //   path: "/exercise",
+  //   icon: SolutionOutlined,
+  //   roles: ["ROLE_STUDENT"],
+  // },
   {
     title: "Nilai",
     path: "/result",
@@ -340,26 +340,26 @@ const menuList = [
         icon: ContainerOutlined,
         roles: ["ROLE_TEACHER", "ROLE_DUDI"],
       },
-      {
-        title: "Nilai Kuis",
-        path: "/result/quiz",
-        icon: ContainerOutlined,
-        roles: ["ROLE_DUDI", "ROLE_TEACHER"],
-      },
-      {
-        title: "Nilai Latihan",
-        path: "/result/exercise",
-        icon: ContainerOutlined,
-        roles: ["ROLE_DUDI", "ROLE_TEACHER"],
-      },
+      // {
+      //   title: "Nilai Kuis",
+      //   path: "/result/quiz",
+      //   icon: ContainerOutlined,
+      //   roles: ["ROLE_DUDI", "ROLE_TEACHER"],
+      // },
+      // {
+      //   title: "Nilai Latihan",
+      //   path: "/result/exercise",
+      //   icon: ContainerOutlined,
+      //   roles: ["ROLE_DUDI", "ROLE_TEACHER"],
+      // },
     ],
   },
-  {
-    title: "Tentang Penulis",
-    path: "/about",
-    icon: CopyrightOutlined,
-    roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER", "ROLE_STUDENT"],
-  },
+  // {
+  //   title: "Tentang Penulis",
+  //   path: "/about",
+  //   icon: CopyrightOutlined,
+  //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER", "ROLE_STUDENT"],
+  // },
 
   // {
   //   title: "Bug收集",
