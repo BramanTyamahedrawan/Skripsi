@@ -4,11 +4,6 @@ import { Row, Col, Card } from "antd";
 import { Typography } from "antd";
 const { Text, Title } = Typography;
 import "./index.less";
-import BarChart from "./components/BarChart";
-import RaddarChart from "./components/RaddarChart";
-import PieChart from "./components/PieChart";
-import TransactionTable from "./components/TransactionTable";
-import BoxCard from "./components/BoxCard";
 
 const Dashboard = () => {
   return (

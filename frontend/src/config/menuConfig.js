@@ -211,7 +211,27 @@ const menuList = [
         icon: AuditOutlined,
         roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
       },
+      {
+        title: "Bank Soal",
+        path: "/bank-soal",
+        icon: AuditOutlined,
+        roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+      },
     ],
+  },
+
+  {
+    title: "Ujian",
+    path: "/ujian",
+    icon: SolutionOutlined,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
+
+  {
+    title: "Ujian Siswa",
+    path: "/ujian-view",
+    icon: SolutionOutlined,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
   },
 
   // {

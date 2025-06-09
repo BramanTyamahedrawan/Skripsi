@@ -261,6 +261,15 @@ const Taksonomi = React.lazy(() =>
 const SoalUjian = React.lazy(() =>
   import(/*webpackChunkName:'SoalUjian'*/ "@/views/soal-ujian")
 );
+const BankSoal = React.lazy(() =>
+  import(/*webpackChunkName:'BankSoal'*/ "@/views/bank-soal")
+);
+const Ujian = React.lazy(() =>
+  import(/*webpackChunkName:'Ujian'*/ "@/views/ujian")
+);
+const UjianView = React.lazy(() =>
+  import(/*webpackChunkName:'UjianView'*/ "@/views/ujian-view")
+);
 
 // const Grade = React.lazy(() =>
 //   import(/*webpackChunkName:'Grade'*/ "@/views/grade")
@@ -435,6 +444,21 @@ export default [
     path: "/soal-ujian",
     component: SoalUjian,
     roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
+  {
+    path: "/bank-soal",
+    component: BankSoal,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
+  {
+    path: "/ujian",
+    component: Ujian,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
+  {
+    path: "/ujian-view",
+    component: UjianView,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
   },
 
   // {
