@@ -464,7 +464,7 @@ const UjianCATView = () => {
         idPeserta: userInfo.id,
         sessionId: sessionId,
         idBankSoal: soalId,
-        jawaban: JSON.stringify(formattedJawaban),
+        jawaban: formattedJawaban,
         attemptNumber: attemptNumber,
         timestamp: new Date().toISOString(),
       });
@@ -573,7 +573,10 @@ const UjianCATView = () => {
   // Statistik jawaban
   const jawabanStats = {
     dijawab: Object.keys(jawaban).length,
-    belumDijawab: soalList.length - Object.keys(jawaban).length,
+    belumDijawab: Math.max(
+      0,
+      (soalList?.length || 0) - Object.keys(jawaban).length
+    ),
   };
 
   // Render komponen jawaban berdasarkan jenis soal
