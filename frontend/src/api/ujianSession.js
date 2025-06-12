@@ -1,29 +1,57 @@
-import request from "@/utils/request";
+import request from "../utils/request";
 
 // Mulai session ujian
-export function startUjianSession(data) {
+export function startUjianSession({ idUjian, idPeserta }) {
   return request({
     url: "/ujian-session/start",
     method: "post",
-    data,
+    data: { idUjian, idPeserta },
   });
 }
 
 // Simpan jawaban individual
-export function saveJawaban(data) {
+export function saveJawaban({
+  idUjian,
+  idPeserta,
+  sessionId,
+  idBankSoal,
+  jawaban,
+  currentSoalIndex,
+}) {
   return request({
     url: "/ujian-session/save-jawaban",
     method: "post",
-    data,
+    data: {
+      idUjian,
+      idPeserta,
+      sessionId,
+      idBankSoal,
+      jawaban,
+      currentSoalIndex,
+    },
   });
 }
 
 // Submit ujian final
-export function submitUjian(data) {
+export function submitUjian({
+  idUjian,
+  idPeserta,
+  sessionId,
+  answers,
+  isAutoSubmit,
+  finalTimeRemaining,
+}) {
   return request({
     url: "/ujian-session/submit",
     method: "post",
-    data,
+    data: {
+      idUjian,
+      idPeserta,
+      sessionId,
+      answers,
+      isAutoSubmit,
+      finalTimeRemaining,
+    },
   });
 }
 
@@ -44,11 +72,25 @@ export function getActiveSession(idUjian, idPeserta) {
 }
 
 // Auto save progress (save multiple answers at once)
-export function autoSaveProgress(data) {
+export function autoSaveProgress({
+  idUjian,
+  idPeserta,
+  sessionId,
+  answers,
+  currentSoalIndex,
+  timeRemaining,
+}) {
   return request({
     url: "/ujian-session/auto-save",
     method: "post",
-    data,
+    data: {
+      idUjian,
+      idPeserta,
+      sessionId,
+      answers,
+      currentSoalIndex,
+      timeRemaining,
+    },
   });
 }
 
@@ -61,10 +103,11 @@ export function validateCanStart(idUjian, idPeserta) {
 }
 
 // Ping untuk keep session alive
-export function keepSessionAlive(idUjian, idPeserta) {
+export function keepSessionAlive(idUjian, idPeserta, data = {}) {
   return request({
     url: `/ujian-session/keep-alive/${idUjian}/${idPeserta}`,
     method: "post",
+    data,
   });
 }
 
@@ -77,19 +120,28 @@ export function getTimeRemaining(idUjian, idPeserta) {
 }
 
 // Update current soal index (untuk tracking progress)
-export function updateCurrentSoal(idUjian, idPeserta, soalIndex) {
+export function updateCurrentSoal({
+  idUjian,
+  idPeserta,
+  sessionId,
+  currentSoalIndex,
+  previousSoalIndex,
+  navigationAction,
+}) {
   return request({
-    url: `/ujian-session/update-current-soal`,
+    url: "/ujian-session/update-current-soal",
     method: "post",
     data: {
       idUjian,
       idPeserta,
-      currentSoalIndex: soalIndex,
+      sessionId,
+      currentSoalIndex,
+      previousSoalIndex,
+      navigationAction,
     },
   });
 }
 
-// Export semua untuk kemudahan import
 export default {
   startUjianSession,
   saveJawaban,

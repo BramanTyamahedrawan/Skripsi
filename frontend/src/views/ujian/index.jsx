@@ -35,6 +35,7 @@ import {
   UserOutlined,
   BookOutlined,
   ReloadOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import {
   getUjian,
@@ -56,6 +57,7 @@ import AddUjianForm from "./forms/add-ujian-form";
 import { useTableSearch } from "@/helper/tableSearchHelper.jsx";
 import { reqUserInfo, getUserById } from "@/api/user";
 import moment from "moment";
+import { useNavigate } from "react-router-dom";
 
 const { Text, Title } = Typography;
 
@@ -77,6 +79,8 @@ const Ujian = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statistics, setStatistics] = useState({});
   const [statusFilter, setStatusFilter] = useState("all");
+
+  const navigate = useNavigate();
 
   // Fungsi Helper Table Search
   const { getColumnSearchProps } = useTableSearch();
@@ -291,6 +295,11 @@ const Ujian = () => {
     return filtered;
   };
 
+  // Handler untuk lihat analisis
+  const handleViewAnalysis = (row) => {
+    navigate(`/ujian-analysis/${row.idUjian}`);
+  };
+
   // Render action buttons berdasarkan status ujian
   const renderActionButtons = (record) => {
     const status = record.statusUjian;
@@ -398,6 +407,23 @@ const Ujian = () => {
             icon={<DeleteOutlined />}
             onClick={() => handleDeleteUjian(record)}
           />
+        </Tooltip>
+      );
+    }
+
+    // Tombol Lihat Analisis - hanya untuk ujian selesai
+    if (getStatusText(record) === "SELESAI") {
+      buttons.push(
+        <Tooltip key="analysis" title="Lihat Analisis Ujian">
+          <Button
+            type="default"
+            size="small"
+            icon={<BarChartOutlined />}
+            onClick={() => handleViewAnalysis(record)}
+            style={{ backgroundColor: "#f0f5ff", borderColor: "#adc6ff" }}
+          >
+            Analisis
+          </Button>
         </Tooltip>
       );
     }

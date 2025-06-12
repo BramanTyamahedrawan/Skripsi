@@ -54,6 +54,8 @@ import {
 } from "@/api/ujianSession";
 import { reqUserInfo } from "@/api/user";
 import { getStudentByUser } from "@/api/student";
+import { getAnalysisByUjian } from "@/api/ujianAnalysis";
+import { recordViolation } from "@/api/cheatDetection";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -92,6 +94,15 @@ const UjianCATView = () => {
   // Progress tracking
   const [autoSaveStatus, setAutoSaveStatus] = useState("idle");
   const [lastSaved, setLastSaved] = useState(null);
+
+  // Analisis ujian
+  const [ujianAnalysis, setUjianAnalysis] = useState(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+
+  // Tambah state untuk pelanggaran
+  const [violationCount, setViolationCount] = useState(0);
+  const [violationModalVisible, setViolationModalVisible] = useState(false);
+  const [violationReason, setViolationReason] = useState("");
 
   const timerRef = useRef(null);
   const autoSaveRef = useRef(null);
@@ -749,6 +760,105 @@ const UjianCATView = () => {
     }
   };
 
+  // Fetch analysis after ujian selesai
+  useEffect(() => {
+    if (isFinished && ujianData) {
+      const fetchAnalysis = async () => {
+        setAnalysisLoading(true);
+        try {
+          const res = await getAnalysisByUjian(ujianData.idUjian);
+          if (res.data && res.data.content && res.data.content.length > 0) {
+            setUjianAnalysis(res.data.content[0]);
+          } else {
+            setUjianAnalysis(null);
+          }
+        } catch (err) {
+          setUjianAnalysis(null);
+        } finally {
+          setAnalysisLoading(false);
+        }
+      };
+      fetchAnalysis();
+    }
+  }, [isFinished, ujianData]);
+
+  // === ANTI-CHEAT EVENT LISTENER ===
+  useEffect(() => {
+    if (!(isStarted && sessionActive && ujianData && userInfo && sessionId))
+      return;
+
+    // Handler untuk kirim pelanggaran ke backend dan update counter
+    const handleViolation = (type, extra = {}) => {
+      recordViolation({
+        sessionId,
+        idPeserta: userInfo.id,
+        idUjian: ujianData.idUjian,
+        typeViolation: type,
+        detectedAt: new Date().toISOString(),
+        evidence: extra,
+      });
+      setViolationCount((prev) => {
+        const next = prev + 1;
+        if (next >= 3) {
+          setViolationModalVisible(true);
+          setViolationReason(type);
+          // Auto submit ujian jika pelanggaran >= 3
+          if (!isFinished && sessionActive) {
+            setTimeout(() => handleSubmitUjian(true), 500);
+          }
+        }
+        return next;
+      });
+    };
+
+    // Tab/window blur
+    const handleBlur = () => handleViolation("WINDOW_BLUR");
+    // Visibility change
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") handleViolation("TAB_SWITCH");
+    };
+    // Copy
+    const handleCopy = (e) =>
+      handleViolation("COPY_PASTE", {
+        clipboard: e.clipboardData?.getData("text"),
+      });
+    // Paste
+    const handlePaste = (e) =>
+      handleViolation("COPY_PASTE", {
+        clipboard: e.clipboardData?.getData("text"),
+      });
+    // Fullscreen exit
+    const handleFullscreen = () => {
+      if (!document.fullscreenElement) handleViolation("FULLSCREEN_EXIT");
+    };
+    // Keyboard shortcut (Ctrl+C, Ctrl+V, Alt+Tab, F12, dsb)
+    const handleKeydown = (e) => {
+      if ((e.ctrlKey && e.key === "c") || (e.ctrlKey && e.key === "v")) {
+        handleViolation("CTRL_C_V", { key: e.key });
+      }
+      if (e.key === "F12") handleViolation("BROWSER_DEV_TOOLS");
+      if (e.altKey && e.key.toLowerCase() === "tab") handleViolation("ALT_TAB");
+      // Print screen
+      if (e.key === "PrintScreen") handleViolation("PRINT_SCREEN");
+    };
+
+    window.addEventListener("blur", handleBlur);
+    document.addEventListener("visibilitychange", handleVisibility);
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("paste", handlePaste);
+    document.addEventListener("fullscreenchange", handleFullscreen);
+    window.addEventListener("keydown", handleKeydown);
+
+    return () => {
+      window.removeEventListener("blur", handleBlur);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("paste", handlePaste);
+      document.removeEventListener("fullscreenchange", handleFullscreen);
+      window.removeEventListener("keydown", handleKeydown);
+    };
+  }, [isStarted, sessionActive, ujianData, userInfo, sessionId, isFinished]);
+
   if (loading) {
     return (
       <div style={{ padding: "24px", textAlign: "center" }}>
@@ -912,68 +1022,51 @@ const UjianCATView = () => {
   // Finished screen
   if (isFinished) {
     return (
-      <div style={{ padding: "24px", maxWidth: "800px", margin: "0 auto" }}>
+      <div style={{ maxWidth: 600, margin: "40px auto" }}>
         <Card>
-          <div style={{ textAlign: "center", padding: "40px 20px" }}>
-            <CheckCircleOutlined
-              style={{
-                fontSize: "64px",
-                color: "#52c41a",
-                marginBottom: "24px",
-              }}
-            />
-            <Title level={2}>Ujian Selesai!</Title>
-            <Text
-              type="secondary"
-              style={{
-                fontSize: "16px",
-                display: "block",
-                marginBottom: "32px",
-              }}
-            >
-              Terima kasih telah mengerjakan ujian. Jawaban Anda telah
-              tersimpan.
-            </Text>
-
-            <Card style={{ backgroundColor: "#f6ffed", marginBottom: "24px" }}>
-              <Row gutter={[24, 16]}>
-                <Col xs={24} sm={12}>
-                  <div style={{ textAlign: "center" }}>
-                    <Text strong style={{ fontSize: "24px", color: "#52c41a" }}>
-                      {jawabanStats.dijawab}
-                    </Text>
-                    <div>Soal Dijawab</div>
+          <Title level={3} style={{ textAlign: "center" }}>
+            Ujian Selesai
+          </Title>
+          <Divider />
+          {analysisLoading ? (
+            <Spin tip="Memuat analisis..." />
+          ) : ujianAnalysis ? (
+            <div>
+              <Title level={4}>Analisis Ujian</Title>
+              <p>
+                <b>Rata-rata Nilai:</b>{" "}
+                {ujianAnalysis.averageScore?.toFixed(2) || "-"}
+              </p>
+              <p>
+                <b>Pass Rate:</b> {ujianAnalysis.passRate?.toFixed(2) || "-"}%
+              </p>
+              <p>
+                <b>Integrity Score:</b>{" "}
+                {ujianAnalysis.integrityScore?.toFixed(2) || "-"}
+              </p>
+              <p>
+                <b>Jumlah Pelanggaran:</b>{" "}
+                {ujianAnalysis.suspiciousSubmissions || 0}
+              </p>
+              <p>
+                <b>Peserta Ter-flag:</b>{" "}
+                {ujianAnalysis.flaggedParticipants || 0}
+              </p>
+              {ujianAnalysis.recommendations &&
+                ujianAnalysis.recommendations.length > 0 && (
+                  <div>
+                    <b>Rekomendasi:</b>
+                    <ul>
+                      {ujianAnalysis.recommendations.map((rec, idx) => (
+                        <li key={idx}>{rec}</li>
+                      ))}
+                    </ul>
                   </div>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <div style={{ textAlign: "center" }}>
-                    <Text strong style={{ fontSize: "24px", color: "#fa8c16" }}>
-                      {jawabanStats.belumDijawab}
-                    </Text>
-                    <div>Soal Kosong</div>
-                  </div>
-                </Col>
-              </Row>
-            </Card>
-
-            <Alert
-              message={
-                ujianData.tampilkanNilai
-                  ? "Hasil ujian akan diumumkan setelah semua peserta selesai mengerjakan."
-                  : "Hasil ujian tidak akan ditampilkan."
-              }
-              type="success"
-              style={{ marginBottom: "24px" }}
-            />
-
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => navigate("/dashboard")}
-            >
-              Kembali ke Dashboard
-            </Button>
-          </div>
+                )}
+            </div>
+          ) : (
+            <Alert message="Analisis ujian belum tersedia." type="info" />
+          )}
         </Card>
       </div>
     );
@@ -1032,6 +1125,19 @@ const UjianCATView = () => {
           <Col xs={24} sm={24} md={8}>
             <div style={{ textAlign: "right" }}>
               <Space>
+                {violationCount > 0 && (
+                  <Badge
+                    count={violationCount}
+                    style={{
+                      backgroundColor:
+                        violationCount >= 3 ? "#ff4d4f" : "#faad14",
+                    }}
+                  >
+                    <Tag color={violationCount >= 3 ? "red" : "warning"}>
+                      Pelanggaran
+                    </Tag>
+                  </Badge>
+                )}
                 {renderAutoSaveStatus()}
                 {screens.xs || screens.sm ? (
                   <Button
@@ -1211,6 +1317,37 @@ const UjianCATView = () => {
             } detik!`}
             description="Segera selesaikan ujian Anda. Ujian akan otomatis terkumpul ketika waktu habis."
             type="warning"
+            showIcon
+          />
+        </Modal>
+      )}
+
+      {/* Tambah Modal notifikasi pelanggaran */}
+      {violationModalVisible && (
+        <Modal
+          open={violationModalVisible}
+          title={
+            <span style={{ color: "#ff4d4f" }}>
+              <ExclamationCircleOutlined /> Ujian Dikunci
+            </span>
+          }
+          closable={false}
+          footer={null}
+          centered
+        >
+          <Alert
+            message="Ujian Anda telah dikunci karena terdeteksi 3 kali pelanggaran."
+            description={
+              <>
+                <div>
+                  Jenis pelanggaran terakhir: <b>{violationReason}</b>
+                </div>
+                <div>
+                  Ujian akan otomatis dikumpulkan dan tidak dapat dilanjutkan.
+                </div>
+              </>
+            }
+            type="error"
             showIcon
           />
         </Modal>
