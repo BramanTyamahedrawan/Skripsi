@@ -234,6 +234,27 @@ const menuList = [
     roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
   },
 
+  {
+    title: "Riwayat Ujian",
+    path: "/ujian-history",
+    icon: FileTextOutlined,
+    roles: ["ROLE_STUDENT"],
+  },
+
+  {
+    title: "Analisis Ujian",
+    path: "/ujian-analysis",
+    icon: RadarChartOutlined,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
+
+  {
+    title: "Integrasi Dashboard",
+    path: "/integrasi-ujian",
+    icon: AppstoreOutlined,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
+
   // {
   //   title: "Guru",
   //   path: "/lecture",

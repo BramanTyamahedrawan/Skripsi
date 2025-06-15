@@ -49,6 +49,7 @@ import {
   createAndActivateUjian,
   getUjianStatistics,
 } from "@/api/ujian";
+import { autoGenerateAnalysisForUjian } from "@/api/ujianAnalysis";
 import { Skeleton } from "antd";
 import Highlighter from "react-highlight-words";
 import TypingCard from "@/components/TypingCard";
@@ -220,11 +221,23 @@ const Ujian = () => {
       message.error("Gagal memulai ujian: " + error.message);
     }
   };
-
   const handleEndUjian = async (idUjian) => {
     try {
       await endUjian(idUjian);
       message.success("Ujian berhasil diakhiri");
+
+      // Auto-generate analysis when exam ends
+      try {
+        message.info("Generating final analysis...");
+        await autoGenerateAnalysisForUjian(idUjian);
+        message.success("Final analysis generated successfully");
+      } catch (analysisError) {
+        console.warn("Failed to generate analysis:", analysisError);
+        message.warning(
+          "Ujian berakhir, namun analisis belum dapat dibuat. Silakan coba lagi nanti."
+        );
+      }
+
       fetchUjians();
     } catch (error) {
       message.error("Gagal mengakhiri ujian: " + error.message);

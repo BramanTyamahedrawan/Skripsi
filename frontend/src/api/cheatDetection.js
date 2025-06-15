@@ -117,6 +117,18 @@ export function getCriticalViolations(params = {}) {
   });
 }
 
+// Get violations by student and ujian (for history)
+export function getCheatDetectionByStudent(ujianId, mahasiswaId) {
+  return request({
+    url: "/cheat-detection/violations",
+    method: "get",
+    params: {
+      idUjian: ujianId,
+      idPeserta: mahasiswaId,
+    },
+  });
+}
+
 export default {
   recordViolation,
   recordViolationBatch,
@@ -131,4 +143,5 @@ export default {
   exportViolations,
   getUnresolvedViolations,
   getCriticalViolations,
+  getCheatDetectionByStudent,
 };

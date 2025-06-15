@@ -1,10 +1,16 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
-import { Card, Table, Tag, Divider, Spin, Alert, Button } from "antd";
+import { Card, Table, Tag, Divider, Spin, Alert, Button, message } from "antd";
 import { getUjian } from "@/api/ujian";
 import { getHasilByUjian } from "@/api/hasilUjian";
 import { getViolationsByUjian } from "@/api/cheatDetection";
-import { getAnalysisByUjian } from "@/api/ujianAnalysis";
+import {
+  getAnalysisByUjian,
+  autoGenerateAnalysisForUjian,
+  forceRegenerateAnalysis,
+  cleanupDuplicatesForUjian,
+  cleanupAllDuplicates,
+} from "@/api/ujianAnalysis";
 import { useNavigate } from "react-router-dom";
 
 const IntegrasiUjianDashboard = () => {
@@ -30,7 +36,6 @@ const IntegrasiUjianDashboard = () => {
     };
     fetchUjians();
   }, []);
-
   const handleSelectUjian = async (ujian) => {
     setSelectedUjian(ujian);
     setLoading(true);
@@ -40,15 +45,104 @@ const IntegrasiUjianDashboard = () => {
         getViolationsByUjian(ujian.idUjian),
         getAnalysisByUjian(ujian.idUjian),
       ]);
+      console.log(
+        "API Response - HasilUjian count:",
+        hres.data?.content?.length || 0
+      );
+      console.log(
+        "API Response - Violations count:",
+        vres.data?.content?.length || 0
+      );
+      console.log(
+        "API Response - Analysis count:",
+        ares.data?.content?.length || 0
+      );
+
       setHasilUjian(hres.data?.content || []);
       setViolations(vres.data?.content || []);
-      setAnalysis(ares.data?.content?.[0] || null);
+
+      // Get the latest analysis if multiple exist
+      let analysisData = null;
+      if (ares.data?.content && ares.data.content.length > 0) {
+        // Sort by generatedAt descending to get the latest
+        const sortedAnalyses = ares.data.content.sort(
+          (a, b) => new Date(b.generatedAt) - new Date(a.generatedAt)
+        );
+        analysisData = sortedAnalyses[0];
+
+        // Log if multiple analyses found
+        if (ares.data.content.length > 1) {
+          console.log(
+            `Found ${ares.data.content.length} analyses for ujian ${ujian.idUjian}, using latest:`,
+            analysisData.idAnalysis
+          );
+        }
+      }
+
+      // Auto-generate analysis if not available and there are results
+      if (!analysisData && hres.data?.content && hres.data.content.length > 0) {
+        try {
+          console.log(
+            "Analysis not found, auto-generating for ujian:",
+            ujian.idUjian
+          );
+          await autoGenerateAnalysisForUjian(ujian.idUjian); // Fetch analysis again after generation
+          const newAres = await getAnalysisByUjian(ujian.idUjian);
+          if (newAres.data?.content && newAres.data.content.length > 0) {
+            // Get the latest analysis
+            const sortedAnalyses = newAres.data.content.sort(
+              (a, b) => new Date(b.generatedAt) - new Date(a.generatedAt)
+            );
+            analysisData = sortedAnalyses[0];
+          }
+          console.log("Analysis generated successfully:", analysisData);
+        } catch (genError) {
+          console.error("Failed to auto-generate analysis:", genError);
+        }
+      }
+      setAnalysis(analysisData);
+      console.log("Final analysis data set to state:", analysisData);
+      console.log(
+        "Analysis state should now be:",
+        analysisData ? "available" : "null/undefined"
+      );
     } catch (e) {
       setHasilUjian([]);
       setViolations([]);
       setAnalysis(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCleanupDuplicates = async (ujianId) => {
+    try {
+      const result = await cleanupDuplicatesForUjian(ujianId);
+      message.success(
+        `Berhasil membersihkan ${result.data.cleanedCount} analisis duplikat`
+      ); // Refresh data after cleanup
+      if (selectedUjian && selectedUjian.idUjian === ujianId) {
+        await handleSelectUjian(selectedUjian);
+      }
+    } catch (error) {
+      console.error("Failed to cleanup duplicates:", error);
+      message.error("Gagal membersihkan analisis duplikat");
+    }
+  };
+
+  const handleCleanupAllDuplicates = async () => {
+    try {
+      const result = await cleanupAllDuplicates();
+      message.success(
+        `Berhasil membersihkan ${result.data.totalCleaned} analisis duplikat dari sistem`
+      );
+      // Refresh current ujian data if any selected
+      if (selectedUjian) {
+        await handleSelectUjian(selectedUjian);
+      }
+    } catch (error) {
+      console.error("Failed to cleanup all duplicates:", error);
+      message.error("Gagal membersihkan semua analisis duplikat");
     }
   };
 
@@ -90,12 +184,63 @@ const IntegrasiUjianDashboard = () => {
         {loading && selectedUjian && <Spin tip="Memuat data..." />}
         {!loading && selectedUjian && (
           <>
+            {" "}
             <Card
               type="inner"
               title={`Analisis Ujian: ${selectedUjian.namaUjian}`}
+              extra={
+                <div>
+                  {" "}
+                  <Button
+                    onClick={() =>
+                      handleCleanupDuplicates(selectedUjian.idUjian)
+                    }
+                    size="small"
+                    style={{ marginRight: 8 }}
+                  >
+                    Cleanup Duplikat
+                  </Button>{" "}
+                  <Button
+                    onClick={async () => {
+                      try {
+                        await forceRegenerateAnalysis(selectedUjian.idUjian);
+                        message.success("Analisis berhasil di-regenerate");
+                        await handleSelectUjian(selectedUjian);
+                      } catch (error) {
+                        message.error(
+                          "Gagal regenerate analisis: " + error.message
+                        );
+                      }
+                    }}
+                    size="small"
+                    type="primary"
+                    style={{ marginRight: 8 }}
+                  >
+                    Regenerate
+                  </Button>
+                  <Button
+                    onClick={handleCleanupAllDuplicates}
+                    size="small"
+                    type="dashed"
+                  >
+                    Cleanup Semua
+                  </Button>
+                </div>
+              }
             >
+              {" "}
               {analysis ? (
                 <>
+                  <div
+                    style={{
+                      marginBottom: "10px",
+                      fontSize: "12px",
+                      color: "#666",
+                    }}
+                  >
+                    Debug: Analysis ID: {analysis.idAnalysis} | Generated:{" "}
+                    {analysis.generatedAt}
+                  </div>
                   <p>
                     <b>Rata-rata Nilai:</b>{" "}
                     {analysis.averageScore?.toFixed(2) || "-"}
@@ -116,7 +261,31 @@ const IntegrasiUjianDashboard = () => {
                   </p>
                 </>
               ) : (
-                <Alert message="Analisis belum tersedia." type="info" />
+                <Alert
+                  message="Analisis belum tersedia"
+                  description={
+                    <div>
+                      <p>
+                        Analisis untuk ujian ini belum dibuat atau belum selesai
+                        diproses.
+                      </p>
+                      <p>
+                        Debug info: Hasil ujian: {hasilUjian.length}, Ujian ID:{" "}
+                        {selectedUjian.idUjian}
+                      </p>
+                      {hasilUjian.length > 0 ? (
+                        <p>
+                          Ada {hasilUjian.length} hasil ujian. Analisis bisa
+                          di-generate secara otomatis.
+                        </p>
+                      ) : (
+                        <p>Belum ada hasil ujian untuk dianalisis.</p>
+                      )}
+                    </div>
+                  }
+                  type="info"
+                  showIcon
+                />
               )}
             </Card>
             <Divider>Pelanggaran (Cheat Detection)</Divider>

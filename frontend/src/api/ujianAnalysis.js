@@ -11,10 +11,12 @@ export function getAllAnalysis(params = {}) {
 
 // Get analysis by ujian ID
 export function getAnalysisByUjian(ujianId, params = {}) {
+  // Ensure we have a reasonable default size to get all analysis for the ujian
+  const defaultParams = { size: 50, ...params };
   return request({
     url: `/ujian-analysis/ujian/${ujianId}`,
     method: "get",
-    params,
+    params: defaultParams,
   });
 }
 
@@ -123,5 +125,41 @@ export function validateUjianForAnalysis(ujianId) {
   return request({
     url: `/ujian-analysis/validate/${ujianId}`,
     method: "get",
+  });
+}
+
+// Auto-generate analysis for ujian (manual trigger)
+export function autoGenerateAnalysisForUjian(ujianId) {
+  return request({
+    url: `/ujian-analysis/auto-generate/${ujianId}`,
+    method: "post",
+  });
+}
+
+// Clean up duplicate analysis for a specific ujian
+export function cleanupDuplicatesForUjian(
+  ujianId,
+  analysisType = "COMPREHENSIVE"
+) {
+  return request({
+    url: `/ujian-analysis/cleanup/ujian/${ujianId}`,
+    method: "delete",
+    params: { analysisType },
+  });
+}
+
+// Clean up all duplicate analysis records
+export function cleanupAllDuplicates() {
+  return request({
+    url: "/ujian-analysis/cleanup/all",
+    method: "delete",
+  });
+}
+
+// Force regenerate analysis for ujian
+export function forceRegenerateAnalysis(ujianId) {
+  return request({
+    url: `/ujian-analysis/force-regenerate/${ujianId}`,
+    method: "post",
   });
 }

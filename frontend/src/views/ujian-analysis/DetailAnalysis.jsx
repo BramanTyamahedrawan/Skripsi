@@ -24,20 +24,39 @@ const DetailAnalysis = () => {
   const [loading, setLoading] = useState(true);
   const [violations, setViolations] = useState([]);
   const [hasilUjian, setHasilUjian] = useState([]);
-
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        console.log(
+          `DetailAnalysis: Fetching analysis for ujian ID: ${idUjian}`
+        );
+
         const res = await getAnalysisByUjian(idUjian);
+        console.log("DetailAnalysis: API response:", res);
+
         if (res.data && res.data.content && res.data.content.length > 0) {
-          setAnalysis(res.data.content[0]);
+          // Sort by generatedAt to get the latest analysis
+          const sortedAnalysis = res.data.content.sort((a, b) => {
+            const dateA = new Date(a.generatedAt || 0);
+            const dateB = new Date(b.generatedAt || 0);
+            return dateB - dateA; // Latest first
+          });
+
+          const latestAnalysis = sortedAnalysis[0];
+          console.log("DetailAnalysis: Using latest analysis:", latestAnalysis);
+          setAnalysis(latestAnalysis);
+        } else {
+          console.log("DetailAnalysis: No analysis found in response");
+          setAnalysis(null);
         }
+
         const vres = await getViolationsByUjian(idUjian);
         setViolations(vres.data?.content || []);
         const hres = await getHasilByUjian(idUjian, true);
         setHasilUjian(hres.data?.content || []);
       } catch (err) {
+        console.error("DetailAnalysis: Error fetching data:", err);
         setAnalysis(null);
       } finally {
         setLoading(false);
@@ -45,10 +64,25 @@ const DetailAnalysis = () => {
     };
     if (idUjian) fetchData();
   }, [idUjian]);
-
   if (loading) return <Spin tip="Memuat analisis..." />;
-  if (!analysis)
-    return <Alert message="Analisis ujian belum tersedia." type="info" />;
+
+  if (!analysis) {
+    return (
+      <div style={{ maxWidth: 900, margin: "40px auto" }}>
+        <Alert
+          message="Analisis ujian belum tersedia"
+          description={`Analisis untuk ujian ID ${idUjian} belum dibuat atau belum selesai diproses. Silakan periksa apakah ujian sudah selesai dan coba generate analisis melalui menu Analisis Ujian.`}
+          type="info"
+          showIcon
+          action={
+            <Button size="small" onClick={() => navigate(-1)}>
+              Kembali
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 900, margin: "40px auto" }}>

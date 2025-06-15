@@ -55,11 +55,11 @@ export function getHasilByUjian(idUjian, includeAnalytics = false) {
 /**
  * Get hasil ujian berdasarkan peserta (riwayat)
  */
-export function getHasilByPeserta(idPeserta, limit = 10) {
+export function getHasilByPeserta(idPeserta, size = 50) {
   return request({
     url: `/hasil-ujian/peserta/${idPeserta}`,
     method: "get",
-    params: { limit },
+    params: { size },
   });
 }
 

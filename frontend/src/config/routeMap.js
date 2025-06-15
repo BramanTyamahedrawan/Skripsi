@@ -270,6 +270,22 @@ const Ujian = React.lazy(() =>
 const UjianView = React.lazy(() =>
   import(/*webpackChunkName:'UjianView'*/ "@/views/ujian-view")
 );
+const UjianHistory = React.lazy(() =>
+  import(/*webpackChunkName:'UjianHistory'*/ "@/views/ujian-history")
+);
+const UjianAnalysis = React.lazy(() =>
+  import(/*webpackChunkName:'UjianAnalysis'*/ "@/views/ujian-analysis")
+);
+const UjianAnalysisDetail = React.lazy(() =>
+  import(
+    /*webpackChunkName:'UjianAnalysisDetail'*/ "@/views/ujian-analysis/DetailAnalysis"
+  )
+);
+const IntegrasiUjianDashboard = React.lazy(() =>
+  import(
+    /*webpackChunkName:'IntegrasiUjianDashboard'*/ "@/views/integrasi-ujian/IntegrasiUjianDashboard"
+  )
+);
 
 // const Grade = React.lazy(() =>
 //   import(/*webpackChunkName:'Grade'*/ "@/views/grade")
@@ -459,6 +475,26 @@ export default [
     path: "/ujian-view",
     component: UjianView,
     roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
+  },
+  {
+    path: "/ujian-history",
+    component: UjianHistory,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
+  },
+  {
+    path: "/ujian-analysis",
+    component: UjianAnalysis,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
+  {
+    path: "/ujian-analysis/detail/:idUjian",
+    component: UjianAnalysisDetail,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
+  {
+    path: "/integrasi-ujian",
+    component: IntegrasiUjianDashboard,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
   },
 
   // {

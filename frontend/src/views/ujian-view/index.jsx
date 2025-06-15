@@ -19,6 +19,8 @@ import {
   Divider,
   Grid,
   message,
+  Statistic,
+  List,
 } from "antd";
 import {
   ClockCircleOutlined,
@@ -53,9 +55,10 @@ import {
   updateCurrentSoal,
 } from "@/api/ujianSession";
 import { reqUserInfo } from "@/api/user";
-import { getStudentByUser } from "@/api/student";
 import { getAnalysisByUjian } from "@/api/ujianAnalysis";
 import { recordViolation } from "@/api/cheatDetection";
+import { getUserById } from "../../api/user";
+import { getSchool } from "@/api/school";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -68,8 +71,9 @@ const UjianCATView = () => {
   // State management
   const [ujianData, setUjianData] = useState(null);
   const [soalList, setSoalList] = useState([]);
-  const [userInfo, setUserInfo] = useState(null);
-  const [studentInfo, setStudentInfo] = useState(null);
+  const [userInfo, setUserInfo] = useState([]);
+  const [schoolInfo, setSchoolInfo] = useState([]);
+  const [studentInfo, setStudentInfo] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Session states
@@ -94,10 +98,12 @@ const UjianCATView = () => {
   // Progress tracking
   const [autoSaveStatus, setAutoSaveStatus] = useState("idle");
   const [lastSaved, setLastSaved] = useState(null);
-
   // Analisis ujian
   const [ujianAnalysis, setUjianAnalysis] = useState(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+
+  // Hasil ujian setelah submit - TAMBAHAN BARU
+  const [hasilUjian, setHasilUjian] = useState(null);
 
   // Tambah state untuk pelanggaran
   const [violationCount, setViolationCount] = useState(0);
@@ -108,27 +114,37 @@ const UjianCATView = () => {
   const autoSaveRef = useRef(null);
   const keepAliveRef = useRef(null);
 
-  // Fetch user info
+  // Fetch user info PERTAMA
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
         const response = await reqUserInfo();
         setUserInfo(response.data);
-
-        // Get student info
-        const studentResponse = await getStudentByUser(response.data.id);
-        if (studentResponse.data.statusCode === 200) {
-          setStudentInfo(studentResponse.data.content[0]);
-        }
+        setStudentInfo(response.data.id); // Asumsikan response.data sudah berisi info siswa
+        setSchoolInfo(response.data.school_id); // Asumsikan ada school info di response
       } catch (error) {
+        console.error("Error fetching user info:", error);
         message.error("Gagal mengambil informasi pengguna");
         navigate("/login");
+      } finally {
+        // Set loading false jika tidak ada kodeUjian dari URL
+        if (!kodeUjian) {
+          setLoading(false);
+        }
       }
     };
-    fetchUserInfo();
-  }, [navigate]);
 
-  // Handle login dengan kode ujian - SIMPLIFIED
+    fetchUserInfo();
+  }, [navigate, kodeUjian]);
+
+  // Auto-login jika ada kodeUjian dari URL dan userInfo sudah ada
+  useEffect(() => {
+    if (kodeUjian && userInfo && showLogin) {
+      handleLoginUjian();
+    }
+  }, [kodeUjian, userInfo, showLogin]);
+
+  // Handle login dengan kode ujian - PERBAIKI ERROR HANDLING
   const handleLoginUjian = async () => {
     if (!inputKodeUjian.trim()) {
       message.error("Masukkan kode ujian");
@@ -149,12 +165,14 @@ const UjianCATView = () => {
 
         if (!ujian) {
           message.error("Kode ujian tidak ditemukan");
+          setLoginLoading(false);
           return;
         }
 
         // Validasi status ujian
         if (!["AKTIF", "BERLANGSUNG"].includes(ujian.statusUjian)) {
           message.error("Ujian tidak tersedia untuk dikerjakan");
+          setLoginLoading(false);
           return;
         }
 
@@ -171,11 +189,13 @@ const UjianCATView = () => {
               "DD/MM/YYYY HH:mm"
             )}`
           );
+          setLoginLoading(false);
           return;
         }
 
         if (selesai && now.isAfter(selesai)) {
           message.error("Waktu ujian telah berakhir");
+          setLoginLoading(false);
           return;
         }
 
@@ -183,61 +203,104 @@ const UjianCATView = () => {
         setUjianData(ujian);
 
         // Langsung set soal dari bankSoalList (tanpa jawabanBenar untuk keamanan)
-        const soalFiltered = ujian.bankSoalList.map((soal) => {
-          const { jawabanBenar, ...soalWithoutAnswer } = soal;
-          return soalWithoutAnswer;
-        });
+        if (ujian.bankSoalList && ujian.bankSoalList.length > 0) {
+          const soalFiltered = ujian.bankSoalList.map((soal) => {
+            const { jawabanBenar, ...soalWithoutAnswer } = soal;
+            return soalWithoutAnswer;
+          });
 
-        // Acak soal jika tipeSoal = "ACAK"
-        if (ujian.tipeSoal === "ACAK") {
-          setSoalList(shuffleArray(soalFiltered));
+          // Acak soal jika tipeSoal = "ACAK"
+          if (ujian.tipeSoal === "ACAK") {
+            setSoalList(shuffleArray(soalFiltered));
+          } else {
+            setSoalList(soalFiltered);
+          }
         } else {
-          setSoalList(soalFiltered);
+          message.warning("Ujian belum memiliki soal");
+          setSoalList([]);
         }
 
         setTimeLeft(ujian.durasiMenit * 60);
         setShowLogin(false);
 
-        // Check if user can start
-        await checkCanStart(ujian.idUjian);
+        // Check if user can start - PASTIKAN userInfo sudah ada
+        if (userInfo) {
+          await checkCanStart(ujian.idUjian);
+        } else {
+          console.error("User info not available for checkCanStart");
+          setLoading(false);
+        }
       } else {
         message.error("Gagal mengambil data ujian");
+        setLoading(false);
       }
     } catch (error) {
-      message.error("Kode ujian tidak ditemukan");
+      console.error("Login ujian error:", error);
+      message.error("Kode ujian tidak ditemukan: " + error.message);
+      setLoading(false);
     } finally {
       setLoginLoading(false);
     }
   };
 
-  // Check if user can start ujian
+  // Check if user can start ujian - PERBAIKI ERROR HANDLING
   const checkCanStart = async (idUjian) => {
     try {
-      if (!userInfo) return;
+      if (!userInfo) {
+        console.error("No user info available for validation");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Validating can start for:", {
+        idUjian,
+        userId: userInfo.id,
+      });
 
       const validateResponse = await validateCanStart(idUjian, userInfo.id);
+
       if (validateResponse.data.statusCode === 200) {
         const validation = validateResponse.data.content;
 
         if (!validation.canStart) {
           message.error(validation.reason || "Tidak dapat memulai ujian");
+          setLoading(false);
           return;
         }
 
         // Check for existing session
         await checkExistingSession(idUjian);
+      } else {
+        console.error(
+          "Validation failed with status:",
+          validateResponse.data.statusCode
+        );
+        setLoading(false);
       }
     } catch (error) {
       console.error("Validation failed:", error);
-    } finally {
-      setLoading(false);
+
+      // Jika API validateCanStart belum ada, langsung lanjut tanpa validasi
+      if (error.response?.status === 404) {
+        console.log("Validation endpoint not found, skipping validation");
+        await checkExistingSession(idUjian);
+      } else {
+        message.error("Gagal memvalidasi ujian: " + error.message);
+        setLoading(false);
+      }
     }
   };
 
-  // Check existing session
+  // Check existing session - PERBAIKI ERROR HANDLING
   const checkExistingSession = async (idUjian) => {
     try {
+      console.log("Checking existing session for:", {
+        idUjian,
+        userId: userInfo.id,
+      });
+
       const activeResponse = await getActiveSession(idUjian, userInfo.id);
+
       if (
         activeResponse.data.statusCode === 200 &&
         activeResponse.data.content
@@ -253,39 +316,58 @@ const UjianCATView = () => {
         setAttemptNumber(sessionData.attemptNumber || 1);
 
         // Get remaining time
-        const timeResponse = await getTimeRemaining(idUjian, userInfo.id);
-        if (timeResponse.data.statusCode === 200) {
-          setTimeLeft(timeResponse.data.content.remainingSeconds);
+        try {
+          const timeResponse = await getTimeRemaining(idUjian, userInfo.id);
+          if (timeResponse.data.statusCode === 200) {
+            setTimeLeft(timeResponse.data.content.remainingSeconds);
+          }
+        } catch (timeError) {
+          console.log(
+            "Failed to get remaining time, using default:",
+            timeError
+          );
         }
-
-        // Load soal
-        await loadSoalUjian(idUjian);
 
         message.info("Melanjutkan session ujian yang ada");
       } else {
-        // Load soal for new session
-        await loadSoalUjian(idUjian);
+        console.log("No active session found");
       }
     } catch (error) {
       console.error("Failed to check existing session:", error);
-      await loadSoalUjian(idUjian);
+
+      // Jika API session belum ada, tidak masalah - user bisa start baru
+      if (error.response?.status === 404) {
+        console.log("Session endpoint not found, user can start new session");
+      } else {
+        message.warning("Tidak dapat memeriksa session: " + error.message);
+      }
+    } finally {
+      // PASTIKAN loading selalu di-set false di akhir
+      setLoading(false);
     }
   };
 
-  // Load soal ujian - SIMPLIFIED (tidak perlu lagi karena sudah ada di bankSoalList)
+  // Load soal ujian - TAMBAHKAN FALLBACK
   const loadSoalUjian = async (idUjian) => {
-    // Soal sudah di-set di handleLoginUjian, fungsi ini hanya untuk fallback
-    if (soalList.length === 0 && ujianData?.bankSoalList) {
-      const soalFiltered = ujianData.bankSoalList.map((soal) => {
-        const { jawabanBenar, ...soalWithoutAnswer } = soal;
-        return soalWithoutAnswer;
-      });
+    try {
+      // Soal sudah di-set di handleLoginUjian, fungsi ini hanya untuk fallback
+      if (soalList.length === 0 && ujianData?.bankSoalList) {
+        const soalFiltered = ujianData.bankSoalList.map((soal) => {
+          const { jawabanBenar, ...soalWithoutAnswer } = soal;
+          return soalWithoutAnswer;
+        });
 
-      if (ujianData.tipeSoal === "ACAK") {
-        setSoalList(shuffleArray(soalFiltered));
-      } else {
-        setSoalList(soalFiltered);
+        if (ujianData.tipeSoal === "ACAK") {
+          setSoalList(shuffleArray(soalFiltered));
+        } else {
+          setSoalList(soalFiltered);
+        }
       }
+    } catch (error) {
+      console.error("Failed to load soal:", error);
+      message.error("Gagal memuat soal ujian");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -516,7 +598,6 @@ const UjianCATView = () => {
   const handleAutoSubmit = async () => {
     await handleSubmitUjian(true);
   };
-
   // Submit ujian
   const handleSubmitUjian = async (isAutoSubmit = false) => {
     const submitAction = async () => {
@@ -535,9 +616,11 @@ const UjianCATView = () => {
           attemptNumber: attemptNumber,
           isAutoSubmit: isAutoSubmit,
           submittedAt: new Date().toISOString(),
-        });
-
-        if (submitResponse.data.statusCode === 200) {
+        }); // Check if submit was successful - either statusCode 200 or success: true
+        if (
+          submitResponse.data.statusCode === 200 ||
+          submitResponse.data.success === true
+        ) {
           setIsFinished(true);
           setIsStarted(false);
           setSessionActive(false);
@@ -551,10 +634,34 @@ const UjianCATView = () => {
           // Clear all intervals
           if (timerRef.current) clearInterval(timerRef.current);
           if (autoSaveRef.current) clearInterval(autoSaveRef.current);
-          if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+          if (keepAliveRef.current) clearInterval(keepAliveRef.current); // Store result data for display
+          const resultData = submitResponse.data.data;
+          setHasilUjian(resultData);
+
+          // Show result immediately instead of redirecting to dashboard
+          setTimeout(() => {
+            console.log("Submit berhasil, menampilkan hasil:", resultData);
+          }, 1000);
         }
       } catch (error) {
+        console.error("Submit error:", error);
+
+        // Even if submit fails, mark session as ended and redirect
+        setIsFinished(true);
+        setIsStarted(false);
+        setSessionActive(false);
+
+        // Clear all intervals
+        if (timerRef.current) clearInterval(timerRef.current);
+        if (autoSaveRef.current) clearInterval(autoSaveRef.current);
+        if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+
         message.error("Gagal mengumpulkan ujian: " + error.message);
+
+        // Redirect to dashboard after 3 seconds even on error
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 3000);
       } finally {
         setLoading(false);
       }
@@ -785,28 +892,35 @@ const UjianCATView = () => {
   // === ANTI-CHEAT EVENT LISTENER ===
   useEffect(() => {
     if (!(isStarted && sessionActive && ujianData && userInfo && sessionId))
-      return;
-
-    // Handler untuk kirim pelanggaran ke backend dan update counter
+      return; // Handler untuk kirim pelanggaran ke backend dan update counter
     const handleViolation = (type, extra = {}) => {
+      // Ensure evidence always has at least one non-empty key
+      const evidence =
+        Object.keys(extra).length > 0
+          ? extra
+          : { source: "frontend", detector: "anti-cheat" };
+
       recordViolation({
         sessionId,
         idPeserta: userInfo.id,
         idUjian: ujianData.idUjian,
         typeViolation: type,
         detectedAt: new Date().toISOString(),
-        evidence: extra,
+        evidence: evidence,
       });
       setViolationCount((prev) => {
         const next = prev + 1;
-        if (next >= 3) {
-          setViolationModalVisible(true);
-          setViolationReason(type);
-          // Auto submit ujian jika pelanggaran >= 3
-          if (!isFinished && sessionActive) {
-            setTimeout(() => handleSubmitUjian(true), 500);
-          }
-        }
+
+        // COMMENT: Penguncian otomatis sementara dinonaktifkan
+        // if (next >= 3) {
+        //   setViolationModalVisible(true);
+        //   setViolationReason(type);
+        //   // Auto submit ujian jika pelanggaran >= 3
+        //   if (!isFinished && sessionActive) {
+        //     setTimeout(() => handleSubmitUjian(true), 500);
+        //   }
+        // }
+
         return next;
       });
     };
@@ -1018,55 +1132,194 @@ const UjianCATView = () => {
       </div>
     );
   }
-
   // Finished screen
   if (isFinished) {
     return (
-      <div style={{ maxWidth: 600, margin: "40px auto" }}>
+      <div style={{ maxWidth: 800, margin: "40px auto", padding: "20px" }}>
         <Card>
-          <Title level={3} style={{ textAlign: "center" }}>
-            Ujian Selesai
-          </Title>
+          {" "}
+          <div style={{ textAlign: "center", marginBottom: "24px" }}>
+            <CheckCircleOutlined
+              style={{
+                fontSize: "48px",
+                color: "#52c41a",
+                marginBottom: "16px",
+              }}
+            />
+            <Title level={2}>Ujian Berhasil Diselesaikan!</Title>
+            <Text type="secondary">
+              {ujianData?.namaUjian} - Kode: {ujianData?.pengaturan?.kodeUjian}
+            </Text>
+          </div>
           <Divider />
+          {/* Hasil Ujian */}
+          {hasilUjian && (
+            <div style={{ marginBottom: "24px" }}>
+              <Title level={4}>Hasil Ujian Anda</Title>
+              <Row gutter={[16, 16]}>
+                <Col xs={24} sm={12}>
+                  <Card size="small" style={{ backgroundColor: "#f6ffed" }}>
+                    <Statistic
+                      title="Total Skor"
+                      value={hasilUjian.totalSkor || 0}
+                      precision={1}
+                      suffix={`/ ${hasilUjian.skorMaksimal || 100}`}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Card size="small" style={{ backgroundColor: "#f0f5ff" }}>
+                    <Statistic
+                      title="Persentase"
+                      value={hasilUjian.persentase || 0}
+                      precision={1}
+                      suffix="%"
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Card size="small" style={{ backgroundColor: "#fff7e6" }}>
+                    <Statistic
+                      title="Nilai Huruf"
+                      value={hasilUjian.nilaiHuruf || "E"}
+                      valueStyle={{
+                        color: hasilUjian.lulus ? "#52c41a" : "#ff4d4f",
+                        fontWeight: "bold",
+                      }}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Card size="small" style={{ backgroundColor: "#f6ffed" }}>
+                    <div>
+                      <Text strong>Status:</Text>
+                      <Tag
+                        color={hasilUjian.lulus ? "success" : "error"}
+                        style={{ marginLeft: "8px", fontSize: "14px" }}
+                      >
+                        {hasilUjian.lulus ? "LULUS" : "TIDAK LULUS"}
+                      </Tag>
+                    </div>
+                  </Card>
+                </Col>
+              </Row>
+
+              {/* Detail Jawaban */}
+              <div style={{ marginTop: "16px" }}>
+                <Title level={5}>Detail Jawaban</Title>{" "}
+                <Row gutter={[16, 8]}>
+                  <Col span={8}>
+                    <Text>
+                      <CheckCircleOutlined style={{ color: "#52c41a" }} />{" "}
+                      Benar: {hasilUjian.jumlahBenar || 0}
+                    </Text>
+                  </Col>
+                  <Col span={8}>
+                    <Text>❌ Salah: {hasilUjian.jumlahSalah || 0}</Text>
+                  </Col>
+                  <Col span={8}>
+                    <Text>➖ Kosong: {hasilUjian.jumlahKosong || 0}</Text>
+                  </Col>
+                </Row>
+              </div>
+
+              {/* Waktu */}
+              <div style={{ marginTop: "16px" }}>
+                <Title level={5}>Informasi Waktu</Title>{" "}
+                <Text>
+                  <ClockCircleOutlined /> Durasi Pengerjaan:{" "}
+                  {hasilUjian.durasiPengerjaan || "-"}
+                </Text>
+              </div>
+            </div>
+          )}
+          <Divider />
+          {/* Analisis Ujian */}
           {analysisLoading ? (
-            <Spin tip="Memuat analisis..." />
+            <div style={{ textAlign: "center" }}>
+              <Spin tip="Memuat analisis ujian..." size="large" />
+            </div>
           ) : ujianAnalysis ? (
             <div>
-              <Title level={4}>Analisis Ujian</Title>
-              <p>
-                <b>Rata-rata Nilai:</b>{" "}
-                {ujianAnalysis.averageScore?.toFixed(2) || "-"}
-              </p>
-              <p>
-                <b>Pass Rate:</b> {ujianAnalysis.passRate?.toFixed(2) || "-"}%
-              </p>
-              <p>
-                <b>Integrity Score:</b>{" "}
-                {ujianAnalysis.integrityScore?.toFixed(2) || "-"}
-              </p>
-              <p>
-                <b>Jumlah Pelanggaran:</b>{" "}
-                {ujianAnalysis.suspiciousSubmissions || 0}
-              </p>
-              <p>
-                <b>Peserta Ter-flag:</b>{" "}
-                {ujianAnalysis.flaggedParticipants || 0}
-              </p>
+              <Title level={4}>Analisis Ujian Kelas</Title>
+              <Row gutter={[16, 16]}>
+                <Col xs={24} sm={8}>
+                  <Card size="small">
+                    <Statistic
+                      title="Rata-rata Kelas"
+                      value={ujianAnalysis.averageScore}
+                      precision={2}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Card size="small">
+                    <Statistic
+                      title="Tingkat Kelulusan"
+                      value={ujianAnalysis.passRate}
+                      precision={1}
+                      suffix="%"
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Card size="small">
+                    <Statistic
+                      title="Skor Integritas"
+                      value={ujianAnalysis.integrityScore}
+                      precision={2}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+
               {ujianAnalysis.recommendations &&
                 ujianAnalysis.recommendations.length > 0 && (
-                  <div>
-                    <b>Rekomendasi:</b>
-                    <ul>
-                      {ujianAnalysis.recommendations.map((rec, idx) => (
-                        <li key={idx}>{rec}</li>
-                      ))}
-                    </ul>
+                  <div style={{ marginTop: "16px" }}>
+                    <Title level={5}>Rekomendasi Belajar</Title>
+                    <List
+                      size="small"
+                      dataSource={ujianAnalysis.recommendations}
+                      renderItem={(item, index) => (
+                        <List.Item>
+                          <Text>
+                            <BookOutlined style={{ color: "#1890ff" }} /> {item}
+                          </Text>
+                        </List.Item>
+                      )}
+                    />
                   </div>
                 )}
             </div>
           ) : (
-            <Alert message="Analisis ujian belum tersedia." type="info" />
+            <Alert
+              message="Analisis Kelas"
+              description="Analisis ujian sedang diproses dan akan tersedia segera."
+              type="info"
+              showIcon
+            />
           )}
+          <Divider />
+          {/* Actions */}
+          <div style={{ textAlign: "center" }}>
+            {" "}
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => navigate("/dashboard")}
+              style={{ marginRight: "16px" }}
+            >
+              🏠 Kembali ke Dashboard
+            </Button>
+            <Button
+              size="large"
+              onClick={() =>
+                navigate(`/hasil-ujian/${hasilUjian?.idHasilUjian || ""}`)
+              }
+            >
+              📄 Lihat Detail Hasil
+            </Button>
+          </div>
         </Card>
       </div>
     );
@@ -1129,11 +1382,15 @@ const UjianCATView = () => {
                   <Badge
                     count={violationCount}
                     style={{
-                      backgroundColor:
-                        violationCount >= 3 ? "#ff4d4f" : "#faad14",
+                      // COMMENT: Warning color saja, tidak ada red untuk critical
+                      backgroundColor: "#faad14", // Always warning color
+                      // backgroundColor: violationCount >= 3 ? "#ff4d4f" : "#faad14",
                     }}
                   >
-                    <Tag color={violationCount >= 3 ? "red" : "warning"}>
+                    <Tag color="warning">
+                      {" "}
+                      {/* Always warning, not red */}
+                      {/* <Tag color={violationCount >= 3 ? "red" : "warning"}> */}
                       Pelanggaran
                     </Tag>
                   </Badge>
@@ -1323,7 +1580,7 @@ const UjianCATView = () => {
       )}
 
       {/* Tambah Modal notifikasi pelanggaran */}
-      {violationModalVisible && (
+      {/* {violationModalVisible && (
         <Modal
           open={violationModalVisible}
           title={
@@ -1351,7 +1608,7 @@ const UjianCATView = () => {
             showIcon
           />
         </Modal>
-      )}
+      )} */}
     </div>
   );
 };
