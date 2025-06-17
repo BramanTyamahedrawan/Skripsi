@@ -338,6 +338,59 @@ export function getStudentPerformanceWithRecommendations(idPeserta, idUjian) {
   }));
 }
 
+/**
+ * Generate participant report after exam completion
+ * TODO: Backend endpoint needs to be implemented
+ */
+export function generateParticipantReport(idPeserta, idUjian, options = {}) {
+  // TODO: Implement backend endpoint: POST /api/hasil-ujian/generate-participant-report
+  return request({
+    url: "/hasil-ujian/generate-participant-report",
+    method: "post",
+    data: {
+      idPeserta,
+      idUjian,
+      format: options.format || "PDF",
+      includeAnalysis: options.includeAnalysis !== false,
+      includeViolations: options.includeViolations !== false,
+      includeBehavioralAnalysis: options.includeBehavioralAnalysis !== false,
+      includeRecommendations: options.includeRecommendations !== false,
+      reportType: options.reportType || "PARTICIPANT_COMPREHENSIVE",
+    },
+    responseType: "blob",
+  });
+}
+
+/**
+ * Auto-generate and download participant report
+ * TODO: Backend endpoint needs to be implemented
+ */
+export function autoGenerateAndDownloadReport(
+  idPeserta,
+  idUjian,
+  sessionId,
+  options = {}
+) {
+  // TODO: Implement backend endpoint: POST /api/hasil-ujian/auto-generate-report
+  return request({
+    url: "/hasil-ujian/auto-generate-report",
+    method: "post",
+    data: {
+      idPeserta,
+      idUjian,
+      sessionId,
+      format: options.format || "PDF",
+      includeAnalysis: true,
+      includeViolations: true,
+      includeBehavioralAnalysis: true,
+      includeRecommendations: true,
+      reportType: "PARTICIPANT_COMPREHENSIVE",
+      autoDownload: true,
+    },
+    responseType: "blob",
+  });
+}
+
 // ==================== VALIDATION HELPERS ====================
 
 /**
@@ -448,4 +501,6 @@ export default {
   // Utilities
   validateHasilUjianData,
   formatHasilUjianForDisplay,
+  generateParticipantReport,
+  autoGenerateAndDownloadReport,
 };

@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Card,
   Button,
@@ -58,6 +58,7 @@ import { reqUserInfo } from "@/api/user";
 import { getAnalysisByUjian } from "@/api/ujianAnalysis";
 import { recordViolation } from "@/api/cheatDetection";
 import { getUserById } from "../../api/user";
+// import { autoGenerateAndDownloadReport } from "@/api/hasilUjian";
 import { getSchool } from "@/api/school";
 
 const { Title, Text } = Typography;
@@ -67,13 +68,12 @@ const UjianCATView = () => {
   const screens = useBreakpoint();
   const navigate = useNavigate();
   const { kodeUjian } = useParams();
-
   // State management
   const [ujianData, setUjianData] = useState(null);
   const [soalList, setSoalList] = useState([]);
-  const [userInfo, setUserInfo] = useState([]);
-  const [schoolInfo, setSchoolInfo] = useState([]);
-  const [studentInfo, setStudentInfo] = useState([]);
+  const [userInfo, setUserInfo] = useState(null);
+  const [schoolInfo, setSchoolInfo] = useState(null);
+  const [studentInfo, setStudentInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Session states
@@ -104,16 +104,17 @@ const UjianCATView = () => {
 
   // Hasil ujian setelah submit - TAMBAHAN BARU
   const [hasilUjian, setHasilUjian] = useState(null);
-
   // Tambah state untuk pelanggaran
   const [violationCount, setViolationCount] = useState(0);
   const [violationModalVisible, setViolationModalVisible] = useState(false);
   const [violationReason, setViolationReason] = useState("");
+  const [lastViolationType, setLastViolationType] = useState("");
+  const [violationDetails, setViolationDetails] = useState("");
+  const [criticalViolationModal, setCriticalViolationModal] = useState(false);
 
   const timerRef = useRef(null);
   const autoSaveRef = useRef(null);
   const keepAliveRef = useRef(null);
-
   // Fetch user info PERTAMA
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -127,26 +128,28 @@ const UjianCATView = () => {
         message.error("Gagal mengambil informasi pengguna");
         navigate("/login");
       } finally {
-        // Set loading false jika tidak ada kodeUjian dari URL
-        if (!kodeUjian) {
-          setLoading(false);
-        }
+        // Always set loading false after fetching user info
+        setLoading(false);
       }
     };
 
     fetchUserInfo();
-  }, [navigate, kodeUjian]);
-
-  // Auto-login jika ada kodeUjian dari URL dan userInfo sudah ada
+  }, [navigate]); // Auto-login jika ada kodeUjian dari URL dan userInfo sudah ada
   useEffect(() => {
-    if (kodeUjian && userInfo && showLogin) {
+    if (kodeUjian && userInfo && userInfo.id && showLogin) {
+      // Set inputKodeUjian jika belum ada
+      if (!inputKodeUjian) {
+        setInputKodeUjian(kodeUjian);
+      }
       handleLoginUjian();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kodeUjian, userInfo, showLogin]);
-
   // Handle login dengan kode ujian - PERBAIKI ERROR HANDLING
   const handleLoginUjian = async () => {
-    if (!inputKodeUjian.trim()) {
+    const kodeToUse = kodeUjian || inputKodeUjian.trim();
+
+    if (!kodeToUse) {
       message.error("Masukkan kode ujian");
       return;
     }
@@ -160,7 +163,7 @@ const UjianCATView = () => {
 
         // Cari ujian berdasarkan kode
         const ujian = ujianList.find(
-          (u) => u.pengaturan?.kodeUjian === inputKodeUjian
+          (u) => u.pengaturan?.kodeUjian === kodeToUse
         );
 
         if (!ujian) {
@@ -380,11 +383,27 @@ const UjianCATView = () => {
     }
     return shuffled;
   };
-
   // Start ujian session
   const handleStartUjian = async () => {
     try {
       setLoading(true);
+
+      // Auto fullscreen when starting exam
+      try {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+          await document.documentElement.webkitRequestFullscreen();
+        } else if (document.documentElement.msRequestFullscreen) {
+          await document.documentElement.msRequestFullscreen();
+        }
+        message.success("Mode fullscreen diaktifkan untuk ujian");
+      } catch (fullscreenError) {
+        console.warn("Fullscreen not supported or denied:", fullscreenError);
+        message.warning(
+          "Tidak dapat mengaktifkan fullscreen. Pastikan untuk tidak berganti tab/window selama ujian."
+        );
+      }
 
       const startResponse = await startUjianSession({
         idUjian: ujianData.idUjian,
@@ -410,7 +429,6 @@ const UjianCATView = () => {
       setLoading(false);
     }
   };
-
   // Timer countdown
   useEffect(() => {
     if (isStarted && !isFinished && timeLeft > 0 && sessionActive) {
@@ -432,8 +450,8 @@ const UjianCATView = () => {
         clearInterval(timerRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStarted, isFinished, timeLeft, sessionActive]);
-
   // Auto save mechanism
   useEffect(() => {
     if (isStarted && !isFinished && sessionActive) {
@@ -447,6 +465,7 @@ const UjianCATView = () => {
         }
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStarted, isFinished, jawaban, sessionActive]);
 
   // Keep session alive
@@ -470,9 +489,8 @@ const UjianCATView = () => {
       if (keepAliveRef.current) clearInterval(keepAliveRef.current);
     };
   }, []);
-
   // Auto save function
-  const handleAutoSave = async () => {
+  const handleAutoSave = useCallback(async () => {
     if (!sessionActive || Object.keys(jawaban).length === 0) return;
 
     try {
@@ -495,7 +513,7 @@ const UjianCATView = () => {
       setAutoSaveStatus("error");
       console.error("Auto save failed:", error);
     }
-  };
+  }, [sessionActive, jawaban, ujianData, userInfo, sessionId, currentSoal]);
 
   // Handle manual save
   const handleManualSave = async () => {
@@ -597,89 +615,99 @@ const UjianCATView = () => {
   // Auto submit ketika waktu habis
   const handleAutoSubmit = async () => {
     await handleSubmitUjian(true);
-  };
-  // Submit ujian
-  const handleSubmitUjian = async (isAutoSubmit = false) => {
-    const submitAction = async () => {
-      try {
-        setLoading(true);
+  }; // Submit ujian
+  const handleSubmitUjian = useCallback(
+    async (isAutoSubmit = false) => {
+      const submitAction = async () => {
+        try {
+          setLoading(true);
 
-        // Final save before submit
-        await handleAutoSave();
+          // Final save before submit
+          await handleAutoSave();
 
-        // Submit ujian
-        const submitResponse = await submitUjian({
-          idUjian: ujianData.idUjian,
-          idPeserta: userInfo.id,
-          sessionId: sessionId,
-          answers: jawaban,
-          attemptNumber: attemptNumber,
-          isAutoSubmit: isAutoSubmit,
-          submittedAt: new Date().toISOString(),
-        }); // Check if submit was successful - either statusCode 200 or success: true
-        if (
-          submitResponse.data.statusCode === 200 ||
-          submitResponse.data.success === true
-        ) {
+          // Submit ujian
+          const submitResponse = await submitUjian({
+            idUjian: ujianData.idUjian,
+            idPeserta: userInfo.id,
+            sessionId: sessionId,
+            answers: jawaban,
+            attemptNumber: attemptNumber,
+            isAutoSubmit: isAutoSubmit,
+            submittedAt: new Date().toISOString(),
+          }); // Check if submit was successful - either statusCode 200 or success: true
+          if (
+            submitResponse.data.statusCode === 200 ||
+            submitResponse.data.success === true
+          ) {
+            setIsFinished(true);
+            setIsStarted(false);
+            setSessionActive(false);
+
+            message.success(
+              isAutoSubmit
+                ? "Waktu habis! Ujian otomatis dikumpulkan."
+                : "Ujian berhasil dikumpulkan!"
+            );
+
+            // Clear all intervals
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (autoSaveRef.current) clearInterval(autoSaveRef.current);
+            if (keepAliveRef.current) clearInterval(keepAliveRef.current); // Store result data for display
+            const resultData = submitResponse.data.data;
+            setHasilUjian(resultData);
+
+            // Show result immediately instead of redirecting to dashboard
+            setTimeout(() => {
+              console.log("Submit berhasil, menampilkan hasil:", resultData);
+            }, 1000);
+          }
+        } catch (error) {
+          console.error("Submit error:", error);
+
+          // Even if submit fails, mark session as ended and redirect
           setIsFinished(true);
           setIsStarted(false);
           setSessionActive(false);
 
-          message.success(
-            isAutoSubmit
-              ? "Waktu habis! Ujian otomatis dikumpulkan."
-              : "Ujian berhasil dikumpulkan!"
-          );
-
           // Clear all intervals
           if (timerRef.current) clearInterval(timerRef.current);
           if (autoSaveRef.current) clearInterval(autoSaveRef.current);
-          if (keepAliveRef.current) clearInterval(keepAliveRef.current); // Store result data for display
-          const resultData = submitResponse.data.data;
-          setHasilUjian(resultData);
+          if (keepAliveRef.current) clearInterval(keepAliveRef.current);
 
-          // Show result immediately instead of redirecting to dashboard
+          message.error("Gagal mengumpulkan ujian: " + error.message);
+
+          // Redirect to dashboard after 3 seconds even on error
           setTimeout(() => {
-            console.log("Submit berhasil, menampilkan hasil:", resultData);
-          }, 1000);
+            navigate("/dashboard");
+          }, 3000);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Submit error:", error);
+      };
 
-        // Even if submit fails, mark session as ended and redirect
-        setIsFinished(true);
-        setIsStarted(false);
-        setSessionActive(false);
-
-        // Clear all intervals
-        if (timerRef.current) clearInterval(timerRef.current);
-        if (autoSaveRef.current) clearInterval(autoSaveRef.current);
-        if (keepAliveRef.current) clearInterval(keepAliveRef.current);
-
-        message.error("Gagal mengumpulkan ujian: " + error.message);
-
-        // Redirect to dashboard after 3 seconds even on error
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 3000);
-      } finally {
-        setLoading(false);
+      if (isAutoSubmit) {
+        await submitAction();
+      } else {
+        Modal.confirm({
+          title: "Konfirmasi Submit Ujian",
+          content:
+            "Apakah Anda yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah setelah dikumpulkan.",
+          okText: "Ya, Kumpulkan",
+          cancelText: "Batal",
+          onOk: submitAction,
+        });
       }
-    };
-
-    if (isAutoSubmit) {
-      await submitAction();
-    } else {
-      Modal.confirm({
-        title: "Konfirmasi Submit Ujian",
-        content:
-          "Apakah Anda yakin ingin mengumpulkan ujian? Jawaban tidak dapat diubah setelah dikumpulkan.",
-        okText: "Ya, Kumpulkan",
-        cancelText: "Batal",
-        onOk: submitAction,
-      });
-    }
-  };
+    },
+    [
+      ujianData,
+      userInfo,
+      sessionId,
+      jawaban,
+      attemptNumber,
+      navigate,
+      handleAutoSave,
+    ]
+  );
 
   // Status soal
   const getSoalStatus = (index) => {
@@ -888,11 +916,29 @@ const UjianCATView = () => {
       fetchAnalysis();
     }
   }, [isFinished, ujianData]);
-
   // === ANTI-CHEAT EVENT LISTENER ===
   useEffect(() => {
     if (!(isStarted && sessionActive && ujianData && userInfo && sessionId))
-      return; // Handler untuk kirim pelanggaran ke backend dan update counter
+      return;
+
+    // Function to get violation description
+    const getViolationDescription = (type) => {
+      const descriptions = {
+        WINDOW_BLUR: "Anda beralih dari window/aplikasi ujian",
+        TAB_SWITCH: "Anda beralih ke tab lain atau meminimalkan browser",
+        COPY_PASTE: "Anda melakukan copy/paste pada halaman ujian",
+        FULLSCREEN_EXIT: "Anda keluar dari mode fullscreen",
+        CTRL_C_V: "Anda menggunakan shortcut Ctrl+C atau Ctrl+V",
+        BROWSER_DEV_TOOLS: "Anda membuka Developer Tools (F12)",
+        ALT_TAB: "Anda menggunakan Alt+Tab untuk berganti aplikasi",
+        PRINT_SCREEN: "Anda menggunakan tombol Print Screen",
+        RIGHT_CLICK: "Anda melakukan klik kanan pada halaman ujian",
+        DRAG_DROP: "Anda melakukan drag & drop pada halaman ujian",
+      };
+      return descriptions[type] || `Terdeteksi pelanggaran: ${type}`;
+    };
+
+    // Handler untuk kirim pelanggaran ke backend dan update counter
     const handleViolation = (type, extra = {}) => {
       // Ensure evidence always has at least one non-empty key
       const evidence =
@@ -908,18 +954,29 @@ const UjianCATView = () => {
         detectedAt: new Date().toISOString(),
         evidence: evidence,
       });
+
       setViolationCount((prev) => {
         const next = prev + 1;
 
-        // COMMENT: Penguncian otomatis sementara dinonaktifkan
-        // if (next >= 3) {
-        //   setViolationModalVisible(true);
-        //   setViolationReason(type);
-        //   // Auto submit ujian jika pelanggaran >= 3
-        //   if (!isFinished && sessionActive) {
-        //     setTimeout(() => handleSubmitUjian(true), 500);
-        //   }
-        // }
+        // Set violation details for alert
+        setLastViolationType(type);
+        setViolationDetails(getViolationDescription(type));
+
+        // Show immediate violation alert
+        setViolationModalVisible(true);
+
+        // Critical violation check - if more than 10 violations
+        if (next > 10) {
+          setCriticalViolationModal(true);
+          setViolationReason(type);
+
+          // Auto submit ujian jika pelanggaran > 10
+          if (!isFinished && sessionActive) {
+            setTimeout(() => {
+              handleSubmitUjian(true);
+            }, 3000); // Give 3 seconds for user to see the message
+          }
+        }
 
         return next;
       });
@@ -940,10 +997,30 @@ const UjianCATView = () => {
     const handlePaste = (e) =>
       handleViolation("COPY_PASTE", {
         clipboard: e.clipboardData?.getData("text"),
-      });
-    // Fullscreen exit
+      }); // Fullscreen exit
     const handleFullscreen = () => {
-      if (!document.fullscreenElement) handleViolation("FULLSCREEN_EXIT");
+      if (
+        !document.fullscreenElement &&
+        !document.webkitFullscreenElement &&
+        !document.msFullscreenElement &&
+        !document.mozFullScreenElement
+      ) {
+        handleViolation("FULLSCREEN_EXIT");
+        // Try to re-enter fullscreen
+        setTimeout(() => {
+          try {
+            if (document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+              document.documentElement.webkitRequestFullscreen();
+            } else if (document.documentElement.msRequestFullscreen) {
+              document.documentElement.msRequestFullscreen();
+            }
+          } catch (error) {
+            console.warn("Cannot re-enter fullscreen:", error);
+          }
+        }, 1000);
+      }
     };
     // Keyboard shortcut (Ctrl+C, Ctrl+V, Alt+Tab, F12, dsb)
     const handleKeydown = (e) => {
@@ -971,7 +1048,15 @@ const UjianCATView = () => {
       document.removeEventListener("fullscreenchange", handleFullscreen);
       window.removeEventListener("keydown", handleKeydown);
     };
-  }, [isStarted, sessionActive, ujianData, userInfo, sessionId, isFinished]);
+  }, [
+    isStarted,
+    sessionActive,
+    ujianData,
+    userInfo,
+    sessionId,
+    isFinished,
+    handleSubmitUjian,
+  ]);
 
   if (loading) {
     return (
@@ -1378,19 +1463,28 @@ const UjianCATView = () => {
           <Col xs={24} sm={24} md={8}>
             <div style={{ textAlign: "right" }}>
               <Space>
+                {" "}
                 {violationCount > 0 && (
                   <Badge
                     count={violationCount}
                     style={{
-                      // COMMENT: Warning color saja, tidak ada red untuk critical
-                      backgroundColor: "#faad14", // Always warning color
-                      // backgroundColor: violationCount >= 3 ? "#ff4d4f" : "#faad14",
+                      backgroundColor:
+                        violationCount > 10
+                          ? "#ff4d4f"
+                          : violationCount > 5
+                          ? "#fa8c16"
+                          : "#faad14",
                     }}
                   >
-                    <Tag color="warning">
-                      {" "}
-                      {/* Always warning, not red */}
-                      {/* <Tag color={violationCount >= 3 ? "red" : "warning"}> */}
+                    <Tag
+                      color={
+                        violationCount > 10
+                          ? "red"
+                          : violationCount > 5
+                          ? "orange"
+                          : "warning"
+                      }
+                    >
                       Pelanggaran
                     </Tag>
                   </Badge>
@@ -1421,7 +1515,6 @@ const UjianCATView = () => {
           </Col>
         </Row>
       </Card>
-
       <Row gutter={16}>
         {/* Panel Soal */}
         {(!screens.xs && !screens.sm) || showSoalPanel ? (
@@ -1554,7 +1647,6 @@ const UjianCATView = () => {
           </Card>
         </Col>
       </Row>
-
       {/* Warning untuk waktu hampir habis */}
       {timeLeft <= 300 && timeLeft > 0 && ujianData.showTimerToParticipants && (
         <Modal
@@ -1577,30 +1669,70 @@ const UjianCATView = () => {
             showIcon
           />
         </Modal>
-      )}
-
-      {/* Tambah Modal notifikasi pelanggaran */}
-      {/* {violationModalVisible && (
+      )}{" "}
+      {/* Modal notifikasi pelanggaran individual */}
+      {violationModalVisible && (
         <Modal
           open={violationModalVisible}
           title={
             <span style={{ color: "#ff4d4f" }}>
-              <ExclamationCircleOutlined /> Ujian Dikunci
+              <ExclamationCircleOutlined /> Pelanggaran Terdeteksi!
+            </span>
+          }
+          onOk={() => setViolationModalVisible(false)}
+          onCancel={() => setViolationModalVisible(false)}
+          okText="Mengerti"
+          cancelButtonProps={{ style: { display: "none" } }}
+          centered
+          destroyOnClose
+        >
+          <Alert
+            message={`Pelanggaran ${violationCount}: ${lastViolationType}`}
+            description={
+              <>
+                <div style={{ marginBottom: 8 }}>
+                  <b>{violationDetails}</b>
+                </div>
+                <div>
+                  Total pelanggaran: <b>{violationCount}</b>
+                </div>
+                <div style={{ color: "#ff4d4f", marginTop: 8 }}>
+                  ⚠️ Peringatan: Jika pelanggaran melebihi 10 kali, ujian akan
+                  otomatis dikumpulkan!
+                </div>
+              </>
+            }
+            type="warning"
+            showIcon
+          />
+        </Modal>
+      )}
+      {/* Modal pelanggaran kritis (>10) */}
+      {criticalViolationModal && (
+        <Modal
+          open={criticalViolationModal}
+          title={
+            <span style={{ color: "#ff4d4f" }}>
+              <ExclamationCircleOutlined /> UJIAN DIHENTIKAN!
             </span>
           }
           closable={false}
           footer={null}
           centered
+          destroyOnClose
         >
           <Alert
-            message="Ujian Anda telah dikunci karena terdeteksi 3 kali pelanggaran."
+            message="Ujian Anda telah dihentikan karena terlalu banyak pelanggaran!"
             description={
               <>
-                <div>
-                  Jenis pelanggaran terakhir: <b>{violationReason}</b>
+                <div style={{ marginBottom: 8 }}>
+                  Total pelanggaran: <b>{violationCount}</b>
                 </div>
-                <div>
-                  Ujian akan otomatis dikumpulkan dan tidak dapat dilanjutkan.
+                <div style={{ marginBottom: 8 }}>
+                  Pelanggaran terakhir: <b>{violationReason}</b>
+                </div>
+                <div style={{ color: "#ff4d4f", fontWeight: "bold" }}>
+                  🚫 Ujian akan otomatis dikumpulkan dalam 3 detik...
                 </div>
               </>
             }
@@ -1608,7 +1740,7 @@ const UjianCATView = () => {
             showIcon
           />
         </Modal>
-      )} */}
+      )}
     </div>
   );
 };

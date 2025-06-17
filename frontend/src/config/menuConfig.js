@@ -241,19 +241,26 @@ const menuList = [
     roles: ["ROLE_STUDENT"],
   },
 
-  {
-    title: "Analisis Ujian",
-    path: "/ujian-analysis",
-    icon: RadarChartOutlined,
-    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
-  },
+  // {
+  //   title: "Analisis Ujian",
+  //   path: "/ujian-analysis",
+  //   icon: RadarChartOutlined,
+  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  // },
 
   {
-    title: "Integrasi Dashboard",
-    path: "/integrasi-ujian",
-    icon: AppstoreOutlined,
-    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+    title: "Report Nilai Siswa",
+    path: "/report-nilai",
+    icon: FileProtectOutlined,
+    roles: ["ROLE_OPERATOR", "ROLE_ADMINISTRATOR"],
   },
+
+  // {
+  //   title: "Integrasi Dashboard",
+  //   path: "/integrasi-ujian",
+  //   icon: AppstoreOutlined,
+  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  // },
 
   // {
   //   title: "Guru",
@@ -333,12 +340,12 @@ const menuList = [
   //   icon: FileSearchOutlined,
   //   roles: ["ROLE_OPERATOR", "ROLE_DUDI", "ROLE_TEACHER"],
   // },
-  {
-    title: "Setting Ujian",
-    path: "/setting-exam",
-    icon: SolutionOutlined,
-    roles: ["ROLE_OPERATOR"],
-  },
+  // {
+  //   title: "Setting Ujian",
+  //   path: "/setting-exam",
+  //   icon: SolutionOutlined,
+  //   roles: ["ROLE_OPERATOR"],
+  // },
   // {
   //   title: "Setting Kuis",
   //   path: "/setting-quiz",
@@ -351,12 +358,12 @@ const menuList = [
   //   icon: SolutionOutlined,
   //   roles: ["ROLE_TEACHER", "ROLE_DUDI", "ROLE_OPERATOR"],
   // },
-  {
-    title: "Ujian",
-    path: "/exam",
-    icon: SolutionOutlined,
-    roles: ["ROLE_STUDENT"],
-  },
+  // {
+  //   title: "Ujian",
+  //   path: "/exam",
+  //   icon: SolutionOutlined,
+  //   roles: ["ROLE_STUDENT"],
+  // },
   // {
   //   title: "Kuis",
   //   path: "/quiz",
@@ -395,6 +402,31 @@ const menuList = [
       // },
     ],
   },
+  // {
+  //   title: "Analisis & Laporan",
+  //   icon: RadarChartOutlined,
+  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_ADMINISTRATOR"],
+  //   children: [
+  //     {
+  //       title: "Analisis Peserta",
+  //       path: "/ujian-analysis",
+  //       icon: FileSearchOutlined,
+  //       roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  //     },
+  //     {
+  //       title: "Integrasi Data",
+  //       path: "/integrasi-ujian",
+  //       icon: AuditOutlined,
+  //       roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  //     },
+  //     {
+  //       title: "Laporan Nilai Siswa",
+  //       path: "/laporan-nilai",
+  //       icon: FileTextOutlined,
+  //       roles: ["ROLE_OPERATOR", "ROLE_ADMINISTRATOR"],
+  //     },
+  //   ],
+  // },
   // {
   //   title: "Tentang Penulis",
   //   path: "/about",

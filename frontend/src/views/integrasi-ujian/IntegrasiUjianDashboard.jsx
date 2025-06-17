@@ -4,6 +4,7 @@ import { Card, Table, Tag, Divider, Spin, Alert, Button, message } from "antd";
 import { getUjian } from "@/api/ujian";
 import { getHasilByUjian } from "@/api/hasilUjian";
 import { getViolationsByUjian } from "@/api/cheatDetection";
+import { getUserById } from "@/api/user";
 import {
   getAnalysisByUjian,
   autoGenerateAnalysisForUjian,
@@ -17,8 +18,9 @@ const IntegrasiUjianDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [ujians, setUjians] = useState([]);
   const [selectedUjian, setSelectedUjian] = useState(null);
-  const [hasilUjian, setHasilUjian] = useState([]);
-  const [violations, setViolations] = useState([]);
+  const [pesertaData, setPesertaData] = useState([]);
+  const [enrichedParticipants, setEnrichedParticipants] = useState([]);
+  const [participantNames, setParticipantNames] = useState({});
   const [analysis, setAnalysis] = useState(null);
   const navigate = useNavigate();
 
@@ -36,79 +38,128 @@ const IntegrasiUjianDashboard = () => {
     };
     fetchUjians();
   }, []);
+
+  // Function to fetch participant names
+  const fetchParticipantNames = async (participantIds) => {
+    try {
+      const names = {};
+      const uniqueIds = [...new Set(participantIds)]; // Remove duplicates
+
+      const promises = uniqueIds.map(async (id) => {
+        try {
+          const user = await getUserById(id);
+          names[id] = user.data?.name || user.data?.username || id;
+        } catch (error) {
+          console.log(`Failed to fetch user ${id}:`, error);
+          names[id] = id; // Fallback to ID
+        }
+      });
+
+      await Promise.all(promises);
+      setParticipantNames((prev) => ({ ...prev, ...names }));
+    } catch (error) {
+      console.error("Error fetching participant names:", error);
+    }
+  };
   const handleSelectUjian = async (ujian) => {
     setSelectedUjian(ujian);
     setLoading(true);
     try {
-      const [hres, vres, ares] = await Promise.all([
-        getHasilByUjian(ujian.idUjian, true),
-        getViolationsByUjian(ujian.idUjian),
-        getAnalysisByUjian(ujian.idUjian),
-      ]);
-      console.log(
-        "API Response - HasilUjian count:",
-        hres.data?.content?.length || 0
-      );
-      console.log(
-        "API Response - Violations count:",
-        vres.data?.content?.length || 0
-      );
-      console.log(
-        "API Response - Analysis count:",
-        ares.data?.content?.length || 0
-      );
+      console.log(`Loading participant data for ujian: ${ujian.idUjian}`);
 
-      setHasilUjian(hres.data?.content || []);
-      setViolations(vres.data?.content || []);
+      // Fetch hasil ujian (participant results)
+      const hasilResponse = await getHasilByUjian(ujian.idUjian, true, 1000);
+      const hasilData = hasilResponse.data?.content || [];
 
-      // Get the latest analysis if multiple exist
-      let analysisData = null;
-      if (ares.data?.content && ares.data.content.length > 0) {
-        // Sort by generatedAt descending to get the latest
-        const sortedAnalyses = ares.data.content.sort(
-          (a, b) => new Date(b.generatedAt) - new Date(a.generatedAt)
-        );
-        analysisData = sortedAnalyses[0];
+      console.log("Participant results count:", hasilData.length);
 
-        // Log if multiple analyses found
-        if (ares.data.content.length > 1) {
-          console.log(
-            `Found ${ares.data.content.length} analyses for ujian ${ujian.idUjian}, using latest:`,
-            analysisData.idAnalysis
-          );
-        }
-      }
-
-      // Auto-generate analysis if not available and there are results
-      if (!analysisData && hres.data?.content && hres.data.content.length > 0) {
-        try {
-          console.log(
-            "Analysis not found, auto-generating for ujian:",
-            ujian.idUjian
-          );
-          await autoGenerateAnalysisForUjian(ujian.idUjian); // Fetch analysis again after generation
-          const newAres = await getAnalysisByUjian(ujian.idUjian);
-          if (newAres.data?.content && newAres.data.content.length > 0) {
-            // Get the latest analysis
-            const sortedAnalyses = newAres.data.content.sort(
-              (a, b) => new Date(b.generatedAt) - new Date(a.generatedAt)
+      // Enrich each participant with their violation data and analysis
+      const enrichedParticipants = await Promise.all(
+        hasilData.map(async (hasil) => {
+          // Fetch violations for this participant
+          let violations = [];
+          try {
+            const violationResponse = await getViolationsByUjian(ujian.idUjian);
+            const allViolations = violationResponse.data?.content || [];
+            violations = allViolations.filter(
+              (v) => v.idPeserta === hasil.idPeserta
             );
-            analysisData = sortedAnalyses[0];
+          } catch (error) {
+            console.error(
+              `Error fetching violations for participant ${hasil.idPeserta}:`,
+              error
+            );
           }
-          console.log("Analysis generated successfully:", analysisData);
-        } catch (genError) {
-          console.error("Failed to auto-generate analysis:", genError);
-        }
-      }
-      setAnalysis(analysisData);
-      console.log("Final analysis data set to state:", analysisData);
-      console.log(
-        "Analysis state should now be:",
-        analysisData ? "available" : "null/undefined"
+
+          // Calculate behavioral metrics
+          const totalViolations = violations.length;
+          const severityScore = violations.reduce((sum, v) => {
+            const severity = v.severityLevel || "LOW";
+            return (
+              sum + (severity === "HIGH" ? 3 : severity === "MEDIUM" ? 2 : 1)
+            );
+          }, 0);
+
+          // Determine risk level
+          let riskLevel = "LOW";
+          if (totalViolations > 10) riskLevel = "HIGH";
+          else if (totalViolations > 5) riskLevel = "MEDIUM";
+
+          // Calculate behavior score
+          const behaviorScore = Math.max(0, 100 - severityScore * 5);
+
+          // Determine working pattern
+          let workingPattern = "Normal";
+          if (totalViolations > 10) workingPattern = "High Risk";
+          else if (totalViolations > 5) workingPattern = "Suspicious";
+
+          return {
+            ...hasil,
+            violations,
+            violationCount: totalViolations,
+            severityScore,
+            riskLevel,
+            behaviorScore,
+            workingPattern,
+            needsReview: totalViolations > 3 || (hasil.persentase || 0) < 50,
+            integrityScore: Math.max(0, 100 - totalViolations * 10),
+          };
+        })
       );
-    } catch (e) {
-      setHasilUjian([]);
-      setViolations([]);
+
+      // Fetch participant names
+      const participantIds = enrichedParticipants.map((p) => p.idPeserta);
+      if (participantIds.length > 0) {
+        await fetchParticipantNames(participantIds);
+      }      setEnrichedParticipants(enrichedParticipants);
+      setPesertaData(hasilData);
+
+      // Generate analysis from enriched participants
+      const totalParticipants = enrichedParticipants.length;
+      const passedParticipants = enrichedParticipants.filter(p => p.lulus).length;
+      const totalViolations = enrichedParticipants.reduce((sum, p) => sum + p.violationCount, 0);
+      const flaggedParticipants = enrichedParticipants.filter(p => p.violationCount > 0).length;
+      const averageScore = totalParticipants > 0 ? 
+        enrichedParticipants.reduce((sum, p) => sum + (p.totalSkor || 0), 0) / totalParticipants : 0;
+      const averageIntegrityScore = totalParticipants > 0 ?
+        enrichedParticipants.reduce((sum, p) => sum + (p.integrityScore || 0), 0) / totalParticipants : 0;
+
+      const analysisData = {
+        idAnalysis: `generated-${ujian.idUjian}`,
+        generatedAt: new Date().toISOString(),
+        averageScore: averageScore,
+        passRate: totalParticipants > 0 ? (passedParticipants / totalParticipants) * 100 : 0,
+        integrityScore: averageIntegrityScore,
+        suspiciousSubmissions: totalViolations,
+        flaggedParticipants: flaggedParticipants
+      };
+
+      setAnalysis(analysisData);
+
+      console.log("Enriched participants:", enrichedParticipants.length);    } catch (e) {
+      console.error("Error in handleSelectUjian:", e);
+      setEnrichedParticipants([]);
+      setPesertaData([]);
       setAnalysis(null);
     } finally {
       setLoading(false);
@@ -181,10 +232,138 @@ const IntegrasiUjianDashboard = () => {
           pagination={{ pageSize: 8 }}
         />
         <Divider>Detail Integrasi</Divider>
-        {loading && selectedUjian && <Spin tip="Memuat data..." />}
+        {loading && selectedUjian && <Spin tip="Memuat data..." />}{" "}
         {!loading && selectedUjian && (
           <>
             {" "}
+            {/* Summary Statistics - Participant Based */}
+            <Card
+              type="inner"
+              title="Ringkasan Data Peserta"
+              style={{ marginBottom: 16 }}
+            >
+              <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
+                <div style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      color: "#1890ff",
+                    }}
+                  >
+                    {enrichedParticipants.length}
+                  </div>
+                  <div style={{ color: "#666" }}>Total Peserta</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      color: "#52c41a",
+                    }}
+                  >
+                    {enrichedParticipants.filter((p) => p.lulus).length}
+                  </div>
+                  <div style={{ color: "#666" }}>Lulus</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      color: "#ff4d4f",
+                    }}
+                  >
+                    {enrichedParticipants.filter((p) => !p.lulus).length}
+                  </div>
+                  <div style={{ color: "#666" }}>Tidak Lulus</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      color: "#fa8c16",
+                    }}
+                  >
+                    {enrichedParticipants.reduce(
+                      (sum, p) => sum + p.violationCount,
+                      0
+                    )}
+                  </div>
+                  <div style={{ color: "#666" }}>Total Pelanggaran</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      color: "#722ed1",
+                    }}
+                  >
+                    {
+                      enrichedParticipants.filter((p) => p.violationCount > 0)
+                        .length
+                    }
+                  </div>
+                  <div style={{ color: "#666" }}>Peserta Bermasalah</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      color: "#ff4d4f",
+                    }}
+                  >
+                    {
+                      enrichedParticipants.filter((p) => p.riskLevel === "HIGH")
+                        .length
+                    }
+                  </div>
+                  <div style={{ color: "#666" }}>Risiko Tinggi</div>
+                </div>
+                {enrichedParticipants.length > 0 && (
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        fontSize: "24px",
+                        fontWeight: "bold",
+                        color: "#13c2c2",
+                      }}
+                    >
+                      {(
+                        enrichedParticipants.reduce(
+                          (sum, p) => sum + (p.totalSkor || 0),
+                          0
+                        ) / enrichedParticipants.length
+                      ).toFixed(1)}
+                    </div>
+                    <div style={{ color: "#666" }}>Rata-rata Nilai</div>
+                  </div>
+                )}
+                {enrichedParticipants.length > 0 && (
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        fontSize: "24px",
+                        fontWeight: "bold",
+                        color: "#52c41a",
+                      }}
+                    >
+                      {(
+                        enrichedParticipants.reduce(
+                          (sum, p) => sum + (p.behaviorScore || 0),
+                          0
+                        ) / enrichedParticipants.length
+                      ).toFixed(1)}
+                    </div>
+                    <div style={{ color: "#666" }}>Avg Behavior Score</div>
+                  </div>
+                )}
+              </div>
+            </Card>
             <Card
               type="inner"
               title={`Analisis Ujian: ${selectedUjian.namaUjian}`}
@@ -268,14 +447,13 @@ const IntegrasiUjianDashboard = () => {
                       <p>
                         Analisis untuk ujian ini belum dibuat atau belum selesai
                         diproses.
-                      </p>
-                      <p>
-                        Debug info: Hasil ujian: {hasilUjian.length}, Ujian ID:{" "}
+                      </p>                      <p>
+                        Debug info: Hasil ujian: {pesertaData.length}, Ujian ID:{" "}
                         {selectedUjian.idUjian}
                       </p>
-                      {hasilUjian.length > 0 ? (
+                      {pesertaData.length > 0 ? (
                         <p>
-                          Ada {hasilUjian.length} hasil ujian. Analisis bisa
+                          Ada {pesertaData.length} hasil ujian. Analisis bisa
                           di-generate secara otomatis.
                         </p>
                       ) : (
@@ -287,124 +465,280 @@ const IntegrasiUjianDashboard = () => {
                   showIcon
                 />
               )}
-            </Card>
-            <Divider>Pelanggaran (Cheat Detection)</Divider>
-            <Table
-              dataSource={violations}
-              rowKey="idDetection"
-              size="small"
-              columns={[
-                { title: "Peserta", dataIndex: "idPeserta", key: "idPeserta" },
-                {
-                  title: "Jenis Pelanggaran",
-                  dataIndex: "typeViolation",
-                  key: "typeViolation",
-                },
-                {
-                  title: "Severity",
-                  dataIndex: "severity",
-                  key: "severity",
-                  render: (sev) => (
-                    <Tag
-                      color={
-                        sev === "CRITICAL"
-                          ? "red"
-                          : sev === "HIGH"
-                          ? "orange"
-                          : "blue"
-                      }
-                    >
-                      {sev}
-                    </Tag>
-                  ),
-                },
-                {
-                  title: "Waktu",
-                  dataIndex: "detectedAt",
-                  key: "detectedAt",
-                  render: (t) => (t ? new Date(t).toLocaleString() : "-"),
-                },
-              ]}
-              pagination={{ pageSize: 5 }}
-            />
-            <Divider>Distribusi Nilai Peserta</Divider>
-            <Table
-              dataSource={hasilUjian}
-              rowKey="idHasilUjian"
-              size="small"
-              columns={[
-                { title: "Peserta", dataIndex: "idPeserta", key: "idPeserta" },
-                { title: "Nilai", dataIndex: "totalSkor", key: "totalSkor" },
-                {
-                  title: "Waktu Mulai",
-                  dataIndex: "waktuMulai",
-                  key: "waktuMulai",
-                  render: (w) => (w ? new Date(w).toLocaleString() : "-"),
-                },
-                {
-                  title: "Waktu Selesai",
-                  dataIndex: "waktuSelesai",
-                  key: "waktuSelesai",
-                  render: (w) => (w ? new Date(w).toLocaleString() : "-"),
-                },
-                {
-                  title: "Status",
-                  dataIndex: "lulus",
-                  key: "lulus",
-                  render: (lulus) =>
-                    lulus ? (
-                      <Tag color="green">Lulus</Tag>
-                    ) : (
-                      <Tag color="red">Tidak Lulus</Tag>
+            </Card>{" "}            <Divider>Pelanggaran (Cheat Detection)</Divider>
+            {(() => {
+              const allViolations = enrichedParticipants.flatMap(p => p.violations || []);
+              return allViolations.length > 0 ? (
+                <Table
+                  dataSource={allViolations}
+                  rowKey="idDetection"
+                  size="small"
+                columns={[
+                  {
+                    title: "Peserta",
+                    dataIndex: "idPeserta",
+                    key: "idPeserta",
+                    render: (idPeserta) => (
+                      <div>
+                        <div style={{ fontWeight: "bold" }}>
+                          {participantNames[idPeserta] || idPeserta}
+                        </div>
+                        {participantNames[idPeserta] && (
+                          <div style={{ fontSize: "12px", color: "#666" }}>
+                            ID: {idPeserta}
+                          </div>
+                        )}
+                      </div>
                     ),
-                },
-                {
-                  title: "Pelanggaran",
-                  dataIndex: "violationIds",
-                  key: "violationIds",
-                  render: (v) =>
-                    v && v.length > 0 ? (
-                      <Tag color="red">{v.length} pelanggaran</Tag>
-                    ) : (
-                      <Tag color="green">Bersih</Tag>
+                  },
+                  {
+                    title: "Jenis Pelanggaran",
+                    dataIndex: "typeViolation",
+                    key: "typeViolation",
+                  },
+                  {
+                    title: "Severity",
+                    dataIndex: "severity",
+                    key: "severity",
+                    render: (sev) => (
+                      <Tag
+                        color={
+                          sev === "CRITICAL"
+                            ? "red"
+                            : sev === "HIGH"
+                            ? "orange"
+                            : "blue"
+                        }
+                      >
+                        {sev}
+                      </Tag>
                     ),
-                },
-              ]}
-              pagination={{ pageSize: 10 }}
-            />
-            <Divider>Rekap Pelanggaran per Peserta</Divider>
-            <Table
-              dataSource={(() => {
-                // Grouping: { idPeserta: { typeViolation: count } }
-                const map = {};
-                violations.forEach((v) => {
-                  if (!map[v.idPeserta]) map[v.idPeserta] = {};
-                  if (!map[v.idPeserta][v.typeViolation])
-                    map[v.idPeserta][v.typeViolation] = 0;
-                  map[v.idPeserta][v.typeViolation]++;
-                });
-                // Flatten to array
-                const rows = [];
-                Object.entries(map).forEach(([idPeserta, types]) => {
-                  Object.entries(types).forEach(([typeViolation, count]) => {
-                    rows.push({ idPeserta, typeViolation, count });
+                  },
+                  {
+                    title: "Waktu",
+                    dataIndex: "detectedAt",
+                    key: "detectedAt",
+                    render: (t) => (t ? new Date(t).toLocaleString() : "-"),
+                  },
+                  {
+                    title: "Details",
+                    dataIndex: "details",
+                    key: "details",
+                    render: (details) => (
+                      <div style={{ fontSize: "12px", color: "#666" }}>
+                        {details || "No additional details"}
+                      </div>
+                    ),
+                  },                ]}
+                pagination={{ pageSize: 5 }}
+              />
+            ) : (
+              <div
+                style={{ textAlign: "center", padding: "20px", color: "#666" }}
+              >
+                <Tag color="green">Tidak ada pelanggaran terdeteksi</Tag>
+              </div>
+            );
+            })()}{" "}            <Divider>Distribusi Nilai Peserta</Divider>
+            {enrichedParticipants.length > 0 ? (
+              <Table
+                dataSource={enrichedParticipants}
+                rowKey="idHasilUjian"
+                size="small"
+                columns={[
+                  {
+                    title: "Peserta",
+                    dataIndex: "idPeserta",
+                    key: "idPeserta",
+                    render: (idPeserta) => (
+                      <div>
+                        <div style={{ fontWeight: "bold" }}>
+                          {participantNames[idPeserta] || idPeserta}
+                        </div>
+                        {participantNames[idPeserta] && (
+                          <div style={{ fontSize: "12px", color: "#666" }}>
+                            ID: {idPeserta}
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    title: "Nilai",
+                    dataIndex: "totalSkor",
+                    key: "totalSkor",
+                    render: (score, record) => (
+                      <div>
+                        <div style={{ fontWeight: "bold", fontSize: "16px" }}>
+                          {parseFloat(score || 0).toFixed(1)}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#666" }}>
+                          {record.persentase
+                            ? `${parseFloat(record.persentase).toFixed(1)}%`
+                            : "0%"}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#666" }}>
+                          Grade: {record.nilaiHuruf || "-"}
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    title: "Jawaban",
+                    key: "jawaban",
+                    render: (_, record) => (
+                      <div style={{ fontSize: "12px" }}>
+                        <div style={{ color: "#52c41a" }}>
+                          ✓ Benar: {record.jumlahBenar || 0}
+                        </div>
+                        <div style={{ color: "#ff4d4f" }}>
+                          ✗ Salah: {record.jumlahSalah || 0}
+                        </div>
+                        <div style={{ color: "#faad14" }}>
+                          ○ Kosong: {record.jumlahKosong || 0}
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    title: "Waktu Pengerjaan",
+                    key: "waktu",
+                    render: (_, record) => (
+                      <div style={{ fontSize: "12px" }}>
+                        <div>
+                          Mulai:{" "}
+                          {record.waktuMulai
+                            ? new Date(record.waktuMulai).toLocaleString()
+                            : "-"}
+                        </div>
+                        <div>
+                          Selesai:{" "}
+                          {record.waktuSelesai
+                            ? new Date(record.waktuSelesai).toLocaleString()
+                            : "-"}
+                        </div>
+                        <div style={{ color: "#666" }}>
+                          Durasi:{" "}
+                          {record.durasiPengerjaan
+                            ? `${Math.floor(record.durasiPengerjaan / 60)}m ${
+                                record.durasiPengerjaan % 60
+                              }s`
+                            : "-"}
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    title: "Status",
+                    dataIndex: "lulus",
+                    key: "lulus",
+                    render: (lulus, record) => (
+                      <div>
+                        <Tag color={lulus ? "green" : "red"}>
+                          {lulus ? "Lulus" : "Tidak Lulus"}
+                        </Tag>
+                        <div style={{ fontSize: "12px", color: "#666" }}>
+                          {record.statusPengerjaan || "SELESAI"}
+                        </div>
+                      </div>
+                    ),
+                  },                  {
+                    title: "Pelanggaran",
+                    key: "violations",
+                    render: (_, record) => {
+                      const participantViolations = record.violations || [];
+                      return participantViolations.length > 0 ? (
+                        <Tag color="red">
+                          {participantViolations.length} pelanggaran
+                        </Tag>
+                      ) : (
+                        <Tag color="green">Bersih</Tag>
+                      );
+                    },
+                  },
+                ]}
+                pagination={{ pageSize: 10 }}
+              />
+            ) : (
+              <div
+                style={{ textAlign: "center", padding: "20px", color: "#666" }}
+              >
+                <Tag color="orange">
+                  Belum ada peserta yang mengerjakan ujian ini
+                </Tag>
+              </div>
+            )}{" "}            <Divider>Rekap Pelanggaran per Peserta</Divider>
+            {(() => {
+              const allViolations = enrichedParticipants.flatMap(p => p.violations || []);
+              return allViolations.length > 0 ? (
+                <Table
+                  dataSource={(() => {
+                    // Grouping: { idPeserta: { typeViolation: count } }
+                    const map = {};
+                    allViolations.forEach((v) => {
+                      if (!map[v.idPeserta]) map[v.idPeserta] = {};
+                      if (!map[v.idPeserta][v.typeViolation])
+                        map[v.idPeserta][v.typeViolation] = 0;
+                      map[v.idPeserta][v.typeViolation]++;
+                    });
+                  // Flatten to array
+                  const rows = [];
+                  Object.entries(map).forEach(([idPeserta, types]) => {
+                    Object.entries(types).forEach(([typeViolation, count]) => {
+                      rows.push({ idPeserta, typeViolation, count });
+                    });
                   });
-                });
-                return rows;
-              })()}
-              rowKey={(r) => r.idPeserta + r.typeViolation}
-              size="small"
-              columns={[
-                { title: "Peserta", dataIndex: "idPeserta", key: "idPeserta" },
-                {
-                  title: "Jenis Pelanggaran",
-                  dataIndex: "typeViolation",
-                  key: "typeViolation",
-                },
-                { title: "Jumlah", dataIndex: "count", key: "count" },
-              ]}
-              pagination={{ pageSize: 10 }}
-            />
+                  return rows;
+                })()}
+                rowKey={(r) => r.idPeserta + r.typeViolation}
+                size="small"
+                columns={[
+                  {
+                    title: "Peserta",
+                    dataIndex: "idPeserta",
+                    key: "idPeserta",
+                    render: (idPeserta) => (
+                      <div>
+                        <div style={{ fontWeight: "bold" }}>
+                          {participantNames[idPeserta] || idPeserta}
+                        </div>
+                        {participantNames[idPeserta] && (
+                          <div style={{ fontSize: "12px", color: "#666" }}>
+                            ID: {idPeserta}
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    title: "Jenis Pelanggaran",
+                    dataIndex: "typeViolation",
+                    key: "typeViolation",
+                  },
+                  {
+                    title: "Jumlah",
+                    dataIndex: "count",
+                    key: "count",
+                    render: (count) => (
+                      <Tag
+                        color={
+                          count > 5 ? "red" : count > 2 ? "orange" : "blue"
+                        }
+                      >
+                        {count}
+                      </Tag>
+                    ),
+                  },                ]}
+                pagination={{ pageSize: 10 }}
+              />
+            ) : (
+              <div
+                style={{ textAlign: "center", padding: "20px", color: "#666" }}
+              >
+                <Tag color="green">Tidak ada pelanggaran untuk direkap</Tag>
+              </div>
+            );
+            })()}
           </>
         )}
       </Card>

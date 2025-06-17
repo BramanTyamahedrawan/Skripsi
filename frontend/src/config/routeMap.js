@@ -197,6 +197,17 @@ const StudentExercise = React.lazy(() =>
 const StudentExerciseReview = React.lazy(() =>
   import(/*webpackChunkName:'Exercise'*/ "@/views/student-exercise-review")
 );
+// const PesertaAnalysis = React.lazy(() =>
+//   import(/*webpackChunkName:'PesertaAnalysis'*/ "@/views/ujian-analysis")
+// );
+// const IntegrasiPesertaDashboard = React.lazy(() =>
+//   import(
+//     /*webpackChunkName:'IntegrasiPeserta'*/ "@/views/integrasi-ujian/IntegrasiPesertaDashboard"
+//   )
+// );
+// const LaporanNilai = React.lazy(() =>
+//   import(/*webpackChunkName:'LaporanNilai'*/ "@/views/laporan-nilai")
+// );
 const BidangKeahlian = React.lazy(() =>
   import(/*webpackChunkName:'BidangKeahlian'*/ "@/views/bidang-keahlian")
 );
@@ -285,6 +296,9 @@ const IntegrasiUjianDashboard = React.lazy(() =>
   import(
     /*webpackChunkName:'IntegrasiUjianDashboard'*/ "@/views/integrasi-ujian/IntegrasiUjianDashboard"
   )
+);
+const ReportNilai = React.lazy(() =>
+  import(/*webpackChunkName:'ReportNilai'*/ "@/views/report-nilai")
 );
 
 // const Grade = React.lazy(() =>
@@ -481,20 +495,35 @@ export default [
     component: UjianHistory,
     roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
   },
-  {
-    path: "/ujian-analysis",
-    component: UjianAnalysis,
-    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
-  },
+  // {
+  //   path: "/ujian-analysis",
+  //   component: PesertaAnalysis,
+  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  // },
   {
     path: "/ujian-analysis/detail/:idUjian",
     component: UjianAnalysisDetail,
     roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
   },
+  // {
+  //   path: "/peserta-analysis/detail/:idPeserta/:idUjian",
+  //   component: PesertaAnalysis,
+  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  // },
+  // {
+  //   path: "/integrasi-ujian",
+  //   component: IntegrasiPesertaDashboard,
+  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  // },
+  // {
+  //   path: "/laporan-nilai",
+  //   component: LaporanNilai,
+  //   roles: ["ROLE_OPERATOR", "ROLE_ADMINISTRATOR"],
+  // },
   {
-    path: "/integrasi-ujian",
-    component: IntegrasiUjianDashboard,
-    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+    path: "/report-nilai",
+    component: ReportNilai,
+    roles: ["ROLE_OPERATOR", "ROLE_ADMINISTRATOR"],
   },
 
   // {

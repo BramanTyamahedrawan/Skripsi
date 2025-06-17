@@ -49,7 +49,12 @@ import {
   createAndActivateUjian,
   getUjianStatistics,
 } from "@/api/ujian";
-import { autoGenerateAnalysisForUjian } from "@/api/ujianAnalysis";
+import {
+  autoGenerateAnalysisForUjian,
+  generateParticipantBasedAnalysis,
+  getAnalysisByUjian,
+} from "@/api/ujianAnalysis";
+import { getHasilByUjian } from "@/api/hasilUjian";
 import { Skeleton } from "antd";
 import Highlighter from "react-highlight-words";
 import TypingCard from "@/components/TypingCard";
@@ -64,6 +69,8 @@ const { Text, Title } = Typography;
 
 const Ujian = () => {
   const [ujians, setUjians] = useState([]);
+  const [participantCounts, setParticipantCounts] = useState({});
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [addUjianModalVisible, setAddUjianModalVisible] = useState(false);
   const [addUjianModalLoading, setAddUjianModalLoading] = useState(false);
   const [editUjianModalVisible, setEditUjianModalVisible] = useState(false);
@@ -88,7 +95,53 @@ const Ujian = () => {
 
   const editUjianFormRef = useRef();
   const addUjianFormRef = useRef();
+  const fetchParticipantCounts = useCallback(async (ujianList) => {
+    setLoadingParticipants(true);
+    try {
+      const counts = {};
 
+      // Only fetch for ujians that have been activated or completed
+      const activeUjians = ujianList.filter(
+        (ujian) =>
+          ujian.statusUjian === "AKTIF" ||
+          ujian.statusUjian === "SELESAI" ||
+          ujian.isLive
+      );
+
+      if (activeUjians.length === 0) {
+        setLoadingParticipants(false);
+        return;
+      }
+
+      // Fetch participant counts in parallel for active ujians only
+      const promises = activeUjians.map(async (ujian) => {
+        try {
+          const result = await getHasilByUjian(ujian.idUjian, true, 1000); // Get all results
+          const hasilData = result.data?.content || [];
+
+          counts[ujian.idUjian] = {
+            total: hasilData.length,
+            completed: hasilData.filter((h) => h.statusPengerjaan === "SELESAI")
+              .length,
+            passed: hasilData.filter((h) => h.lulus === true).length,
+          };
+        } catch (error) {
+          console.log(
+            `Failed to fetch participant count for ujian ${ujian.idUjian}:`,
+            error
+          );
+          counts[ujian.idUjian] = { total: 0, completed: 0, passed: 0 };
+        }
+      });
+
+      await Promise.all(promises);
+      setParticipantCounts((prev) => ({ ...prev, ...counts }));
+    } catch (error) {
+      console.error("Error fetching participant counts:", error);
+    } finally {
+      setLoadingParticipants(false);
+    }
+  }, []);
   const fetchUjians = useCallback(async () => {
     setLoading(true);
     try {
@@ -96,6 +149,8 @@ const Ujian = () => {
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
         setUjians(content);
+        // Fetch participant counts for each ujian
+        fetchParticipantCounts(content);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -104,7 +159,7 @@ const Ujian = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchParticipantCounts]);
 
   const fetchStatistics = useCallback(async () => {
     try {
@@ -116,7 +171,6 @@ const Ujian = () => {
       console.error("Gagal mengambil statistik:", error);
     }
   }, []);
-
   useEffect(() => {
     fetchUjians();
     fetchStatistics();
@@ -127,7 +181,23 @@ const Ujian = () => {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [fetchUjians, fetchStatistics]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto refresh participant counts untuk ujian aktif
+  useEffect(() => {
+    if (ujians.length > 0) {
+      const activeUjians = ujians.filter(
+        (ujian) =>
+          ujian.statusUjian === "AKTIF" ||
+          ujian.statusUjian === "SELESAI" ||
+          ujian.isLive
+      );
+      if (activeUjians.length > 0) {
+        fetchParticipantCounts(activeUjians);
+      }
+    }
+  }, [ujians, fetchParticipantCounts]);
 
   const handleDeleteUjian = (row) => {
     const { idUjian } = row;
@@ -222,26 +292,93 @@ const Ujian = () => {
     }
   };
   const handleEndUjian = async (idUjian) => {
-    try {
-      await endUjian(idUjian);
-      message.success("Ujian berhasil diakhiri");
+    // Konfirmasi sebelum mengakhiri ujian
+    Modal.confirm({
+      title: "Konfirmasi Akhiri Ujian",
+      content: "Apakah Anda yakin ingin mengakhiri ujian ini? ",
+      okText: "Ya, Akhiri",
+      okType: "danger",
+      cancelText: "Batal",
+      onOk: async () => {
+        try {
+          // Step 1: End ujian
+          await endUjian(idUjian);
+          message.success("Ujian berhasil diakhiri");
 
-      // Auto-generate analysis when exam ends
-      try {
-        message.info("Generating final analysis...");
-        await autoGenerateAnalysisForUjian(idUjian);
-        message.success("Final analysis generated successfully");
-      } catch (analysisError) {
-        console.warn("Failed to generate analysis:", analysisError);
-        message.warning(
-          "Ujian berakhir, namun analisis belum dapat dibuat. Silakan coba lagi nanti."
-        );
-      }
+          // Step 2: Auto-generate participant-based analysis when exam ends
+          try {
+            message.loading("Generating analysis ujian...", 2);
+            const analysisResult = await generateParticipantBasedAnalysis(
+              idUjian
+            );
 
-      fetchUjians();
-    } catch (error) {
-      message.error("Gagal mengakhiri ujian: " + error.message);
-    }
+            // Step 3: Fetch analysis data untuk menampilkan info detail
+            setTimeout(async () => {
+              try {
+                const analysisData = await getAnalysisByUjian(idUjian);
+
+                if (
+                  analysisData.data.statusCode === 200 &&
+                  analysisData.data.content.length > 0
+                ) {
+                  const analysis = analysisData.data.content[0];
+
+                  // Tampilkan notifikasi sukses dengan detail analisis
+                  Modal.success({
+                    title: "Ujian Berhasil Diakhiri!",
+                    content: (
+                      <div>
+                        <ul>
+                          <li>
+                            Total peserta:{" "}
+                            <strong>{analysis.totalParticipants || 0}</strong>
+                          </li>
+                          <li>
+                            Rata-rata nilai:{" "}
+                            <strong>
+                              {(analysis.averageScore || 0).toFixed(1)}
+                            </strong>
+                          </li>
+                          <li>
+                            Tingkat kelulusan:{" "}
+                            <strong>
+                              {(analysis.passRate || 0).toFixed(1)}%
+                            </strong>
+                          </li>
+                          <li>
+                            Siswa dengan pelanggaran:{" "}
+                            <strong>
+                              {analysis.participantStats?.yangMelanggar || 0}
+                            </strong>
+                          </li>
+                        </ul>{" "}
+                      </div>
+                    ),
+                    width: 500,
+                  });
+                } else {
+                  message.success("success");
+                }
+              } catch (fetchError) {
+                console.warn("Failed to fetch analysis details:", fetchError);
+                message.success("Ujian berakhir");
+              }
+            }, 1000); // Delay 1 detik untuk memberi waktu backend memproses
+          } catch (analysisError) {
+            console.warn(
+              "Failed to generate participant-based analysis:",
+              analysisError
+            );
+            message.warning("Ujian berakhir");
+          }
+
+          // Step 4: Refresh data ujian
+          fetchUjians();
+        } catch (error) {
+          message.error("Gagal mengakhiri ujian: " + error.message);
+        }
+      },
+    });
   };
 
   const handleCancelUjian = async (idUjian) => {
@@ -308,7 +445,12 @@ const Ujian = () => {
     return filtered;
   };
 
-  // Handler untuk lihat analisis
+  // Handler untuk lihat report nilai siswa
+  const handleViewReport = (row) => {
+    navigate(`/laporan-nilai?ujian=${row.idUjian}`);
+  };
+
+  // Handler untuk lihat analysis
   const handleViewAnalysis = (row) => {
     navigate(`/ujian-analysis/${row.idUjian}`);
   };
@@ -386,7 +528,9 @@ const Ujian = () => {
             size="small"
             icon={<StopOutlined />}
             onClick={() => handleEndUjian(record.idUjian)}
-          />
+          >
+            Akhiri
+          </Button>
         </Tooltip>
       );
     }
@@ -424,18 +568,35 @@ const Ujian = () => {
       );
     }
 
-    // Tombol Lihat Analisis - hanya untuk ujian selesai
+    // // Tombol Lihat Analisis - hanya untuk ujian selesai
+    // if (getStatusText(record) === "SELESAI") {
+    //   buttons.push(
+    //     <Tooltip key="analysis" title="Lihat Analisis Ujian">
+    //       <Button
+    //         type="default"
+    //         size="small"
+    //         icon={<BarChartOutlined />}
+    //         onClick={() => handleViewAnalysis(record)}
+    //         style={{ backgroundColor: "#f0f5ff", borderColor: "#adc6ff" }}
+    //       >
+    //         Analisis
+    //       </Button>
+    //     </Tooltip>
+    //   );
+    // }
+
+    // Tombol Lihat Report Nilai Siswa - hanya untuk ujian selesai
     if (getStatusText(record) === "SELESAI") {
       buttons.push(
-        <Tooltip key="analysis" title="Lihat Analisis Ujian">
+        <Tooltip key="report" title="Lihat Report Nilai Siswa">
           <Button
             type="default"
             size="small"
             icon={<BarChartOutlined />}
-            onClick={() => handleViewAnalysis(record)}
-            style={{ backgroundColor: "#f0f5ff", borderColor: "#adc6ff" }}
+            onClick={() => handleViewReport(record)}
+            style={{ backgroundColor: "#e6f7ff", borderColor: "#91d5ff" }}
           >
-            Analisis
+            Report
           </Button>
         </Tooltip>
       );
@@ -524,21 +685,67 @@ const Ujian = () => {
         </div>
       ),
     },
-    {
-      title: "Peserta",
-      key: "peserta",
-      width: 100,
-      render: (_, record) => (
-        <div style={{ textAlign: "center" }}>
-          <Badge count={record.jumlahPeserta || 0} showZero>
-            <UserOutlined style={{ fontSize: "16px" }} />
-          </Badge>
-          <div style={{ fontSize: "10px", color: "#666" }}>
-            {record.jumlahSelesai || 0} selesai
-          </div>
-        </div>
-      ),
-    },
+    // {
+    //   title: "Peserta",
+    //   key: "peserta",
+    //   width: 100,
+    //   render: (_, record) => {
+    //     // Check if this ujian should have participant data
+    //     const shouldHaveData =
+    //       record.statusUjian === "AKTIF" ||
+    //       record.statusUjian === "SELESAI" ||
+    //       record.isLive;
+
+    //     // Try multiple possible field names for participant count
+    //     const totalPeserta =
+    //       record.jumlahPeserta ||
+    //       record.totalPeserta ||
+    //       record.participantCount ||
+    //       record.pengaturan?.jumlahPeserta ||
+    //       participantCounts[record.idUjian]?.total ||
+    //       0;
+
+    //     // Try multiple possible field names for completed participants
+    //     const jumlahSelesai =
+    //       record.jumlahSelesai ||
+    //       record.completedParticipants ||
+    //       record.selesaiCount ||
+    //       participantCounts[record.idUjian]?.completed ||
+    //       0;
+
+    //     const jumlahLulus = participantCounts[record.idUjian]?.passed || 0;
+
+    //     // Show loading for active ujians that don't have participant data yet
+    //     if (
+    //       shouldHaveData &&
+    //       loadingParticipants &&
+    //       !participantCounts[record.idUjian]
+    //     ) {
+    //       return (
+    //         <div style={{ textAlign: "center" }}>
+    //           <Skeleton.Avatar size="small" />
+    //           <div style={{ fontSize: "10px", color: "#666" }}>Loading...</div>
+    //         </div>
+    //       );
+    //     }
+
+    //     return (
+    //       <div style={{ textAlign: "center" }}>
+    //         <Badge count={totalPeserta} showZero>
+    //           <UserOutlined style={{ fontSize: "16px" }} />
+    //         </Badge>
+    //         <div style={{ fontSize: "10px", color: "#666" }}>
+    //           {jumlahSelesai} selesai
+    //         </div>
+    //         {jumlahLulus > 0 && (
+    //           <div style={{ fontSize: "10px", color: "#52c41a" }}>
+    //             {jumlahLulus} lulus
+    //           </div>
+    //         )}
+    //       </div>
+    //     );
+    //   },
+    // },
     {
       title: "Aksi",
       key: "action",
@@ -669,14 +876,19 @@ const Ujian = () => {
             >
               Tambah Ujian
             </Button>
-          </Col>
+          </Col>{" "}
           <Col xs={24} sm={8} md={6}>
+            {" "}
             <Button
               icon={<ReloadOutlined />}
-              onClick={fetchUjians}
+              onClick={() => {
+                fetchUjians();
+                fetchStatistics();
+              }}
+              loading={loading || loadingParticipants}
               style={{ width: "100%" }}
             >
-              Refresh
+              Refresh Data
             </Button>
           </Col>
           <Col xs={24} sm={8} md={6}>
@@ -786,9 +998,12 @@ const Ujian = () => {
                 ? currentRowData.idBankSoalList.length
                 : 0}{" "}
               bank soal
-            </Descriptions.Item>
+            </Descriptions.Item>{" "}
             <Descriptions.Item label="Peserta Terdaftar">
-              {currentRowData.jumlahPeserta || 0} peserta
+              {currentRowData.jumlahPeserta ||
+                participantCounts[currentRowData.idUjian]?.total ||
+                0}{" "}
+              peserta
             </Descriptions.Item>
             <Descriptions.Item label="Deskripsi" span={2}>
               {currentRowData.deskripsi || "Tidak ada deskripsi"}

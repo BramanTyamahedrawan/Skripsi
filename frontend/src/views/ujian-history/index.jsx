@@ -148,9 +148,7 @@ const UjianHistory = () => {
       const { content, statusCode } = response.data;
 
       if (statusCode === 200 && content) {
-        setViolations(Array.isArray(content) ? content : [content]);
-      } else {
-        setViolations([]);
+        setViolations(content);
       }
     } catch (error) {
       console.error("Error fetching violations:", error);

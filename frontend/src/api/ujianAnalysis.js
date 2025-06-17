@@ -163,3 +163,20 @@ export function forceRegenerateAnalysis(ujianId) {
     method: "post",
   });
 }
+
+// Generate participant-based analysis for ujian (use existing auto-generate endpoint)
+export function generateParticipantBasedAnalysis(ujianId) {
+  return request({
+    url: `/ujian-analysis/auto-generate/${ujianId}`,
+    method: "post",
+  });
+}
+
+// Get participant-based analysis
+export function getParticipantBasedAnalysis(params = {}) {
+  return request({
+    url: "/ujian-analysis/participants",
+    method: "get",
+    params,
+  });
+}

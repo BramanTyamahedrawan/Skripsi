@@ -4,13 +4,16 @@ import { ConfigProvider } from "antd";
 import idID from "antd/es/locale/id_ID";
 import store from "./store";
 import Router from "./router";
+import { AuthProvider } from "./contexts/AuthContext";
 
 class App extends Component {
   render() {
     return (
       <ConfigProvider locale={idID}>
         <Provider store={store}>
-          <Router />
+          <AuthProvider>
+            <Router />
+          </AuthProvider>
         </Provider>
       </ConfigProvider>
     );
