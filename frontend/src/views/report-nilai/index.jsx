@@ -262,17 +262,22 @@ const ReportNilaiSiswa = () => {
       setLoading(false);
     }
   }, [selectedUjian, dateRange]);
-
   // Fetch violations for specific ujian
   const fetchViolations = async (ujianId, pesertaId) => {
     setLoadingViolations(true);
     try {
+      console.log("Fetching violations for:", { ujianId, pesertaId });
       const response = await getCheatDetectionByStudent(ujianId, pesertaId);
+      console.log("Violations API response:", response);
+
       const { content, statusCode } = response.data;
 
       if (statusCode === 200 && content) {
-        setViolations(Array.isArray(content) ? content : [content]);
+        const violationsArray = Array.isArray(content) ? content : [content];
+        console.log("Setting violations from API:", violationsArray);
+        setViolations(violationsArray);
       } else {
+        console.log("No violations found in API response");
         setViolations([]);
       }
     } catch (error) {
@@ -305,7 +310,6 @@ const ReportNilaiSiswa = () => {
       data: record,
     });
   };
-
   // Show violations modal
   const showViolationsModal = (record) => {
     setDetailModal({
@@ -313,10 +317,33 @@ const ReportNilaiSiswa = () => {
       data: record,
     });
     setViolationModalVisible(true);
-    const ujianId = record.ujian?.idUjian || record.ujianId || record.idUjian;
-    const pesertaId = record.siswaId || record.idPeserta;
-    if (ujianId && pesertaId) {
-      fetchViolations(ujianId, pesertaId);
+
+    // First try to use violations data from the record itself
+    const directViolations =
+      record.metadata?.violations || record.fullData?.metadata?.violations;
+
+    console.log("Direct violations from record:", directViolations);
+    console.log("SecurityFlags:", record.securityFlags);
+
+    if (
+      directViolations &&
+      Array.isArray(directViolations) &&
+      directViolations.length > 0
+    ) {
+      // Use direct violations data
+      setViolations(directViolations);
+      setLoadingViolations(false);
+    } else {
+      // Fallback to fetching from API
+      const ujianId = record.ujian?.idUjian || record.ujianId || record.idUjian;
+      const pesertaId = record.siswaId || record.idPeserta;
+      if (ujianId && pesertaId) {
+        fetchViolations(ujianId, pesertaId);
+      } else {
+        // No data available
+        setViolations([]);
+        setLoadingViolations(false);
+      }
     }
   };
 
@@ -348,7 +375,11 @@ const ReportNilaiSiswa = () => {
       "Jumlah Soal": item.jumlahSoal || item.totalSoal || "-",
       "Soal Terjawab": item.soalTerjawab || item.jumlahTerjawab || "-",
       "Soal Benar": item.soalBenar || item.jumlahBenar || "-",
-      Pelanggaran: item.jumlahPelanggaran || 0,
+      Pelanggaran:
+        item.jumlahPelanggaran ||
+        item.securityFlags?.violationCount ||
+        item.metadata?.violations?.length ||
+        0,
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -508,11 +539,25 @@ const ReportNilaiSiswa = () => {
     },
     {
       title: "Pelanggaran",
-      key: "violations",
+      key: "violationCount",
       align: "center",
-      sorter: (a, b) => (a.jumlahPelanggaran || 0) - (b.jumlahPelanggaran || 0),
+      // sorter: (a, b) => (a.jumlahPelanggaran || 0) - (b.jumlahPelanggaran || 0),
       render: (_, record) => {
-        const violationCount = parseInt(record.jumlahPelanggaran) || 0;
+        // Debug logging
+        console.log("Record for violations:", {
+          securityFlags: record.securityFlags,
+          metadata: record.metadata,
+          fullData: record.fullData?.securityFlags,
+        });
+
+        // Get violation count from multiple possible sources
+        const violationCount = parseInt(
+          record.securityFlags?.violationCount ||
+            record.metadata?.violations?.length ||
+            0
+        );
+
+        console.log("Calculated violation count:", violationCount);
 
         if (violationCount > 0) {
           return (
@@ -746,7 +791,7 @@ const ReportNilaiSiswa = () => {
                   {detailModal.data.namaSiswa || detailModal.data.nama || "-"}
                 </strong>
               </Descriptions.Item>
-              <Descriptions.Item label="NIM">
+              <Descriptions.Item label="ID">
                 {detailModal.data.nimSiswa || detailModal.data.nim || "-"}
               </Descriptions.Item>
               <Descriptions.Item label="Kelas">
@@ -769,7 +814,6 @@ const ReportNilaiSiswa = () => {
                   detailModal.data.ujian?.semester?.namaSemester ||
                   "-"}
               </Descriptions.Item>
-
               {/* Tampilkan nilai hanya jika diizinkan */}
               {detailModal.data.ujian?.tampilkanNilai !== false && (
                 <>
@@ -865,7 +909,6 @@ const ReportNilaiSiswa = () => {
                   </Descriptions.Item>
                 </>
               )}
-
               <Descriptions.Item label="Status">
                 {(() => {
                   const { color, icon, text } = getStatusDisplay(
@@ -877,19 +920,26 @@ const ReportNilaiSiswa = () => {
                     </Tag>
                   );
                 })()}
-              </Descriptions.Item>
+              </Descriptions.Item>{" "}
               <Descriptions.Item label="Jumlah Pelanggaran">
                 <Badge
-                  count={detailModal.data.jumlahPelanggaran || 0}
+                  count={
+                    detailModal.data.jumlahPelanggaran ||
+                    detailModal.data.securityFlags?.violationCount ||
+                    detailModal.data.metadata?.violations?.length ||
+                    0
+                  }
                   style={{
                     backgroundColor:
-                      (detailModal.data.jumlahPelanggaran || 0) > 0
+                      (detailModal.data.jumlahPelanggaran ||
+                        detailModal.data.securityFlags?.violationCount ||
+                        detailModal.data.metadata?.violations?.length ||
+                        0) > 0
                         ? "#fa8c16"
                         : "#52c41a",
                   }}
                 />
               </Descriptions.Item>
-
               {detailModal.data.catatan && (
                 <Descriptions.Item label="Catatan" span={2}>
                   {detailModal.data.catatan}
@@ -1001,35 +1051,47 @@ const ReportNilaiSiswa = () => {
                     </Space>
                   }
                 >
+                  {" "}
                   <Descriptions size="small" column={1}>
                     <Descriptions.Item label="Jenis Pelanggaran">
                       <Tag color="red">
-                        {violation.jenisKecurangan || "Tidak diketahui"}
+                        {violation.typeViolation ||
+                          violation.jenisKecurangan ||
+                          "Tidak diketahui"}
                       </Tag>
                     </Descriptions.Item>
                     <Descriptions.Item label="Waktu">
-                      {violation.timestamp
-                        ? dayjs(violation.timestamp).format(
-                            "DD/MM/YYYY HH:mm:ss"
-                          )
+                      {violation.detectedAt || violation.timestamp
+                        ? dayjs(
+                            violation.detectedAt || violation.timestamp
+                          ).format("DD/MM/YYYY HH:mm:ss")
                         : "Tidak tersedia"}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Tingkat Kepercayaan">
-                      <Progress
-                        percent={
-                          parseFloat(violation.confidenceScore || 0) * 100
+                    <Descriptions.Item label="Tingkat Keparahan">
+                      <Tag
+                        color={
+                          violation.severity === "HIGH"
+                            ? "red"
+                            : violation.severity === "MEDIUM"
+                            ? "orange"
+                            : violation.severity === "LOW"
+                            ? "yellow"
+                            : "default"
                         }
-                        size="small"
-                        status={
-                          violation.confidenceScore > 0.7
-                            ? "exception"
-                            : "normal"
-                        }
-                      />
+                      >
+                        {violation.severity || "Tidak diketahui"}
+                      </Tag>
                     </Descriptions.Item>
-                    {violation.details && (
+                    <Descriptions.Item label="Jumlah Pelanggaran">
+                      <Text strong>{violation.violationCount || 1}</Text>
+                    </Descriptions.Item>
+                    {(violation.details || violation.evidence) && (
                       <Descriptions.Item label="Detail">
-                        <Text type="secondary">{violation.details}</Text>
+                        <Text type="secondary">
+                          {violation.details ||
+                            JSON.stringify(violation.evidence) ||
+                            "Tidak ada detail"}
+                        </Text>
                       </Descriptions.Item>
                     )}
                   </Descriptions>

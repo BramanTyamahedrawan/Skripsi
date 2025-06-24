@@ -81,13 +81,21 @@ export function transformHasilUjianData(hasil, index = 0) {
     nimSiswa: hasil.peserta?.nim || hasil.peserta?.id || hasil.idPeserta,
     namaSiswa: hasil.peserta?.nama || hasil.peserta?.name || hasil.idPeserta,
     pesertaNama: hasil.peserta?.nama || hasil.peserta?.name || hasil.idPeserta,
-    pesertaUsername: hasil.peserta?.username || hasil.idPeserta,
-
-    // Class and school information
-    namaKelas: hasil.kelas?.namaKelas || "Tidak Diketahui",
-    kelas: hasil.kelas?.namaKelas || "Tidak Diketahui",
+    pesertaUsername: hasil.peserta?.username || hasil.idPeserta, // Class and school information - check both direct and ujian-nested locations
+    namaKelas:
+      hasil.kelas?.namaKelas ||
+      hasil.ujian?.kelas?.namaKelas ||
+      "Tidak Diketahui",
+    kelas:
+      hasil.kelas?.namaKelas ||
+      hasil.ujian?.kelas?.namaKelas ||
+      "Tidak Diketahui",
+    mapel: hasil.mapel?.name || hasil.ujian?.mapel?.name || "Tidak Diketahui",
+    namaMapel:
+      hasil.mapel?.name || hasil.ujian?.mapel?.name || "Tidak Diketahui",
     school:
       hasil.school?.nameSchool ||
+      hasil.ujian?.school?.nameSchool ||
       hasil.peserta?.sekolah?.nama ||
       "Tidak Diketahui",
 
@@ -133,12 +141,14 @@ export function transformHasilUjianData(hasil, index = 0) {
       getViolationCount(hasil)
     ),
     needsReview: (hasil.persentase || 0) < 60 || getViolationCount(hasil) > 0,
-    integrityScore: Math.max(0, 100 - getViolationCount(hasil) * 20),
-
-    // Learning analytics (safe defaults)
+    integrityScore: Math.max(0, 100 - getViolationCount(hasil) * 20), // Learning analytics (safe defaults)
     workingPattern: hasil.workingPattern || "Normal",
     learningStyle: hasil.learningStyle || "Mixed",
     confidenceLevel: hasil.confidenceLevel || "MEDIUM",
+
+    // Security data - preserve original structure for direct access
+    securityFlags: hasil.securityFlags || {},
+    metadata: hasil.metadata || {},
 
     // Full data for detail view and legacy compatibility
     fullData: hasil,
