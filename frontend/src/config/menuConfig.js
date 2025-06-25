@@ -75,7 +75,7 @@ const menuList = [
   {
     title: "Master Data",
     icon: DatabaseOutlined,
-    roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],
+    roles: ["ROLE_OPERATOR"],
     children: [
       // {
       //   title: "Jurusan",
@@ -252,7 +252,7 @@ const menuList = [
     title: "Report Nilai Siswa",
     path: "/report-nilai",
     icon: FileProtectOutlined,
-    roles: ["ROLE_OPERATOR", "ROLE_ADMINISTRATOR"],
+    roles: ["ROLE_OPERATOR"],
   },
 
   // {
@@ -321,12 +321,12 @@ const menuList = [
     roles: ["ROLE_ADMINISTRATOR", "ROLE_OPERATOR"],
   },
 
-  {
-    title: "Profil Sekolah",
-    path: "/school-profile",
-    icon: ApartmentOutlined,
-    roles: ["ROLE_ADMINISTRATOR"],
-  },
+  // {
+  //   title: "Profil Sekolah",
+  //   path: "/school-profile",
+  //   icon: ApartmentOutlined,
+  //   roles: ["ROLE_ADMINISTRATOR"],
+  // },
 
   // {
   //   title: "RPS",
