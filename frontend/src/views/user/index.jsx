@@ -28,6 +28,7 @@ import EditUserForm from "./forms/edit-user-form";
 import { useTableSearch } from "@/helper/tableSearchHelper.jsx";
 import { reqUserInfo, getUserById } from "@/api/user";
 import { set } from "nprogress";
+import * as XLSX from "xlsx";
 
 const User = () => {
   const [users, setUsers] = useState([]);
@@ -46,6 +47,7 @@ const User = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentUserRole, setCurrentUserRole] = useState("");
   const [user, setUser] = useState(null);
+  const [importFile, setImportFile] = useState(null);
 
   // Fungsi Helper Table Search
   const { getColumnSearchProps } = useTableSearch();
@@ -115,6 +117,51 @@ const User = () => {
         }
       },
     });
+  };
+
+  const handleImportFile = (file) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      // Ambil header dan data
+      const [header, ...rows] = jsonData;
+      // Index kolom sesuai header
+      const idx = (col) => header.indexOf(col);
+
+      // Loop dan masukkan satu-satu
+      // filepath: e:\Skripsi\Skripsi\frontend\src\views\user\index.jsx
+      for (const row of rows) {
+        if (!row[idx("username")]) continue;
+        const clean = (val) => (val ?? "").toString().replace(/['"`\s]/g, ""); // hapus petik satu, dua, backtick, dan spasi
+
+        const userData = {
+          name: clean(row[idx("name")]),
+          username: clean(row[idx("username")]),
+          email: row[idx("email")] === "-" ? "" : clean(row[idx("email")]),
+          password: clean(row[idx("password")]),
+          roles: clean(row[idx("roles")]),
+          schoolId: user?.school_id, // Ambil ID sekolah dari user yang login
+        };
+
+        try {
+          await handleAddUserOk(userData);
+        } catch (err) {
+          message.error(
+            `Gagal tambah user ${userData.username}: ${err.message}`
+          );
+        }
+      }
+      message.success("Import selesai");
+      setImportModalVisible(false);
+      fetchUsers();
+    };
+    reader.readAsArrayBuffer(file);
+    return false; // Supaya Upload tidak auto-upload ke server
   };
 
   const handleEditUser = (row) => {
@@ -197,9 +244,9 @@ const User = () => {
       case "3":
         return "Guru";
       case "4":
-        return "Siswa";
+        return "Tidak Diketahui";
       case "5":
-        return "Wali Kelas";
+        return "Siswa";
       default:
         return "Tidak Diketahui";
     }
@@ -379,15 +426,33 @@ const User = () => {
             key="upload"
             type="primary"
             loading={uploading}
-            onClick={() => {}}
+            onClick={() => {
+              if (importFile) {
+                handleImportFile(importFile);
+              } else {
+                message.warning("Pilih file terlebih dahulu!");
+              }
+            }}
           >
             Upload
           </Button>,
         ]}
       >
-        <Upload beforeUpload={() => false} accept=".csv,.xlsx,.xls">
+        <Upload
+          beforeUpload={(file) => {
+            setImportFile(file);
+            return false; // Jangan auto-upload
+          }}
+          accept=".csv,.xlsx,.xls"
+          showUploadList={false}
+        >
           <Button>Pilih File</Button>
         </Upload>
+        {importFile && (
+          <div style={{ marginTop: 8 }}>
+            <b>File terpilih:</b> {importFile.name}
+          </div>
+        )}
       </Modal>
     </div>
   );

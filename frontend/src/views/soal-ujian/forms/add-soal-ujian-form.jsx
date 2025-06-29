@@ -784,7 +784,7 @@ const AddSoalUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                   label="Bobot"
                   name="bobot"
                   rules={[{ required: true, message: "Bobot wajib diisi" }]}
-                  initialValue={10}
+                  initialValue={5}
                 >
                   <InputNumber min={1} max={100} style={{ width: "100%" }} />
                 </Form.Item>
