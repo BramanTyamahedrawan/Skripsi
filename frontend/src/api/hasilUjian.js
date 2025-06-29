@@ -4,12 +4,17 @@ import request from "@/utils/request";
 
 /**
  * Get all hasil ujian
+ * Menambahkan parameter options untuk includeAnalytics dan includeSecurityData
  */
-export function getHasilUjian(size = 50) {
+export function getHasilUjian(size = 50, options = {}) {
   return request({
     url: "/hasil-ujian",
     method: "get",
-    params: { size },
+    params: {
+      size,
+      includeAnalytics: options.includeAnalytics || false,
+      includeSecurityData: options.includeSecurityData || false,
+    },
   });
 }
 
@@ -43,12 +48,16 @@ export function getHasilByPesertaAndUjian(idPeserta, idUjian, options = {}) {
 
 /**
  * Get hasil ujian berdasarkan ujian (untuk analisis kelas)
+ * Mengubah parameter includeAnalytics menjadi objek options
  */
-export function getHasilByUjian(idUjian, includeAnalytics = false) {
+export function getHasilByUjian(idUjian, options = {}) {
   return request({
     url: `/hasil-ujian/ujian/${idUjian}`,
     method: "get",
-    params: { includeAnalytics },
+    params: {
+      includeAnalytics: options.includeAnalytics || false,
+      includeSecurityData: options.includeSecurityData || false, // Tambahkan ini
+    },
   });
 }
 
@@ -272,9 +281,16 @@ export function exportToPDF(idUjian, options = {}) {
 /**
  * Delete hasil ujian (admin only)
  */
-export function deleteHasilUjian(hasilUjianId) {
+
+export function deleteHasilUjian(data) {
+  // Jika data adalah string (id saja), konversi ke objek
+  const id =
+    typeof data === "string"
+      ? data
+      : data.idHasilUjian || data.key || data.id || "";
+
   return request({
-    url: `/hasil-ujian/${hasilUjianId}`,
+    url: `/hasil-ujian/${id}`,
     method: "delete",
   });
 }
@@ -311,7 +327,10 @@ export function getTeacherReview(idPeserta, idUjian) {
  */
 export function getClassPerformanceOverview(idUjian) {
   return Promise.all([
-    getHasilByUjian(idUjian, true),
+    getHasilByUjian(idUjian, {
+      includeAnalytics: true,
+      includeSecurityData: true,
+    }), // Updated call
     getUjianStatistics(idUjian),
     generateClassAnalytics(idUjian),
   ]).then(([results, statistics, analytics]) => ({

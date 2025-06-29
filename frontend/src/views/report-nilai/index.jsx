@@ -22,6 +22,7 @@ import {
   Alert,
   Tooltip,
   Progress,
+  Popconfirm,
   Divider,
 } from "antd";
 import {
@@ -34,24 +35,35 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  DeleteOutlined,
   FileTextOutlined,
   WarningOutlined,
   ExclamationCircleOutlined,
+  DatabaseOutlined, // Added this icon for the new feature
 } from "@ant-design/icons";
-import moment from "moment";
-import dayjs from "dayjs";
-import * as XLSX from "xlsx";
+import moment from "moment"; // Pastikan 'moment' terinstal: npm install moment
+import dayjs from "dayjs"; // dayjs sudah diimpor dan dapat digunakan untuk format tanggal
+import * as XLSX from "xlsx"; // Pastikan 'xlsx' terinstal: npm install xlsx
+
+// --- IMPOR LOKAL ---
+// Harap pastikan jalur impor ini benar di proyek Anda dan dependensi terinstal.
+// Jika Anda menggunakan alias seperti '@/', pastikan dikonfigurasi di jsconfig.json/tsconfig.json Anda.
 import { getUjian } from "@/api/ujian";
 import { getHasilByUjian, getHasilUjian } from "@/api/hasilUjian";
-import { getCheatDetectionByStudent } from "@/api/cheatDetection";
+import {
+  getCheatDetectionByStudent,
+  getViolations, // Used for fetching all violations
+} from "@/api/cheatDetection";
 import {
   safeGetHasilByUjian,
   safeGetAllHasilUjian,
   transformHasilUjianData,
   applySearchFilter,
 } from "@/utils/safeHasilUjianApi";
+import { deleteHasilUjian } from "@/api/hasilUjian";
 import { useAuth } from "@/contexts/AuthContext";
 import TypingCard from "@/components/TypingCard";
+// -------------------
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -60,6 +72,8 @@ const { RangePicker } = DatePicker;
 const ReportNilaiSiswa = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  // Renamed `violation` to `allViolationsData` for clarity
+  const [allViolationsData, setAllViolationsData] = useState([]);
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [ujianList, setUjianList] = useState([]);
@@ -73,7 +87,7 @@ const ReportNilaiSiswa = () => {
     data: null,
   });
   const [violationModalVisible, setViolationModalVisible] = useState(false);
-  const [violations, setViolations] = useState([]);
+  const [violations, setViolations] = useState([]); // Violations for a specific student's exam session
   const [loadingViolations, setLoadingViolations] = useState(false);
   const [statistics, setStatistics] = useState({
     totalSiswa: 0,
@@ -81,6 +95,33 @@ const ReportNilaiSiswa = () => {
     siswaLulus: 0,
     siswaTidakLulus: 0,
   });
+
+  // --- NEW STATE FOR GLOBAL VIOLATIONS MODAL ---
+  const [showAllViolationsModal, setShowAllViolationsModal] = useState(false);
+  const [loadingAllViolations, setLoadingAllViolations] = useState(false);
+  // ---------------------------------------------
+
+  // ...existing code...
+
+  const handleDeleteHasilUjian = async (record) => {
+    Modal.confirm({
+      title: "Konfirmasi Hapus",
+      content:
+        "Apakah Anda yakin ingin menghapus hasil ujian ini? Aksi ini tidak dapat dibatalkan.",
+      okText: "Ya, Hapus",
+      okType: "danger",
+      cancelText: "Batal",
+      onOk: async () => {
+        try {
+          await deleteHasilUjian(record);
+          message.success("Hasil ujian berhasil dihapus");
+          fetchReportData();
+        } catch (error) {
+          message.error("Gagal menghapus hasil ujian: " + error.message);
+        }
+      },
+    });
+  };
 
   // Fetch ujian list for filter
   const fetchUjianList = useCallback(async () => {
@@ -98,13 +139,49 @@ const ReportNilaiSiswa = () => {
   // Fetch kelas list for filter
   const fetchKelasList = useCallback(async () => {
     try {
-      // Untuk saat ini, kita set kelas list kosong karena API mungkin belum ada
+      // For now, we set an empty class list as the API might not be available
       setKelasList([]);
     } catch (error) {
       console.error("Error fetching kelas list:", error);
       message.error("Gagal memuat daftar kelas");
     }
   }, []);
+
+  const fetchAllViolationDetection = useCallback(async () => {
+    setLoadingAllViolations(true);
+    try {
+      const response = await getViolations({
+        limit: 10000,
+        includeEvidence: true,
+        includeActions: true,
+        timeRange: "ALL",
+      });
+
+      // Perhatikan struktur response.data.data.violations
+      const violations =
+        response?.data?.data?.violations || response?.data?.violations || [];
+
+      console.log("All Violations API response:", response);
+      console.log("SET ALL VIOLATIONS DATA:", violations);
+
+      if (violations.length > 0) {
+        setAllViolationsData(violations);
+        message.success(
+          `Berhasil memuat ${violations.length} total pelanggaran.`
+        );
+      } else {
+        setAllViolationsData([]);
+        message.info("Tidak ada data pelanggaran di seluruh database.");
+      }
+    } catch (error) {
+      console.error("Error fetching all violations:", error);
+      message.error("Gagal memuat seluruh data pelanggaran");
+      setAllViolationsData([]);
+    } finally {
+      setLoadingAllViolations(false);
+    }
+  }, []);
+  // ---------------------------------------------------
 
   // Calculate statistics - IMPROVED with null checks
   const calculateStatistics = (data) => {
@@ -205,7 +282,7 @@ const ReportNilaiSiswa = () => {
     }
   };
 
-  // Fetch report data
+  // Fetch report data for the main table
   const fetchReportData = useCallback(async () => {
     setLoading(true);
     try {
@@ -247,7 +324,7 @@ const ReportNilaiSiswa = () => {
       if (dateRange.length === 2) {
         allReports = allReports.filter((item) => {
           if (!item.waktuMulai) return false;
-          const itemDate = moment(item.waktuMulai);
+          const itemDate = dayjs(item.waktuMulai); // Menggunakan dayjs
           return itemDate.isBetween(dateRange[0], dateRange[1], "day", "[]");
         });
       }
@@ -262,104 +339,305 @@ const ReportNilaiSiswa = () => {
       setLoading(false);
     }
   }, [selectedUjian, dateRange]);
-  // Fetch violations for specific ujian
-  const fetchViolations = async (ujianId, pesertaId) => {
+
+  // Show violations modal (for specific student's exam)
+  const showViolationsModal = (record) => {
+    setDetailModal({
+      visible: false, // Hide detail modal if it's open
+      data: record, // Keep data for context in violations modal
+    });
+    setViolationModalVisible(true);
+
+    // --- PEMBARUAN: Menggunakan sessionId untuk matching pelanggaran ---
+    const sessionId = record.sessionId || record.fullData?.sessionId; // Ambil sessionId dari record atau fullData
+    const pesertaId =
+      record.peserta?.id ||
+      record.idPeserta ||
+      record.siswaId ||
+      record.nimSiswa;
+
+    // Tambahkan log parameter untuk debugging yang lebih detail
+    console.log("showViolationsModal called with:", {
+      sessionId, // Log the derived sessionId
+      pesertaId, // Log the derived pesertaId
+      record, // Log the full record object
+    });
+
+    if (!sessionId || !pesertaId) {
+      // Periksa sessionId dan pesertaId
+      message.error(
+        "Informasi sesi ujian atau peserta tidak lengkap untuk melihat pelanggaran."
+      );
+      setViolations([]);
+      setLoadingViolations(false);
+      return;
+    }
+
+    // Panggil fetchViolations dengan sessionId dan pesertaId
+    fetchViolations(sessionId, pesertaId);
+  };
+
+  // Fetch violations for specific session and peserta
+  const fetchViolations = async (sessionId, pesertaId) => {
     setLoadingViolations(true);
     try {
-      console.log("Fetching violations for:", { ujianId, pesertaId });
-      const response = await getCheatDetectionByStudent(ujianId, pesertaId);
-      console.log("Violations API response:", response);
+      console.log("Fetching violations for:", { sessionId, pesertaId });
+      const response = await getCheatDetectionByStudent({
+        sessionId: sessionId,
+        idPeserta: pesertaId,
+      });
+      console.log("Violations API response (for single student):", response);
 
-      const { content, statusCode } = response.data;
-
-      if (statusCode === 200 && content) {
-        const violationsArray = Array.isArray(content) ? content : [content];
-        console.log("Setting violations from API:", violationsArray);
-        setViolations(violationsArray);
-      } else {
-        console.log("No violations found in API response");
+      if (!response || !response.data) {
+        message.error("Gagal mendapatkan data pelanggaran dari server.");
         setViolations([]);
+        return;
       }
+
+      // --- FIX: Ambil dari response.data.data.violations ---
+      let violationsArray = [];
+      if (response.data.data && Array.isArray(response.data.data.violations)) {
+        violationsArray = response.data.data.violations;
+      } else if (
+        response.data.violations &&
+        Array.isArray(response.data.violations)
+      ) {
+        violationsArray = response.data.violations;
+      } else if (
+        response.data.content &&
+        Array.isArray(response.data.content)
+      ) {
+        response.data.content.forEach((item) => {
+          if (
+            item.metadata?.violations &&
+            Array.isArray(item.metadata.violations)
+          ) {
+            violationsArray = violationsArray.concat(item.metadata.violations);
+          }
+        });
+      }
+      // ----------------------------------------------------
+
+      const cleanedViolations = violationsArray;
+
+      console.log(
+        "Setting violations for single student modal:",
+        cleanedViolations
+      );
+
+      if (cleanedViolations.length === 0) {
+        message.info("Tidak ada pelanggaran ditemukan untuk siswa ini.");
+      }
+      setViolations(cleanedViolations);
     } catch (error) {
       console.error("Error fetching violations:", error);
+      message.error("Terjadi kesalahan saat mengambil data pelanggaran.");
       setViolations([]);
     } finally {
       setLoadingViolations(false);
     }
   };
 
+  // --- Initial data fetches when component mounts ---
   useEffect(() => {
     fetchUjianList();
     fetchKelasList();
-  }, [fetchUjianList, fetchKelasList]);
+    // Call the new function to fetch ALL violations initially
+    fetchAllViolationDetection();
+  }, [fetchUjianList, fetchKelasList, fetchAllViolationDetection]);
 
   useEffect(() => {
     fetchReportData();
   }, [fetchReportData]);
 
-  // Filter data based on search text
+  // Filter data based on search text for the main report table
   useEffect(() => {
     const filteredBySearch = applySearchFilter(data, searchText);
     setFilteredData(filteredBySearch);
   }, [searchText, data]);
 
-  // Show detail modal
-  const showDetail = (record) => {
-    setDetailModal({
-      visible: true,
-      data: record,
-    });
-  };
-  // Show violations modal
-  const showViolationsModal = (record) => {
-    setDetailModal({
-      visible: false,
-      data: record,
-    });
-    setViolationModalVisible(true);
+  // Show detail modal (for main report table)
+  const showDetail = async (record) => {
+    let data = { ...record };
 
-    // First try to use violations data from the record itself
-    const directViolations =
-      record.metadata?.violations || record.fullData?.metadata?.violations;
+    // Cari id ujian dari beberapa kemungkinan field
+    const idUjian =
+      data.idUjian || data.ujianId || data.ujian?.idUjian || data.ujian_id;
 
-    console.log("Direct violations from record:", directViolations);
-    console.log("SecurityFlags:", record.securityFlags);
-
-    if (
-      directViolations &&
-      Array.isArray(directViolations) &&
-      directViolations.length > 0
-    ) {
-      // Use direct violations data
-      setViolations(directViolations);
-      setLoadingViolations(false);
-    } else {
-      // Fallback to fetching from API
-      const ujianId = record.ujian?.idUjian || record.ujianId || record.idUjian;
-      const pesertaId = record.siswaId || record.idPeserta;
-      if (ujianId && pesertaId) {
-        fetchViolations(ujianId, pesertaId);
-      } else {
-        // No data available
-        setViolations([]);
-        setLoadingViolations(false);
+    // Merge data ujian dari ujianList jika ada
+    if (idUjian && ujianList.length > 0) {
+      const found = ujianList.find((u) => u.idUjian === idUjian);
+      if (found) {
+        data.ujian = found;
       }
     }
-  };
 
-  // Export to Excel
+    setDetailModal({
+      visible: true,
+      data,
+    });
+  };
+  // --- NEW: Columns for All Violations Modal Table ---
+  // These columns are designed to handle potential nulls from backend,
+  // displaying "N/A" or "Tidak Diketahui" where data is missing.
+  const allViolationsColumns = [
+    {
+      title: "No",
+      key: "no",
+      width: 60,
+      render: (_, __, index) => index + 1,
+    },
+    {
+      title: "ID Deteksi",
+      dataIndex: "idDetection",
+      key: "idDetection",
+      width: 150,
+      ellipsis: true,
+      render: (text) => (
+        <Tooltip title={text || "N/A"}>
+          {text ? `${text.substring(0, 8)}...` : "N/A"}
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Session ID",
+      dataIndex: "sessionId",
+      key: "sessionId",
+      width: 150,
+      ellipsis: true,
+      render: (text) => (
+        <Tooltip title={text || "N/A"}>
+          {text ? `${text.substring(0, 8)}...` : "N/A"}
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Jenis Pelanggaran",
+      dataIndex: "typeViolation",
+      key: "typeViolation",
+      render: (text) => <Tag color="red">{text || "Tidak Diketahui"}</Tag>,
+    },
+    {
+      title: "Keparahan",
+      dataIndex: "severity",
+      key: "severity",
+      render: (text) => {
+        let color = "default";
+        const severityText = text || "Tidak Diketahui";
+        if (severityText === "HIGH") color = "red";
+        else if (severityText === "MEDIUM") color = "orange";
+        else if (severityText === "LOW") color = "yellow";
+        return <Tag color={color}>{severityText}</Tag>;
+      },
+    },
+    {
+      title: "Waktu Deteksi",
+      dataIndex: "detectedAt",
+      key: "detectedAt",
+      render: (text) =>
+        text ? dayjs(text).format("DD/MM/YYYY HH:mm:ss") : "N/A",
+    },
+    {
+      title: "Peserta",
+      key: "peserta",
+      render: (_, record) => (
+        <div>
+          <Text strong>
+            {record.idPeserta || record.peserta?.name || "Tidak diketahui"}
+          </Text>
+        </div>
+      ),
+    },
+    {
+      title: "Ujian",
+      key: "ujian",
+      render: (_, record) => (
+        <div>
+          <Text strong>
+            {record.idUjian || record.ujian?.namaUjian || "Tidak diketahui"}
+          </Text>
+        </div>
+      ),
+    },
+    {
+      title: "Resolved",
+      dataIndex: "resolved",
+      key: "resolved",
+      render: (text) => (
+        <Tag color={text ? "green" : "volcano"}>
+          {typeof text === "boolean" ? (text ? "Ya" : "Tidak") : "N/A"}
+        </Tag>
+      ),
+    },
+  ];
+  // ---------------------------------------------------
+
+  // Export to Excel for the main report table
   const exportToExcel = () => {
     if (filteredData.length === 0) {
       message.warning("Tidak ada data untuk diekspor");
       return;
     }
 
-    const exportData = filteredData.map((item, index) => ({
+    // Merge ujian detail ke setiap item, selalu update agar data terbaru
+    const mergedData = filteredData.map((item) => {
+      const idUjian =
+        item.idUjian || item.ujianId || item.ujian?.idUjian || item.ujian_id;
+      const found = ujianList.find((u) => u.idUjian === idUjian);
+      return found ? { ...item, ujian: found } : item;
+    });
+
+    // Helper: Ambil pelanggaran dari record (jika ada di metadata/violations)
+    const getViolationsList = (record) => {
+      const sessionId = String(
+        record.sessionId || record.fullData?.sessionId || ""
+      );
+      // Cek semua kemungkinan pesertaId
+      const pesertaIdCandidates = [
+        record.peserta?.id,
+        record.idPeserta,
+        record.siswaId,
+        record.nimSiswa,
+        record.fullData?.idPeserta,
+      ].map(String);
+
+      // Debug log
+      console.log("EXPORT VIOLATION CHECK:", {
+        sessionId,
+        pesertaIdCandidates,
+        record,
+      });
+
+      const violationsArr = allViolationsData.filter(
+        (v) =>
+          String(v.sessionId) === sessionId &&
+          pesertaIdCandidates.includes(String(v.idPeserta))
+      );
+
+      console.log("VIOLATIONS FOUND:", violationsArr);
+
+      if (!violationsArr.length) return "";
+
+      return violationsArr
+        .map(
+          (v) =>
+            `[waktu deteksi: ${
+              v.detectedAt
+                ? dayjs(v.detectedAt).format("DD/MM/YYYY HH:mm:ss")
+                : "-"
+            }, type : ${v.typeViolation || "-"}]`
+        )
+        .join(", ");
+    };
+    const exportData = mergedData.map((item, index) => ({
       No: index + 1,
       NIM: item.nimSiswa || item.nim || "-",
       "Nama Siswa": item.namaSiswa || item.nama || "-",
-      Kelas: item.namaKelas || "-",
-      Ujian: item.namaUjian || item.ujian?.namaUjian || "-",
+      Kelas:
+        item.ujian?.kelas?.namaKelas || item.namaKelas || "Tidak Diketahui",
+      Ujian: item.ujian?.namaUjian || item.namaUjian || "-",
+      "Mata Pelajaran": item.ujian?.mapel?.name || item.mapelNama || "-",
+      Semester: item.ujian?.semester?.namaSemester || item.semesterNama || "-",
       Nilai: item.nilai || item.skor || 0,
       Status: (() => {
         const { text } = getStatusDisplay(item);
@@ -371,15 +649,14 @@ const ReportNilaiSiswa = () => {
       "Waktu Selesai": item.waktuSelesai
         ? dayjs(item.waktuSelesai).format("DD/MM/YYYY HH:mm")
         : "-",
-      "Durasi (menit)": item.durasi || "-",
-      "Jumlah Soal": item.jumlahSoal || item.totalSoal || "-",
+      "Durasi (menit)": item.durasi || item.ujian?.durasiMenit || "-",
+      "Jumlah Soal":
+        item.jumlahSoal || item.totalSoal || item.ujian?.jumlahSoal || "-",
       "Soal Terjawab": item.soalTerjawab || item.jumlahTerjawab || "-",
       "Soal Benar": item.soalBenar || item.jumlahBenar || "-",
-      Pelanggaran:
-        item.jumlahPelanggaran ||
-        item.securityFlags?.violationCount ||
-        item.metadata?.violations?.length ||
-        0,
+      "Soal Salah": item.soalSalah || item.jumlahSalah || "-",
+      "Soal Kosong": item.soalKosong || item.jumlahKosong || "-",
+      Pelanggaran: getViolationsList(item),
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -404,7 +681,7 @@ const ReportNilaiSiswa = () => {
     message.success("Data berhasil diekspor ke Excel");
   };
 
-  // Reset filters
+  // Reset filters for the main report table
   const resetFilters = () => {
     setSelectedUjian(null);
     setSelectedKelas(null);
@@ -412,7 +689,7 @@ const ReportNilaiSiswa = () => {
     setSearchText("");
   };
 
-  // Table columns
+  // Table columns for the main report table
   const columns = [
     {
       title: "No",
@@ -426,9 +703,11 @@ const ReportNilaiSiswa = () => {
       render: (_, record) => (
         <div>
           <div style={{ fontWeight: "bold" }}>
-            {record.namaSiswa || record.nama || "-"}
+            {record.namaSiswa || record.nama || record.peserta?.name || "-"}
           </div>
-          <Text type="secondary">{record.nimSiswa || record.nim || "-"}</Text>
+          <Text type="secondary">
+            {record.nimSiswa || record.nim || record.peserta?.username || "-"}
+          </Text>
         </div>
       ),
     },
@@ -487,7 +766,7 @@ const ReportNilaiSiswa = () => {
         parseFloat(a.nilai || a.skor || 0) - parseFloat(b.nilai || b.skor || 0),
       render: (_, record) => {
         const ujian = record.ujian || record;
-        const showNilai = ujian.tampilkanNilai !== false; // default true jika tidak ada setting
+        const showNilai = ujian.tampilkanNilai !== false; // default true if no setting
 
         if (!showNilai) {
           return (
@@ -501,7 +780,7 @@ const ReportNilaiSiswa = () => {
           record.nilai || record.skor || record.persentase || 0
         );
         const nilaiMin = parseFloat(
-          ujian.minPassingScore || ujian.nilaiMinimal || 75
+          ujian.minPassingScore || ujian.nilaiMinimal || 0
         );
 
         return (
@@ -541,23 +820,13 @@ const ReportNilaiSiswa = () => {
       title: "Pelanggaran",
       key: "violationCount",
       align: "center",
-      // sorter: (a, b) => (a.jumlahPelanggaran || 0) - (b.jumlahPelanggaran || 0),
       render: (_, record) => {
-        // Debug logging
-        console.log("Record for violations:", {
-          securityFlags: record.securityFlags,
-          metadata: record.metadata,
-          fullData: record.fullData?.securityFlags,
-        });
-
-        // Get violation count from multiple possible sources
+        // Prioritize securityFlags.violationCount if available, otherwise fallback to metadata.violations.length
         const violationCount = parseInt(
           record.securityFlags?.violationCount ||
             record.metadata?.violations?.length ||
             0
         );
-
-        console.log("Calculated violation count:", violationCount);
 
         if (violationCount > 0) {
           return (
@@ -594,6 +863,16 @@ const ReportNilaiSiswa = () => {
               Detail
             </Button>
           </Tooltip>
+          <Popconfirm
+            title="Hapus hasil ujian ini?"
+            onConfirm={() => handleDeleteHasilUjian(record)}
+            okText="Ya, Hapus"
+            cancelText="Batal"
+          >
+            <Tooltip title="Hapus">
+              <Button danger size="small" icon={<DeleteOutlined />} />
+            </Tooltip>
+          </Popconfirm>
         </Space>
       ),
     },
@@ -658,11 +937,20 @@ const ReportNilaiSiswa = () => {
         }
         extra={
           <Space>
+            {/* --- NEW BUTTON TO SHOW ALL VIOLATIONS --- */}
+            <Button
+              icon={<DatabaseOutlined />}
+              onClick={() => setShowAllViolationsModal(true)}
+              loading={loadingAllViolations}
+            >
+              Lihat Semua Pelanggaran
+            </Button>
+            {/* ------------------------------------------- */}
             <Button
               type="primary"
               icon={<FileExcelOutlined />}
               onClick={exportToExcel}
-              disabled={filteredData.length === 0}
+              disabled={false}
             >
               Export Excel
             </Button>
@@ -712,7 +1000,7 @@ const ReportNilaiSiswa = () => {
                 ))}
               </Select>
             </Col>
-            <Col span={6}>
+            {/* <Col span={6}>
               <RangePicker
                 value={dateRange}
                 onChange={setDateRange}
@@ -729,7 +1017,7 @@ const ReportNilaiSiswa = () => {
                 onChange={(e) => setSearchText(e.target.value)}
                 allowClear
               />
-            </Col>
+            </Col> */}
           </Row>
           <Row style={{ marginTop: "16px" }}>
             <Col>
@@ -738,7 +1026,7 @@ const ReportNilaiSiswa = () => {
           </Row>
         </Card>
 
-        {/* Table */}
+        {/* Table for main report data */}
         <Spin spinning={loading}>
           <Table
             columns={columns}
@@ -763,7 +1051,7 @@ const ReportNilaiSiswa = () => {
         </Spin>
       </Card>
 
-      {/* Detail Modal */}
+      {/* Detail Modal (for individual student exam results) */}
       <Modal
         title={
           <Space>
@@ -788,15 +1076,21 @@ const ReportNilaiSiswa = () => {
             <Descriptions bordered column={2}>
               <Descriptions.Item label="Nama Siswa" span={2}>
                 <strong>
-                  {detailModal.data.namaSiswa || detailModal.data.nama || "-"}
+                  {detailModal.data.namaSiswa ||
+                    detailModal.data.nama ||
+                    detailModal.data.peserta?.name ||
+                    "-"}
                 </strong>
               </Descriptions.Item>
               <Descriptions.Item label="ID">
-                {detailModal.data.nimSiswa || detailModal.data.nim || "-"}
+                {detailModal.data.nimSiswa ||
+                  detailModal.data.nim ||
+                  detailModal.data.peserta?.username ||
+                  "-"}
               </Descriptions.Item>
               <Descriptions.Item label="Kelas">
-                {detailModal.data.namaKelas ||
-                  detailModal.data.ujian?.kelas?.namaKelas ||
+                {detailModal.data.ujian?.kelas?.namaKelas ||
+                  detailModal.data.namaKelas ||
                   "-"}
               </Descriptions.Item>
               <Descriptions.Item label="Ujian" span={2}>
@@ -814,7 +1108,7 @@ const ReportNilaiSiswa = () => {
                   detailModal.data.ujian?.semester?.namaSemester ||
                   "-"}
               </Descriptions.Item>
-              {/* Tampilkan nilai hanya jika diizinkan */}
+              {/* Display score only if allowed */}
               {detailModal.data.ujian?.tampilkanNilai !== false && (
                 <>
                   <Descriptions.Item label="Waktu Mulai Pengerjaan">
@@ -870,9 +1164,11 @@ const ReportNilaiSiswa = () => {
                           fontSize: "24px",
                           fontWeight: "bold",
                           color:
-                            (detailModal.data.nilai ||
-                              detailModal.data.skor ||
-                              0) >= 75
+                            parseFloat(
+                              detailModal.data.nilai ||
+                                detailModal.data.skor ||
+                                0
+                            ) >= 75
                               ? "#52c41a"
                               : "#ff4d4f",
                         }}
@@ -885,7 +1181,7 @@ const ReportNilaiSiswa = () => {
                         Persentase:{" "}
                         {parseFloat(detailModal.data.persentase || 0).toFixed(
                           1
-                        )}
+                        )}{" "}
                         %
                       </div>
                       {detailModal.data.nilaiHuruf && (
@@ -921,25 +1217,6 @@ const ReportNilaiSiswa = () => {
                   );
                 })()}
               </Descriptions.Item>{" "}
-              <Descriptions.Item label="Jumlah Pelanggaran">
-                <Badge
-                  count={
-                    detailModal.data.jumlahPelanggaran ||
-                    detailModal.data.securityFlags?.violationCount ||
-                    detailModal.data.metadata?.violations?.length ||
-                    0
-                  }
-                  style={{
-                    backgroundColor:
-                      (detailModal.data.jumlahPelanggaran ||
-                        detailModal.data.securityFlags?.violationCount ||
-                        detailModal.data.metadata?.violations?.length ||
-                        0) > 0
-                        ? "#fa8c16"
-                        : "#52c41a",
-                  }}
-                />
-              </Descriptions.Item>
               {detailModal.data.catatan && (
                 <Descriptions.Item label="Catatan" span={2}>
                   {detailModal.data.catatan}
@@ -994,7 +1271,7 @@ const ReportNilaiSiswa = () => {
               </>
             )}
 
-            {/* Notice untuk nilai dan review */}
+            {/* Notice for score and review */}
             {detailModal.data.ujian?.tampilkanNilai === false && (
               <Alert
                 message="Nilai Disembunyikan"
@@ -1008,7 +1285,7 @@ const ReportNilaiSiswa = () => {
         )}
       </Modal>
 
-      {/* Violations Modal */}
+      {/* Violations Modal (for a specific student's exam session) */}
       <Modal
         title={
           <Space>
@@ -1025,7 +1302,7 @@ const ReportNilaiSiswa = () => {
         ]}
         width={700}
       >
-        {detailModal.data && (
+        {detailModal.data && ( // Ensure detailModal.data is available for context
           <div>
             <Alert
               message={`Ditemukan ${violations.length} pelanggaran selama ujian`}
@@ -1036,6 +1313,7 @@ const ReportNilaiSiswa = () => {
 
             {loadingViolations ? (
               <div style={{ textAlign: "center", padding: "20px" }}>
+                <Spin />
                 <Text>Memuat data pelanggaran...</Text>
               </div>
             ) : violations.length > 0 ? (
@@ -1051,23 +1329,15 @@ const ReportNilaiSiswa = () => {
                     </Space>
                   }
                 >
-                  {" "}
                   <Descriptions size="small" column={1}>
                     <Descriptions.Item label="Jenis Pelanggaran">
+                      {/* Handle null typeViolation */}
                       <Tag color="red">
-                        {violation.typeViolation ||
-                          violation.jenisKecurangan ||
-                          "Tidak diketahui"}
+                        {violation.typeViolation || "Tidak diketahui"}
                       </Tag>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Waktu">
-                      {violation.detectedAt || violation.timestamp
-                        ? dayjs(
-                            violation.detectedAt || violation.timestamp
-                          ).format("DD/MM/YYYY HH:mm:ss")
-                        : "Tidak tersedia"}
-                    </Descriptions.Item>
                     <Descriptions.Item label="Tingkat Keparahan">
+                      {/* Handle null severity */}
                       <Tag
                         color={
                           violation.severity === "HIGH"
@@ -1082,15 +1352,25 @@ const ReportNilaiSiswa = () => {
                         {violation.severity || "Tidak diketahui"}
                       </Tag>
                     </Descriptions.Item>
+                    <Descriptions.Item label="Waktu">
+                      {/* Handle null detectedAt */}
+                      {violation.detectedAt
+                        ? dayjs(violation.detectedAt).format(
+                            "DD/MM/YYYY HH:mm:ss"
+                          )
+                        : "Tidak tersedia"}
+                    </Descriptions.Item>
                     <Descriptions.Item label="Jumlah Pelanggaran">
                       <Text strong>{violation.violationCount || 1}</Text>
                     </Descriptions.Item>
-                    {(violation.details || violation.evidence) && (
+                    {(violation.details ||
+                      Object.keys(violation.evidence || {}).length > 0) && (
                       <Descriptions.Item label="Detail">
                         <Text type="secondary">
                           {violation.details ||
-                            JSON.stringify(violation.evidence) ||
-                            "Tidak ada detail"}
+                            (Object.keys(violation.evidence || {}).length > 0
+                              ? JSON.stringify(violation.evidence, null, 2)
+                              : "Tidak ada detail")}
                         </Text>
                       </Descriptions.Item>
                     )}
@@ -1107,6 +1387,57 @@ const ReportNilaiSiswa = () => {
           </div>
         )}
       </Modal>
+
+      {/* --- NEW: Modal to Display All Cheat Detections --- */}
+
+      <Modal
+        title={
+          <Space>
+            <DatabaseOutlined />
+            <span>Semua Data Pelanggaran (Dari Database)</span>
+          </Space>
+        }
+        visible={showAllViolationsModal}
+        onCancel={() => setShowAllViolationsModal(false)}
+        footer={[
+          <Button key="close" onClick={() => setShowAllViolationsModal(false)}>
+            Tutup
+          </Button>,
+        ]}
+        width={1000}
+        style={{ top: 20 }}
+        bodyStyle={{ maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}
+      >
+        {loadingAllViolations ? (
+          <div style={{ textAlign: "center", padding: "50px" }}>
+            <Spin size="large" />
+            <Title level={4} style={{ marginTop: 20 }}>
+              Memuat semua data pelanggaran...
+            </Title>
+            <Text type="secondary">
+              Ini mungkin membutuhkan waktu jika datanya banyak.
+            </Text>
+          </div>
+        ) : (
+          <Table
+            columns={allViolationsColumns}
+            dataSource={allViolationsData}
+            rowKey="idDetection"
+            pagination={{
+              total: allViolationsData.length,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) =>
+                `${range[0]}-${range[1]} dari ${total} data`,
+            }}
+            size="small"
+            locale={{
+              emptyText: "Tidak ada data pelanggaran di database.",
+            }}
+          />
+        )}
+      </Modal>
+      {/* --------------------------------------------------- */}
     </div>
   );
 };

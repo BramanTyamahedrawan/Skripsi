@@ -191,7 +191,7 @@ const BidangKeahlian = () => {
         onCancel={handleCancel}
       />
 
-      <Modal
+      {/* <Modal
         title="Import File"
         open={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
@@ -203,9 +203,7 @@ const BidangKeahlian = () => {
             key="upload"
             type="primary"
             loading={uploading}
-            onClick={() => {
-              /* Implementasi Upload */
-            }}
+            onClick={() => {}}
           >
             Upload
           </Button>,
@@ -213,13 +211,13 @@ const BidangKeahlian = () => {
       >
         <Upload
           beforeUpload={() => {
-            /* Implementasi File Upload */ return false;
+            return false;
           }}
           accept=".csv,.xlsx,.xls"
         >
           <Button>Pilih File</Button>
         </Upload>
-      </Modal>
+      </Modal> */}
     </div>
   );
 };

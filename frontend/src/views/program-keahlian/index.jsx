@@ -201,7 +201,7 @@ const ProgramKeahlian = () => {
         onCancel={handleCancel}
       />
 
-      <Modal
+      {/* <Modal
         title="Import File"
         open={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
@@ -214,7 +214,7 @@ const ProgramKeahlian = () => {
             type="primary"
             loading={uploading}
             onClick={() => {
-              /* Implementasi Upload */
+             
             }}
           >
             Upload
@@ -223,13 +223,13 @@ const ProgramKeahlian = () => {
       >
         <Upload
           beforeUpload={() => {
-            /* Implementasi File Upload */ return false;
+             return false;
           }}
           accept=".csv,.xlsx,.xls"
         >
           <Button>Pilih File</Button>
         </Upload>
-      </Modal>
+      </Modal> */}
     </div>
   );
 };

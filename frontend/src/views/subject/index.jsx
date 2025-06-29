@@ -321,14 +321,14 @@ const Mapel = () => {
           Tambahkan Mapel
         </Button>
       </Col>
-      <Col>
+      {/* <Col>
         <Button
           icon={<UploadOutlined />}
           onClick={() => setImportModalVisible(true)}
         >
           Import File
         </Button>
-      </Col>
+      </Col> */}
       <Col>
         <Select
           placeholder="Pilih Tahun Ajaran"
@@ -440,7 +440,7 @@ const Mapel = () => {
         </Card>
       )}
 
-      <Modal
+      {/* <Modal
         title="Import File"
         open={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
@@ -461,7 +461,7 @@ const Mapel = () => {
         <Upload beforeUpload={() => false} accept=".csv,.xlsx,.xls">
           <Button>Pilih File</Button>
         </Upload>
-      </Modal>
+      </Modal> */}
     </div>
   );
 };

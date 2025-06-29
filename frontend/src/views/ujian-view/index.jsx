@@ -34,7 +34,6 @@ import {
   EyeInvisibleOutlined,
   ExclamationCircleOutlined,
   PlayCircleOutlined,
-  StopOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate } from "react-router-dom";
@@ -57,9 +56,6 @@ import {
 import { reqUserInfo } from "@/api/user";
 import { getAnalysisByUjian } from "@/api/ujianAnalysis";
 import { recordViolation } from "@/api/cheatDetection";
-import { getUserById } from "../../api/user";
-// import { autoGenerateAndDownloadReport } from "@/api/hasilUjian";
-import { getSchool } from "@/api/school";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -417,6 +413,10 @@ const UjianCATView = () => {
         setSessionStarted(true);
         setSessionActive(true);
         setIsStarted(true);
+        // Hide sidebar on small screens immediately when exam starts
+        if (screens.xs || screens.sm) {
+          setShowSoalPanel(false);
+        }
 
         message.success("Ujian dimulai. Selamat mengerjakan!");
 
@@ -999,6 +999,7 @@ const UjianCATView = () => {
         clipboard: e.clipboardData?.getData("text"),
       }); // Fullscreen exit
     const handleFullscreen = () => {
+      // Check if not in fullscreen
       if (
         !document.fullscreenElement &&
         !document.webkitFullscreenElement &&
@@ -1006,7 +1007,7 @@ const UjianCATView = () => {
         !document.mozFullScreenElement
       ) {
         handleViolation("FULLSCREEN_EXIT");
-        // Try to re-enter fullscreen
+        // Try to re-enter fullscreen after a short delay
         setTimeout(() => {
           try {
             if (document.documentElement.requestFullscreen) {
@@ -1019,7 +1020,7 @@ const UjianCATView = () => {
           } catch (error) {
             console.warn("Cannot re-enter fullscreen:", error);
           }
-        }, 1000);
+        }, 1000); // Delay to allow user to see violation message
       }
     };
     // Keyboard shortcut (Ctrl+C, Ctrl+V, Alt+Tab, F12, dsb)
@@ -1027,11 +1028,22 @@ const UjianCATView = () => {
       if ((e.ctrlKey && e.key === "c") || (e.ctrlKey && e.key === "v")) {
         handleViolation("CTRL_C_V", { key: e.key });
       }
-      if (e.key === "F12") handleViolation("BROWSER_DEV_TOOLS");
+      if (e.key === "F12") {
+        e.preventDefault(); // Prevent opening dev tools
+        handleViolation("BROWSER_DEV_TOOLS");
+      }
       if (e.altKey && e.key.toLowerCase() === "tab") handleViolation("ALT_TAB");
       // Print screen
       if (e.key === "PrintScreen") handleViolation("PRINT_SCREEN");
     };
+    // Right click
+    const handleContextMenu = (e) => {
+      e.preventDefault(); // Prevent default right-click menu
+      handleViolation("RIGHT_CLICK");
+    };
+
+    // Drag and drop
+    const handleDragStart = () => handleViolation("DRAG_DROP");
 
     window.addEventListener("blur", handleBlur);
     document.addEventListener("visibilitychange", handleVisibility);
@@ -1039,6 +1051,8 @@ const UjianCATView = () => {
     document.addEventListener("paste", handlePaste);
     document.addEventListener("fullscreenchange", handleFullscreen);
     window.addEventListener("keydown", handleKeydown);
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("dragstart", handleDragStart);
 
     return () => {
       window.removeEventListener("blur", handleBlur);
@@ -1047,6 +1061,8 @@ const UjianCATView = () => {
       document.removeEventListener("paste", handlePaste);
       document.removeEventListener("fullscreenchange", handleFullscreen);
       window.removeEventListener("keydown", handleKeydown);
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("dragstart", handleDragStart);
     };
   }, [
     isStarted,
@@ -1576,7 +1592,11 @@ const UjianCATView = () => {
         ) : null}
 
         {/* Area Soal */}
-        <Col xs={24} sm={24} md={!screens.xs && !screens.sm ? 18 : 24}>
+        <Col
+          xs={24}
+          sm={24}
+          md={(!screens.xs && !screens.sm) || showSoalPanel ? 18 : 24}
+        >
           <Card>
             {soalList[currentSoal] && (
               <>

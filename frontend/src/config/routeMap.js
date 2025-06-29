@@ -523,7 +523,7 @@ export default [
   {
     path: "/report-nilai",
     component: ReportNilai,
-    roles: ["ROLE_OPERATOR", "ROLE_ADMINISTRATOR"],
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
   },
 
   // {

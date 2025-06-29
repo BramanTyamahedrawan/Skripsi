@@ -496,7 +496,7 @@ const SoalUjian = () => {
       )}
 
       {/* Modal untuk import file */}
-      <Modal
+      {/* <Modal
         title="Import File"
         open={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
@@ -517,7 +517,7 @@ const SoalUjian = () => {
         <Upload beforeUpload={() => false} accept=".csv,.xlsx,.xls">
           <Button icon={<UploadOutlined />}>Pilih File</Button>
         </Upload>
-      </Modal>
+      </Modal> */}
     </div>
   );
 };

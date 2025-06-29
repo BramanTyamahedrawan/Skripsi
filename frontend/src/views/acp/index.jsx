@@ -352,14 +352,14 @@ const ACP = () => {
           Tambahkan ACP
         </Button>
       </Col>
-      <Col>
+      {/* <Col>
         <Button
           icon={<UploadOutlined />}
           onClick={() => setImportModalVisible(true)}
         >
           Import File
         </Button>
-      </Col>
+      </Col> */}
     </Row>
   );
 

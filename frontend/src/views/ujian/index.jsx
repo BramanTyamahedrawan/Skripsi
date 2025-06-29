@@ -326,34 +326,34 @@ const Ujian = () => {
                   // Tampilkan notifikasi sukses dengan detail analisis
                   Modal.success({
                     title: "Ujian Berhasil Diakhiri!",
-                    content: (
-                      <div>
-                        <ul>
-                          <li>
-                            Total peserta:{" "}
-                            <strong>{analysis.totalParticipants || 0}</strong>
-                          </li>
-                          <li>
-                            Rata-rata nilai:{" "}
-                            <strong>
-                              {(analysis.averageScore || 0).toFixed(1)}
-                            </strong>
-                          </li>
-                          <li>
-                            Tingkat kelulusan:{" "}
-                            <strong>
-                              {(analysis.passRate || 0).toFixed(1)}%
-                            </strong>
-                          </li>
-                          <li>
-                            Siswa dengan pelanggaran:{" "}
-                            <strong>
-                              {analysis.participantStats?.yangMelanggar || 0}
-                            </strong>
-                          </li>
-                        </ul>{" "}
-                      </div>
-                    ),
+                    // content: (
+                    //   <div>
+                    //     <ul>
+                    //       <li>
+                    //         Total peserta:{" "}
+                    //         <strong>{analysis.totalParticipants || 0}</strong>
+                    //       </li>
+                    //       <li>
+                    //         Rata-rata nilai:{" "}
+                    //         <strong>
+                    //           {(analysis.averageScore || 0).toFixed(1)}
+                    //         </strong>
+                    //       </li>
+                    //       <li>
+                    //         Tingkat kelulusan:{" "}
+                    //         <strong>
+                    //           {(analysis.passRate || 0).toFixed(1)}%
+                    //         </strong>
+                    //       </li>
+                    //       <li>
+                    //         Siswa dengan pelanggaran:{" "}
+                    //         <strong>
+                    //           {analysis.participantStats?.yangMelanggar || 0}
+                    //         </strong>
+                    //       </li>
+                    //     </ul>{" "}
+                    //   </div>
+                    // ),
                     width: 500,
                   });
                 } else {
@@ -554,7 +554,7 @@ const Ujian = () => {
     }
 
     // Delete button - only for DRAFT and DIBATALKAN
-    if (status === "DRAFT" || status === "DIBATALKAN") {
+    if (status === "DRAFT" || status === "DIBATALKAN" || status === "SELESAI") {
       buttons.push(
         <Tooltip key="delete" title="Hapus Ujian">
           <Button
@@ -586,21 +586,21 @@ const Ujian = () => {
     // }
 
     // Tombol Lihat Report Nilai Siswa - hanya untuk ujian selesai
-    if (getStatusText(record) === "SELESAI") {
-      buttons.push(
-        <Tooltip key="report" title="Lihat Report Nilai Siswa">
-          <Button
-            type="default"
-            size="small"
-            icon={<BarChartOutlined />}
-            onClick={() => handleViewReport(record)}
-            style={{ backgroundColor: "#e6f7ff", borderColor: "#91d5ff" }}
-          >
-            Report
-          </Button>
-        </Tooltip>
-      );
-    }
+    // if (getStatusText(record) === "SELESAI") {
+    //   buttons.push(
+    //     <Tooltip key="report" title="Lihat Report Nilai Siswa">
+    //       <Button
+    //         type="default"
+    //         size="small"
+    //         icon={<BarChartOutlined />}
+    //         onClick={() => handleViewReport(record)}
+    //         style={{ backgroundColor: "#e6f7ff", borderColor: "#91d5ff" }}
+    //       >
+    //         Report
+    //       </Button>
+    //     </Tooltip>
+    //   );
+    // }
 
     return <Space size="small">{buttons}</Space>;
   };
@@ -999,12 +999,12 @@ const Ujian = () => {
                 : 0}{" "}
               bank soal
             </Descriptions.Item>{" "}
-            <Descriptions.Item label="Peserta Terdaftar">
+            {/* <Descriptions.Item label="Peserta Terdaftar">
               {currentRowData.jumlahPeserta ||
                 participantCounts[currentRowData.idUjian]?.total ||
                 0}{" "}
               peserta
-            </Descriptions.Item>
+            </Descriptions.Item> */}
             <Descriptions.Item label="Deskripsi" span={2}>
               {currentRowData.deskripsi || "Tidak ada deskripsi"}
             </Descriptions.Item>

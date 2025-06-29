@@ -271,13 +271,14 @@ const Elemen = () => {
       render: (_, __, index) => index + 1,
     },
     {
-      title: "Elemen",
-      dataIndex: "namaElemen",
-      key: "namaElemen",
+      title: "Mata Pelajaran",
+      dataIndex: ["mapel", "name"],
+      key: "name",
       align: "center",
-      ...getColumnSearchProps("namaElemen"),
-      sorter: (a, b) => a.namaElemen.localeCompare(b.namaElemen),
+      ...getColumnSearchProps("name", "mapel.name"),
+      sorter: (a, b) => a.mapel.name.localeCompare(b.mapel.name),
     },
+
     {
       title: "Konsentrasi Keahlian Sekolah",
       dataIndex: ["konsentrasiKeahlianSekolah", "namaKonsentrasiSekolah"],
@@ -333,14 +334,14 @@ const Elemen = () => {
           Tambahkan Elemen
         </Button>
       </Col>
-      <Col>
+      {/* <Col>
         <Button
           icon={<UploadOutlined />}
           onClick={() => setImportModalVisible(true)}
         >
           Import File
         </Button>
-      </Col>
+      </Col> */}
     </Row>
   );
 

@@ -280,7 +280,7 @@ const Semester = () => {
         </Card>
       )}
 
-      <Modal
+      {/* <Modal
         title="Import File"
         open={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
@@ -301,7 +301,7 @@ const Semester = () => {
         <Upload beforeUpload={() => false} accept=".csv,.xlsx,.xls">
           <Button>Pilih File</Button>
         </Upload>
-      </Modal>
+      </Modal> */}
     </div>
   );
 };

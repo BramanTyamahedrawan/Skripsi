@@ -221,7 +221,7 @@ const menuList = [
   },
 
   {
-    title: "Ujian",
+    title: " Setting Ujian",
     path: "/ujian",
     icon: SolutionOutlined,
     roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
@@ -231,7 +231,7 @@ const menuList = [
     title: "Ujian Siswa",
     path: "/ujian-view",
     icon: SolutionOutlined,
-    roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
+    roles: ["ROLE_STUDENT"],
   },
 
   {
@@ -252,7 +252,7 @@ const menuList = [
     title: "Report Nilai Siswa",
     path: "/report-nilai",
     icon: FileProtectOutlined,
-    roles: ["ROLE_OPERATOR"],
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
   },
 
   // {
@@ -376,32 +376,32 @@ const menuList = [
   //   icon: SolutionOutlined,
   //   roles: ["ROLE_STUDENT"],
   // },
-  {
-    title: "Nilai",
-    path: "/result",
-    icon: FileProtectOutlined,
-    roles: ["ROLE_TEACHER", "ROLE_DUDI"],
-    children: [
-      {
-        title: "Nilai Ujian",
-        path: "/result/exam",
-        icon: ContainerOutlined,
-        roles: ["ROLE_TEACHER", "ROLE_DUDI"],
-      },
-      // {
-      //   title: "Nilai Kuis",
-      //   path: "/result/quiz",
-      //   icon: ContainerOutlined,
-      //   roles: ["ROLE_DUDI", "ROLE_TEACHER"],
-      // },
-      // {
-      //   title: "Nilai Latihan",
-      //   path: "/result/exercise",
-      //   icon: ContainerOutlined,
-      //   roles: ["ROLE_DUDI", "ROLE_TEACHER"],
-      // },
-    ],
-  },
+  // {
+  //   title: "Nilai",
+  //   path: "/result",
+  //   icon: FileProtectOutlined,
+  //   roles: ["ROLE_TEACHER", "ROLE_DUDI"],
+  //   children: [
+  //     {
+  //       title: "Nilai Ujian",
+  //       path: "/result/exam",
+  //       icon: ContainerOutlined,
+  //       roles: ["ROLE_TEACHER", "ROLE_DUDI"],
+  //     },
+  //     // {
+  //     //   title: "Nilai Kuis",
+  //     //   path: "/result/quiz",
+  //     //   icon: ContainerOutlined,
+  //     //   roles: ["ROLE_DUDI", "ROLE_TEACHER"],
+  //     // },
+  //     // {
+  //     //   title: "Nilai Latihan",
+  //     //   path: "/result/exercise",
+  //     //   icon: ContainerOutlined,
+  //     //   roles: ["ROLE_DUDI", "ROLE_TEACHER"],
+  //     // },
+  //   ],
+  // },
   // {
   //   title: "Analisis & Laporan",
   //   icon: RadarChartOutlined,

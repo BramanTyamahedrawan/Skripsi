@@ -9,11 +9,19 @@ import { message } from "antd";
  * Safely get hasil ujian by ujian ID with fallback handling
  */
 export async function safeGetHasilByUjian(idUjian, options = {}) {
-  const { showErrorMessage = true } = options;
+  const {
+    showErrorMessage = true,
+    includeAnalytics = true,
+    includeSecurityData = true,
+  } = options; // Add includeAnalytics and includeSecurityData
 
   try {
-    // Try with analytics disabled to avoid metadata issues
-    const result = await getHasilByUjian(idUjian, false);
+    // Pass includeAnalytics and includeSecurityData to the underlying API call
+    const result = await getHasilByUjian(
+      idUjian,
+      includeAnalytics,
+      includeSecurityData
+    );
     return {
       success: true,
       data: result.data,
@@ -40,10 +48,18 @@ export async function safeGetHasilByUjian(idUjian, options = {}) {
  * Safely get all hasil ujian with fallback handling
  */
 export async function safeGetAllHasilUjian(size = 1000, options = {}) {
-  const { showErrorMessage = true } = options;
+  const {
+    showErrorMessage = true,
+    includeAnalytics = true,
+    includeSecurityData = true,
+  } = options; // Add includeAnalytics and includeSecurityData
 
   try {
-    const result = await getHasilUjian(size);
+    // Pass includeAnalytics and includeSecurityData to the underlying API call
+    const result = await getHasilUjian(size, {
+      includeAnalytics,
+      includeSecurityData,
+    }); // Pass options as an object
     return {
       success: true,
       data: result.data,
@@ -169,15 +185,19 @@ function getViolationCount(hasil) {
   }
 
   if (hasil.metadata?.violations && Array.isArray(hasil.metadata.violations)) {
-    return hasil.metadata.violations.length;
+    // Sum violationCount from each item in the violations array
+    return hasil.metadata.violations.reduce(
+      (sum, v) => sum + (parseInt(v.violationCount) || 0),
+      0
+    );
   }
 
-  // Fallback: count from violations array in metadata
+  // Fallback: count from violations array in metadata (if it's not an array, try to parse it)
   if (hasil.metadata?.violations) {
     try {
       const violations = Array.isArray(hasil.metadata.violations)
         ? hasil.metadata.violations
-        : [hasil.metadata.violations];
+        : [hasil.metadata.violations]; // Treat as single item if not array
       return violations
         .filter((v) => v && v.violationCount)
         .reduce((sum, v) => sum + (parseInt(v.violationCount) || 0), 0);
