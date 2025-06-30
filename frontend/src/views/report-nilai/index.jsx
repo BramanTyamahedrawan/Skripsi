@@ -537,38 +537,38 @@ const ReportNilaiSiswa = () => {
       render: (text) =>
         text ? dayjs(text).format("DD/MM/YYYY HH:mm:ss") : "N/A",
     },
-    {
-      title: "Peserta",
-      key: "peserta",
-      render: (_, record) => (
-        <div>
-          <Text strong>
-            {record.idPeserta || record.peserta?.name || "Tidak diketahui"}
-          </Text>
-        </div>
-      ),
-    },
-    {
-      title: "Ujian",
-      key: "ujian",
-      render: (_, record) => (
-        <div>
-          <Text strong>
-            {record.idUjian || record.ujian?.namaUjian || "Tidak diketahui"}
-          </Text>
-        </div>
-      ),
-    },
-    {
-      title: "Resolved",
-      dataIndex: "resolved",
-      key: "resolved",
-      render: (text) => (
-        <Tag color={text ? "green" : "volcano"}>
-          {typeof text === "boolean" ? (text ? "Ya" : "Tidak") : "N/A"}
-        </Tag>
-      ),
-    },
+    // {
+    //   title: "Peserta",
+    //   key: "peserta",
+    //   render: (_, record) => (
+    //     <div>
+    //       <Text strong>
+    //         {record.idPeserta || record.peserta?.username || "Tidak diketahui"}
+    //       </Text>
+    //     </div>
+    //   ),
+    // },
+    // {
+    //   title: "Ujian",
+    //   key: "ujian",
+    //   render: (_, record) => (
+    //     <div>
+    //       <Text strong>
+    //         {record.idUjian || record.ujian?.namaUjian || "Tidak diketahui"}
+    //       </Text>
+    //     </div>
+    //   ),
+    // },
+    // {
+    //   title: "Resolved",
+    //   dataIndex: "resolved",
+    //   key: "resolved",
+    //   render: (text) => (
+    //     <Tag color={text ? "green" : "volcano"}>
+    //       {typeof text === "boolean" ? (text ? "Ya" : "Tidak") : "N/A"}
+    //     </Tag>
+    //   ),
+    // },
   ];
   // ---------------------------------------------------
 
@@ -1394,7 +1394,7 @@ const ReportNilaiSiswa = () => {
         title={
           <Space>
             <DatabaseOutlined />
-            <span>Semua Data Pelanggaran (Dari Database)</span>
+            <span>Semua Data Pelanggaran</span>
           </Space>
         }
         visible={showAllViolationsModal}

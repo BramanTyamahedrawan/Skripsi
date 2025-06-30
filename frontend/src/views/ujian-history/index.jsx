@@ -118,7 +118,7 @@ const UjianHistory = () => {
     const lulus = data.filter((item) => {
       const nilai = parseFloat(item.skor || item.nilai || 0);
       const minScore = parseFloat(
-        item.ujian?.minPassingScore || item.ujian?.nilaiMinimal || 60
+        item.ujian?.minPassingScore || item.ujian?.nilaiMinimal || 0
       );
       return nilai >= minScore;
     }).length;
@@ -184,9 +184,9 @@ const UjianHistory = () => {
         };
       } else {
         return {
-          color: "error",
-          icon: <CloseCircleOutlined />,
-          text: "TIDAK LULUS",
+          color: "success",
+          icon: <CheckCircleOutlined />,
+          text: "LULUS",
         };
       }
     }
@@ -194,7 +194,7 @@ const UjianHistory = () => {
     // Fallback to score-based logic if lulus field is not available
     if (hasValidScore) {
       const minScore = parseFloat(
-        record.ujian?.minPassingScore || record.ujian?.nilaiMinimal || 60
+        record.ujian?.minPassingScore || record.ujian?.nilaiMinimal || 0
       );
 
       if (nilai >= minScore) {
@@ -315,7 +315,7 @@ const UjianHistory = () => {
           record.skor || record.nilai || record.persentase || 0
         );
         const nilaiMin = parseFloat(
-          ujian.minPassingScore || ujian.nilaiMinimal || 60
+          ujian.minPassingScore || ujian.nilaiMinimal || 0
         );
 
         return (
@@ -351,31 +351,31 @@ const UjianHistory = () => {
         );
       },
     },
-    {
-      title: "Pelanggaran",
-      key: "violations",
-      align: "center",
-      render: (_, record) => {
-        const violationCount = parseInt(record.jumlahPelanggaran) || 0;
+    // {
+    //   title: "Pelanggaran",
+    //   key: "violations",
+    //   align: "center",
+    //   render: (_, record) => {
+    //     const violationCount = parseInt(record.jumlahPelanggaran) || 0;
 
-        if (violationCount > 0) {
-          return (
-            <Badge count={violationCount} overflowCount={99}>
-              <Button
-                type="text"
-                icon={<WarningOutlined />}
-                danger
-                onClick={() => showViolationsModal(record)}
-              >
-                Lihat
-              </Button>
-            </Badge>
-          );
-        }
+    //     if (violationCount > 0) {
+    //       return (
+    //         <Badge count={violationCount} overflowCount={99}>
+    //           <Button
+    //             type="text"
+    //             icon={<WarningOutlined />}
+    //             danger
+    //             onClick={() => showViolationsModal(record)}
+    //           >
+    //             Lihat
+    //           </Button>
+    //         </Badge>
+    //       );
+    //     }
 
-        return <Tag color="success">Bersih</Tag>;
-      },
-    },
+    //     return <Tag color="success">Bersih</Tag>;
+    //   },
+    // },
     {
       title: "Aksi",
       key: "action",
@@ -445,7 +445,7 @@ const UjianHistory = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            {/* <Col span={6}>
               <Card>
                 <Statistic
                   title="Tidak Lulus"
@@ -454,7 +454,7 @@ const UjianHistory = () => {
                   valueStyle={{ color: "#ff4d4f" }}
                 />
               </Card>
-            </Col>
+            </Col> */}
             <Col span={6}>
               <Card>
                 <Statistic
@@ -534,7 +534,7 @@ const UjianHistory = () => {
                     "Tidak tersedia"}
                 </Text>
               </Descriptions.Item>
-              <Descriptions.Item label="Mata Pelajaran">
+              {/* <Descriptions.Item label="Mata Pelajaran">
                 {selectedHistory.ujian?.mapel?.name ||
                   selectedHistory.mapelNama ||
                   "Tidak tersedia"}
@@ -543,7 +543,7 @@ const UjianHistory = () => {
                 {selectedHistory.ujian?.kelas?.namaKelas ||
                   selectedHistory.kelasNama ||
                   "Tidak tersedia"}
-              </Descriptions.Item>{" "}
+              </Descriptions.Item>{" "} */}
               <Descriptions.Item label="Waktu Mulai Pengerjaan">
                 {selectedHistory.waktuMulai
                   ? dayjs(selectedHistory.waktuMulai).format(
@@ -628,9 +628,9 @@ const UjianHistory = () => {
                         {parseFloat(selectedHistory.persentase || 0).toFixed(1)}
                         %
                       </div>
-                      <div style={{ fontSize: "12px", color: "#666" }}>
+                      {/* <div style={{ fontSize: "12px", color: "#666" }}>
                         Grade: {selectedHistory.nilaiHuruf || "-"}
-                      </div>
+                      </div> */}
                     </div>
                   </Descriptions.Item>
                   <Descriptions.Item label="Durasi Pengerjaan">

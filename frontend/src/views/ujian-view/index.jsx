@@ -1278,7 +1278,7 @@ const UjianCATView = () => {
                     />
                   </Card>
                 </Col>
-                <Col xs={24} sm={12}>
+                {/* <Col xs={24} sm={12}>
                   <Card size="small" style={{ backgroundColor: "#fff7e6" }}>
                     <Statistic
                       title="Nilai Huruf"
@@ -1302,7 +1302,7 @@ const UjianCATView = () => {
                       </Tag>
                     </div>
                   </Card>
-                </Col>
+                </Col> */}
               </Row>
 
               {/* Detail Jawaban */}
@@ -1411,14 +1411,6 @@ const UjianCATView = () => {
               style={{ marginRight: "16px" }}
             >
               🏠 Kembali ke Dashboard
-            </Button>
-            <Button
-              size="large"
-              onClick={() =>
-                navigate(`/hasil-ujian/${hasilUjian?.idHasilUjian || ""}`)
-              }
-            >
-              📄 Lihat Detail Hasil
             </Button>
           </div>
         </Card>

@@ -95,14 +95,15 @@ const AddUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
     try {
       const result = await getBankSoal();
       if (result.data.statusCode === 200) {
-        // Group by idBankSoal and get unique bank soal
-        const uniqueBankSoal = result.data.content.reduce((acc, item) => {
-          if (!acc[item.idBankSoal]) {
-            acc[item.idBankSoal] = {
-              idBankSoal: item.idBankSoal,
-              namaBankSoal: item.namaUjian,
+        // Group by namaUjian, kumpulkan semua idBankSoal
+        const grouped = result.data.content.reduce((acc, item) => {
+          const key = item.namaUjian?.trim() || "Tanpa Nama";
+          if (!acc[key]) {
+            acc[key] = {
+              namaBankSoal: key,
+              idBankSoalList: [item.idBankSoal],
               jumlahSoal: 1,
-              bobot: parseFloat(item.bobot) || 10,
+              totalBobot: parseFloat(item.bobot) || 10,
               school: item.school,
               mapel: item.mapel,
               kelas: item.kelas,
@@ -111,15 +112,14 @@ const AddUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
               konsentrasiKeahlianSekolah: item.konsentrasiKeahlianSekolah,
             };
           } else {
-            acc[item.idBankSoal].jumlahSoal += 1;
-            acc[item.idBankSoal].totalBobot =
-              (acc[item.idBankSoal].totalBobot || 0) +
-              (parseFloat(item.bobot) || 10);
+            acc[key].idBankSoalList.push(item.idBankSoal);
+            acc[key].jumlahSoal += 1;
+            acc[key].totalBobot += parseFloat(item.bobot);
           }
           return acc;
         }, {});
-
-        setBankSoalList(Object.values(uniqueBankSoal));
+        // Simpan ke state
+        setBankSoalList(Object.values(grouped));
       } else {
         message.error("Gagal mengambil data bank soal");
       }
@@ -164,8 +164,9 @@ const AddUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       return;
     }
 
+    // Cari berdasarkan namaBankSoal
     const bankSoal = bankSoalList.find(
-      (item) => item.idBankSoal === selectedBankSoalId
+      (item) => item.namaBankSoal === selectedBankSoalId
     );
 
     if (!bankSoal) {
@@ -173,87 +174,29 @@ const AddUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       return;
     }
 
-    // Check if bank soal already selected
+    // Cek duplikat berdasarkan namaBankSoal
     if (
-      selectedBankSoal.find((item) => item.idBankSoal === selectedBankSoalId)
+      selectedBankSoal.find((item) => item.namaBankSoal === selectedBankSoalId)
     ) {
       message.warning("Bank soal sudah dipilih");
       return;
     }
 
-    // If this is the first bank soal, add it directly
-    if (selectedBankSoal.length === 0) {
-      setSelectedBankSoal([bankSoal]);
-      setSelectedBankSoalId(null);
-      message.success("Bank soal berhasil ditambahkan");
-      return;
+    // Cek kompatibilitas relasi (opsional, bisa pakai kode kamu sebelumnya)
+    if (selectedBankSoal.length > 0) {
+      const first = selectedBankSoal[0];
+      const isCompatible =
+        bankSoal.tahunAjaran?.idTahun === first.tahunAjaran?.idTahun &&
+        bankSoal.mapel?.idMapel === first.mapel?.idMapel &&
+        bankSoal.kelas?.idKelas === first.kelas?.idKelas &&
+        bankSoal.konsentrasiKeahlianSekolah?.idKonsentrasiSekolah ===
+          first.konsentrasiKeahlianSekolah?.idKonsentrasiSekolah;
+      if (!isCompatible) {
+        message.error("Bank soal tidak kompatibel dengan yang sudah dipilih");
+        return;
+      }
     }
 
-    // If there are already selected bank soal, check compatibility
-    const firstBankSoal = selectedBankSoal[0];
-
-    // Check if the new bank soal has the same relations as the first one
-    const isCompatible =
-      bankSoal.tahunAjaran?.idTahun === firstBankSoal.tahunAjaran?.idTahun &&
-      bankSoal.mapel?.idMapel === firstBankSoal.mapel?.idMapel &&
-      bankSoal.kelas?.idKelas === firstBankSoal.kelas?.idKelas &&
-      bankSoal.konsentrasiKeahlianSekolah?.idKonsentrasiSekolah ===
-        firstBankSoal.konsentrasiKeahlianSekolah?.idKonsentrasiSekolah;
-
-    if (!isCompatible) {
-      // Create detailed error message
-      const differences = [];
-
-      if (
-        bankSoal.tahunAjaran?.idTahun !== firstBankSoal.tahunAjaran?.idTahun
-      ) {
-        differences.push(
-          `Tahun Ajaran (${
-            bankSoal.tahunAjaran?.tahunAjaran || "Tidak ada"
-          } vs ${firstBankSoal.tahunAjaran?.tahunAjaran || "Tidak ada"})`
-        );
-      }
-
-      if (bankSoal.mapel?.idMapel !== firstBankSoal.mapel?.idMapel) {
-        differences.push(
-          `Mata Pelajaran (${bankSoal.mapel?.name || "Tidak ada"} vs ${
-            firstBankSoal.mapel?.name || "Tidak ada"
-          })`
-        );
-      }
-
-      if (bankSoal.kelas?.idKelas !== firstBankSoal.kelas?.idKelas) {
-        differences.push(
-          `Kelas (${bankSoal.kelas?.namaKelas || "Tidak ada"} vs ${
-            firstBankSoal.kelas?.namaKelas || "Tidak ada"
-          })`
-        );
-      }
-
-      if (
-        bankSoal.konsentrasiKeahlianSekolah?.idKonsentrasiSekolah !==
-        firstBankSoal.konsentrasiKeahlianSekolah?.idKonsentrasiSekolah
-      ) {
-        differences.push(
-          `Konsentrasi Keahlian (${
-            bankSoal.konsentrasiKeahlianSekolah?.namaKonsentrasi || "Tidak ada"
-          } vs ${
-            firstBankSoal.konsentrasiKeahlianSekolah?.namaKonsentrasi ||
-            "Tidak ada"
-          })`
-        );
-      }
-
-      message.error(
-        `Bank soal tidak dapat ditambahkan karena berbeda: ${differences.join(
-          ", "
-        )}. ` +
-          `Hanya bank soal dengan tahun ajaran, mata pelajaran, kelas, dan konsentrasi keahlian yang sama yang dapat digabungkan.`
-      );
-      return;
-    }
-
-    // If compatible, add the bank soal
     setSelectedBankSoal([...selectedBankSoal, bankSoal]);
     setSelectedBankSoalId(null);
     message.success("Bank soal berhasil ditambahkan");
@@ -402,6 +345,10 @@ const AddUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
         return;
       }
 
+      const idBankSoalList = selectedBankSoal.flatMap(
+        (item) => item.idBankSoalList
+      );
+
       // Helper function untuk convert undefined ke null dengan default values
       const convertUndefinedToNull = (value, defaultValue = null) => {
         if (value === undefined || value === null || value === "") {
@@ -456,7 +403,7 @@ const AddUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
         tipeSoal: values.tipeSoal || "ACAK",
 
         // Bank soal - hanya ID list
-        idBankSoalList: selectedBankSoal.map((item) => item.idBankSoal),
+        idBankSoalList,
 
         // Pengaturan object
         pengaturan: {
@@ -1062,7 +1009,7 @@ const AddUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
                   optionFilterProp="children"
                 >
                   {getAvailableBankSoal().map((item) => (
-                    <Option key={item.idBankSoal} value={item.idBankSoal}>
+                    <Option key={item.namaBankSoal} value={item.namaBankSoal}>
                       <div>
                         <div style={{ fontWeight: "bold" }}>
                           {item.namaBankSoal}
