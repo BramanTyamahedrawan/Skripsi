@@ -697,7 +697,7 @@ const ReportNilaiSiswa = () => {
     };
     const exportData = mergedData.map((item, index) => ({
       No: index + 1,
-      NIM: item.username || item.nim || item.peserta?.username || "-",
+      NIM: item.peserta?.username || item.username || item.nim || "-",
       "Nama Siswa": item.namaSiswa || item.nama || "-",
       Kelas:
         item.ujian?.kelas?.namaKelas || item.namaKelas || "Tidak Diketahui",
@@ -763,18 +763,11 @@ const ReportNilaiSiswa = () => {
       width: 60,
       render: (_, __, index) => index + 1,
     },
+    // ...existing code...
     {
       title: "Siswa",
       key: "siswa",
       render: (_, record) => {
-        // Debug untuk melihat struktur data
-        console.log("Record untuk kolom Siswa:", {
-          peserta: record.peserta,
-          pesertaName: record.peserta?.name,
-          pesertaUsername: record.peserta?.username,
-          idPeserta: record.idPeserta,
-        });
-
         return (
           <div>
             <div style={{ fontWeight: "bold" }}>
@@ -789,7 +782,7 @@ const ReportNilaiSiswa = () => {
                 record.nim ||
                 record.username ||
                 record.idPeserta ||
-                "Username tidak tersedia"}
+                "NIM tidak tersedia"}
             </Text>
           </div>
         );
