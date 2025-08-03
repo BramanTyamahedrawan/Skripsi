@@ -289,42 +289,111 @@ const ReportNilaiSiswa = () => {
       let allReports = [];
 
       if (selectedUjian) {
-        // Fetch results for specific ujian using safe API
+        // Tambahkan parameter untuk memastikan data peserta di-include
         const result = await safeGetHasilByUjian(selectedUjian, {
           showErrorMessage: false,
+          // Tambahkan parameter ini jika API mendukung
+          include: [
+            "peserta",
+            "ujian",
+            "ujian.kelas",
+            "ujian.mapel",
+            "ujian.semester",
+          ],
+          // Atau parameter serupa
+          expand: "peserta,ujian",
+          // Atau pastikan semua field di-select
+          fields: "*",
+          // Parameter untuk memastikan relasi dimuat
+          with: "peserta,ujian",
         });
 
+        console.log("API Response for specific ujian:", result);
+
         if (result.success && result.data?.content) {
-          // Transform using the same utility as history for consistency
-          allReports = result.data.content.map((hasil, index) =>
-            transformHasilUjianData(hasil, index)
-          );
-        } else {
-          console.warn("Failed to fetch hasil by ujian:", result.error);
-          message.warning("Gagal memuat data untuk ujian yang dipilih");
+          allReports = result.data.content.map((hasil, index) => {
+            // Debug setiap item sebelum transformasi
+            console.log(`Item ${index} before transform:`, {
+              peserta: hasil.peserta,
+              pesertaName: hasil.peserta?.name,
+              pesertaUsername: hasil.peserta?.username,
+              idPeserta: hasil.idPeserta,
+            });
+
+            const transformed = transformHasilUjianData(hasil, index);
+
+            // Debug setelah transformasi
+            console.log(`Item ${index} after transform:`, {
+              peserta: transformed.peserta,
+              pesertaName: transformed.peserta?.name,
+              pesertaUsername: transformed.peserta?.username,
+              idPeserta: transformed.idPeserta,
+            });
+
+            // Pastikan data peserta tidak hilang
+            if (hasil.peserta && !transformed.peserta) {
+              console.warn(
+                "Peserta data lost during transformation, restoring..."
+              );
+              transformed.peserta = hasil.peserta;
+            }
+
+            return transformed;
+          });
         }
       } else {
-        // If no specific ujian selected, get all hasil ujian using safe API
+        // Sama untuk semua hasil ujian
         const result = await safeGetAllHasilUjian(1000, {
           showErrorMessage: false,
+          // Tambahkan parameter yang sama
+          include: [
+            "peserta",
+            "ujian",
+            "ujian.kelas",
+            "ujian.mapel",
+            "ujian.semester",
+          ],
+          expand: "peserta,ujian",
+          fields: "*",
+          with: "peserta,ujian",
         });
 
+        console.log("API Response for all ujian:", result);
+
         if (result.success && result.data?.content) {
-          // Transform using the same utility as history for consistency
-          allReports = result.data.content.map((hasil, index) =>
-            transformHasilUjianData(hasil, index)
-          );
-        } else {
-          console.warn("Failed to fetch all hasil ujian:", result.error);
-          message.warning("Gagal memuat semua data hasil ujian");
+          allReports = result.data.content.map((hasil, index) => {
+            // Debug yang sama
+            console.log(`All ujian item ${index} before transform:`, {
+              peserta: hasil.peserta,
+              pesertaName: hasil.peserta?.name,
+              pesertaUsername: hasil.peserta?.username,
+            });
+
+            const transformed = transformHasilUjianData(hasil, index);
+
+            // Pastikan data peserta tidak hilang
+            if (hasil.peserta && !transformed.peserta) {
+              transformed.peserta = hasil.peserta;
+            }
+
+            console.log(`Transformed item ${index}:`, {
+              transformedPeserta: transformed.peserta,
+              transformedId: transformed.idHasilUjian,
+            });
+
+            return transformed;
+          });
         }
       }
+
+      // Debug final data
+      console.log("Final report data sample:", allReports[0]);
 
       // Filter by date range if specified
       if (dateRange.length === 2) {
         allReports = allReports.filter((item) => {
           if (!item.waktuMulai) return false;
-          const itemDate = dayjs(item.waktuMulai); // Menggunakan dayjs
+          const itemDate = dayjs(item.waktuMulai);
           return itemDate.isBetween(dateRange[0], dateRange[1], "day", "[]");
         });
       }
