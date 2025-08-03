@@ -597,7 +597,6 @@ const ReportNilaiSiswa = () => {
         record.peserta?.id,
         record.idPeserta,
         record.siswaId,
-        record.nimSiswa,
         record.fullData?.idPeserta,
       ].map(String);
 
@@ -631,7 +630,7 @@ const ReportNilaiSiswa = () => {
     };
     const exportData = mergedData.map((item, index) => ({
       No: index + 1,
-      NIM: item.username || item.peserta.username || "-",
+      NIM: item.username || item.nimSiswa || "-",
       "Nama Siswa": item.namaSiswa || item.nama || "-",
       Kelas:
         item.ujian?.kelas?.namaKelas || item.namaKelas || "Tidak Diketahui",
