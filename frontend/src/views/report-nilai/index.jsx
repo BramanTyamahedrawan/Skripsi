@@ -354,14 +354,12 @@ const ReportNilaiSiswa = () => {
       record.peserta?.id ||
       record.idPeserta ||
       record.siswaId ||
-      record.nimSiswa;
-
-    // Tambahkan log parameter untuk debugging yang lebih detail
-    console.log("showViolationsModal called with:", {
-      sessionId, // Log the derived sessionId
-      pesertaId, // Log the derived pesertaId
-      record, // Log the full record object
-    });
+      // Tambahkan log parameter untuk debugging yang lebih detail
+      console.log("showViolationsModal called with:", {
+        sessionId, // Log the derived sessionId
+        pesertaId, // Log the derived pesertaId
+        record, // Log the full record object
+      });
 
     if (!sessionId || !pesertaId) {
       // Periksa sessionId dan pesertaId
