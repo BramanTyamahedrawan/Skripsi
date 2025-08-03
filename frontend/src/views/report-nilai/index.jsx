@@ -628,7 +628,7 @@ const ReportNilaiSiswa = () => {
     };
     const exportData = mergedData.map((item, index) => ({
       No: index + 1,
-      NIM: item.username || item.nimSiswa || "-",
+      NIM: item.username || item.nim || item.peserta?.username || "-",
       "Nama Siswa": item.namaSiswa || item.nama || "-",
       Kelas:
         item.ujian?.kelas?.namaKelas || item.namaKelas || "Tidak Diketahui",
@@ -703,7 +703,7 @@ const ReportNilaiSiswa = () => {
             {record.namaSiswa || record.nama || record.peserta?.name || "-"}
           </div>
           <Text type="secondary">
-            {record.nimSiswa || record.nim || record.peserta?.username || "-"}
+            {record.nim || record.peserta?.username || "-"}
           </Text>
         </div>
       ),
@@ -1080,8 +1080,8 @@ const ReportNilaiSiswa = () => {
                 </strong>
               </Descriptions.Item>
               <Descriptions.Item label="ID">
-                {detailModal.data.nimSiswa ||
-                  detailModal.data.nim ||
+                {detailModal.data.nim ||
+                  detailModal.data.username ||
                   detailModal.data.peserta?.username ||
                   "-"}
               </Descriptions.Item>
