@@ -766,14 +766,34 @@ const ReportNilaiSiswa = () => {
     {
       title: "Siswa",
       key: "siswa",
-      render: (_, record) => (
-        <div>
-          <div style={{ fontWeight: "bold" }}>
-            {record.namaSiswa || record.nama || record.peserta?.name || "-"}
+      render: (_, record) => {
+        // Debug untuk melihat struktur data
+        console.log("Record untuk kolom Siswa:", {
+          peserta: record.peserta,
+          pesertaName: record.peserta?.name,
+          pesertaUsername: record.peserta?.username,
+          idPeserta: record.idPeserta,
+        });
+
+        return (
+          <div>
+            <div style={{ fontWeight: "bold" }}>
+              {record.peserta?.name ||
+                record.namaSiswa ||
+                record.nama ||
+                "Nama tidak tersedia"}
+            </div>
+            <Text type="secondary" style={{ fontSize: "12px" }}>
+              NIM:{" "}
+              {record.peserta?.username ||
+                record.nim ||
+                record.username ||
+                record.idPeserta ||
+                "Username tidak tersedia"}
+            </Text>
           </div>
-          <Text type="secondary">{record.peserta || "-"}</Text>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: "Ujian",
