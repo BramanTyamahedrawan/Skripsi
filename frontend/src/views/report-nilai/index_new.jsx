@@ -329,7 +329,7 @@ const ReportNilaiSiswa = () => {
 
     const exportData = filteredData.map((item, index) => ({
       No: index + 1,
-      NIM: item.username || "-",
+      NIM: item.username || item.peserta.username || "-",
       "Nama Siswa": item.namaSiswa || item.nama || "-",
       Kelas: item.namaKelas || "-",
       Ujian: item.namaUjian || item.ujian?.namaUjian || "-",
@@ -747,7 +747,10 @@ const ReportNilaiSiswa = () => {
                 </strong>
               </Descriptions.Item>
               <Descriptions.Item label="NIM">
-                {detailModal.data.nimSiswa || detailModal.data.username || "-"}
+                {detailModal.data.nimSiswa ||
+                  detailModal.data.username ||
+                  detailModal.peserta.username ||
+                  "-"}
               </Descriptions.Item>
               <Descriptions.Item label="Kelas">
                 {detailModal.data.namaKelas ||
