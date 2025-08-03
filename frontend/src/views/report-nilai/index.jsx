@@ -702,7 +702,7 @@ const ReportNilaiSiswa = () => {
           <div style={{ fontWeight: "bold" }}>
             {record.namaSiswa || record.nama || record.peserta?.name || "-"}
           </div>
-          <Text type="secondary">{record.peserta?.username || "-"}</Text>
+          <Text type="secondary">{record.peserta || "-"}</Text>
         </div>
       ),
     },
