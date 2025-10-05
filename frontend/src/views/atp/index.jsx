@@ -1,4 +1,3 @@
-/* eslint-disable react/no-unknown-property */
 /* eslint-disable react/prop-types */
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -18,6 +17,7 @@ import {
   Tag,
   Alert,
   Select,
+  Spin,
 } from "antd";
 import {
   UploadOutlined,
@@ -40,6 +40,8 @@ import { getMapel } from "@/api/mapel";
 import { getKelas } from "@/api/kelas";
 import { getSemester } from "@/api/semester";
 import { getTahunAjaran } from "@/api/tahun-ajaran";
+import { getACP } from "@/api/acp";
+import { getKonsentrasiSekolah } from "@/api/konsentrasiKeahlianSekolah";
 import TypingCard from "@/components/TypingCard";
 import EditATPForm from "./forms/edit-atp-form";
 import AddATPForm from "./forms/add-atp-form";
@@ -47,6 +49,7 @@ import { Skeleton } from "antd";
 import Highlighter from "react-highlight-words";
 import { reqUserInfo, getUserById } from "@/api/user";
 import { useTableSearch } from "@/helper/tableSearchHelper.jsx";
+import * as XLSX from "xlsx";
 import { read, utils } from "xlsx";
 
 const { Column } = Table;
@@ -71,6 +74,16 @@ const ATP = () => {
   const [searchText, setSearchText] = useState("");
   const [searchedColumn, setSearchedColumn] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [importFile, setImportFile] = useState(null);
+  const [mappingData, setMappingData] = useState({
+    semesterList: [],
+    mapelList: [],
+    tahunAjaranList: [],
+    elemenList: [],
+    kelasList: [],
+    acpList: [],
+    konsentrasiSekolahList: [],
+  });
 
   // Fungsi dari Helper
   const [currentStep, setCurrentStep] = useState(1);
@@ -127,7 +140,139 @@ const ATP = () => {
       setLoading(false);
     };
     loadData();
+    fetchMappingData();
   }, []);
+
+  const fetchMappingData = async () => {
+    try {
+      const [
+        semesterRes,
+        mapelRes,
+        tahunAjaranRes,
+        kelasRes,
+        acpRes,
+        konsentrasiSekolahRes,
+      ] = await Promise.all([
+        getSemester(),
+        getMapel(),
+        getTahunAjaran(),
+        getKelas(),
+        getACP(),
+        getKonsentrasiSekolah(),
+      ]);
+
+      // Extract Elemen data from ACP response
+      const acpData = acpRes.data.content || [];
+      const elemenData = acpData
+        .filter((acp) => acp.elemen && acp.elemen.valid)
+        .map((acp) => acp.elemen)
+        .filter(
+          (elemen, index, self) =>
+            index === self.findIndex((e) => e.idElemen === elemen.idElemen)
+        ); // Remove duplicates
+
+      console.log("=== DEBUG: Extracted Elemen data from ACP ===");
+      console.log("📊 Total ACP entries:", acpData.length);
+      console.log("📊 Unique Elemen entries found:", elemenData.length);
+      console.log("📊 Sample Elemen data:", elemenData.slice(0, 3));
+
+      setMappingData({
+        semesterList: semesterRes.data.content || [],
+        mapelList: mapelRes.data.content || [],
+        tahunAjaranList: tahunAjaranRes.data.content || [],
+        elemenList: elemenData,
+        kelasList: kelasRes.data.content || [],
+        acpList: acpData,
+        konsentrasiSekolahList: konsentrasiSekolahRes.data.content || [],
+      });
+    } catch (error) {
+      console.error("Error fetching mapping data:", error);
+      message.error("Gagal mengambil data mapping");
+    }
+  };
+
+  // Normalize string untuk fuzzy matching (hapus spasi dan karakter khusus)
+  const normalizeString = (str) => {
+    if (!str) return "";
+    return str
+      .toString()
+      .toLowerCase()
+      .replace(/[\s\-_.,!@#$%^&*()]/g, "");
+  };
+
+  // Mapping functions to convert names to IDs dengan fuzzy matching
+  const mapNameToId = (name, list, nameField, idField) => {
+    if (!name || !list || list.length === 0) return null;
+
+    const normalizedName = normalizeString(name);
+
+    // First try exact match
+    let item = list.find(
+      (item) => normalizeString(item[nameField]) === normalizedName
+    );
+
+    // If no exact match for ACP, try partial match (untuk menangani deskripsi ACP yang panjang)
+    if (!item && nameField === "namaAcp") {
+      // Try to find if the search term is contained in any ACP description
+      item = list.find(
+        (item) =>
+          normalizeString(item[nameField]).includes(normalizedName) ||
+          normalizedName.includes(normalizeString(item[nameField]))
+      );
+
+      // If still not found, try matching first 100 characters (untuk ACP panjang)
+      if (!item) {
+        const shortName = normalizeString(name.substring(0, 100));
+        item = list.find(
+          (item) =>
+            normalizeString(item[nameField].substring(0, 100)) === shortName
+        );
+      }
+    }
+
+    return item ? item[idField] : null;
+  };
+
+  const mapSemesterNameToId = (name) =>
+    mapNameToId(name, mappingData.semesterList, "namaSemester", "idSemester");
+  const mapMapelNameToId = (name) =>
+    mapNameToId(name, mappingData.mapelList, "name", "idMapel");
+  const mapTahunAjaranToId = (tahun) =>
+    mapNameToId(tahun, mappingData.tahunAjaranList, "tahunAjaran", "idTahun");
+  const mapElemenNameToId = (name) => {
+    console.log(`🔍 Searching for Elemen: "${name}"`);
+    console.log(
+      `📊 Available Elemen data:`,
+      mappingData.elemenList?.map((e) => e.namaElemen).slice(0, 5)
+    );
+    const result = mapNameToId(
+      name,
+      mappingData.elemenList,
+      "namaElemen",
+      "idElemen"
+    );
+    console.log(`✅ Elemen mapping result: "${name}" -> ${result}`);
+    return result;
+  };
+  const mapKelasNameToId = (name) =>
+    mapNameToId(name, mappingData.kelasList, "namaKelas", "idKelas");
+  const mapAcpNameToId = (name) => {
+    console.log(`🔍 Searching for ACP: "${name}"`);
+    console.log(
+      `📊 Available ACP data:`,
+      mappingData.acpList?.map((a) => a.namaAcp?.substring(0, 50)).slice(0, 3)
+    );
+    const result = mapNameToId(name, mappingData.acpList, "namaAcp", "idAcp");
+    console.log(`✅ ACP mapping result: "${name}" -> ${result}`);
+    return result;
+  };
+  const mapKonsentrasiNameToId = (name) =>
+    mapNameToId(
+      name,
+      mappingData.konsentrasiSekolahList,
+      "namaKonsentrasiSekolah",
+      "idKonsentrasiSekolah"
+    );
 
   // Hitung opsi yang tersedia
   const availableSemesters = getAvailableSemesters(
@@ -401,6 +546,173 @@ const ATP = () => {
     });
   };
 
+  const handleImportFile = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        // Ambil header dan data
+        const [header, ...rows] = jsonData;
+        // Index kolom sesuai header
+        const idx = (col) => header.indexOf(col);
+
+        let successCount = 0;
+        let errorCount = 0;
+        let errorMessages = [];
+
+        // Loop dan masukkan satu-satu
+        for (const row of rows) {
+          if (!row[idx("namaAtp")] || !row[idx("jumlahJpl")]) continue;
+
+          const cleanText = (val) => (val ?? "").toString();
+
+          try {
+            // Map names to IDs using the mapping functions
+            const tahunAjaranId = mapTahunAjaranToId(row[idx("tahunAjaran")]);
+            const semesterId = mapSemesterNameToId(row[idx("namaSemester")]);
+            const kelasId = mapKelasNameToId(row[idx("namaKelas")]);
+            const mapelId = mapMapelNameToId(row[idx("namaMapel")]);
+            const elemenId = mapElemenNameToId(row[idx("namaElemen")]);
+            const acpId = mapAcpNameToId(row[idx("namaAcp")]);
+            const konsentrasiId = mapKonsentrasiNameToId(
+              row[idx("namaKonsentrasiSekolah")]
+            );
+
+            // Validate required fields
+            if (!row[idx("namaAtp")] || !row[idx("jumlahJpl")]) {
+              throw new Error("Field wajib kosong: namaAtp atau jumlahJpl");
+            }
+
+            // Validasi khusus untuk Elemen dan ACP
+            if (!elemenId) {
+              const errorMsg = `ATP "${cleanText(
+                row[idx("namaAtp")]
+              )}" dengan Elemen "${cleanText(
+                row[idx("namaElemen")]
+              )}" gagal diimpor karena data Elemen tidak ditemukan`;
+              errorMessages.push(errorMsg);
+              console.warn(errorMsg);
+              errorCount++;
+              continue; // Skip ke data berikutnya
+            }
+
+            if (!acpId) {
+              const errorMsg = `ATP "${cleanText(
+                row[idx("namaAtp")]
+              )}" dengan ACP "${cleanText(
+                row[idx("namaAcp")]
+              )}" gagal diimpor karena data ACP tidak ditemukan`;
+              errorMessages.push(errorMsg);
+              console.warn(errorMsg);
+              errorCount++;
+              continue; // Skip ke data berikutnya
+            }
+
+            // Validasi field lainnya
+            if (
+              !tahunAjaranId ||
+              !semesterId ||
+              !kelasId ||
+              !mapelId ||
+              !konsentrasiId
+            ) {
+              const missingFields = [];
+              if (!tahunAjaranId) missingFields.push("Tahun Ajaran");
+              if (!semesterId) missingFields.push("Semester");
+              if (!kelasId) missingFields.push("Kelas");
+              if (!mapelId) missingFields.push("Mapel");
+              if (!konsentrasiId) missingFields.push("Konsentrasi Sekolah");
+
+              const errorMsg = `ATP "${cleanText(
+                row[idx("namaAtp")]
+              )}" gagal diimpor karena data tidak ditemukan: ${missingFields.join(
+                ", "
+              )}`;
+              errorMessages.push(errorMsg);
+              console.warn(errorMsg);
+              errorCount++;
+              continue;
+            }
+
+            // Buat data ATP
+            const atpData = {
+              idAtp: null,
+              namaAtp: cleanText(row[idx("namaAtp")]),
+              jumlahJpl: cleanText(row[idx("jumlahJpl")]),
+              idAcp: acpId,
+              idElemen: elemenId,
+              idKonsentrasiSekolah: konsentrasiId,
+              idKelas: kelasId,
+              idTahun: tahunAjaranId,
+              idSemester: semesterId,
+              idMapel: mapelId,
+              idSekolah: row[idx("idSchool")] || "RWK001",
+            };
+
+            console.log("=== DEBUG: Mengirim data ATP ===");
+            console.log("📤 PAYLOAD IMPORT ATP:");
+            console.log("  namaAtp:", atpData.namaAtp);
+            console.log("  jumlahJpl:", atpData.jumlahJpl);
+            console.log("  idElemen:", atpData.idElemen);
+            console.log("  idAcp:", atpData.idAcp);
+            console.log(
+              "  idKonsentrasiSekolah:",
+              atpData.idKonsentrasiSekolah
+            );
+
+            await addATP(atpData);
+            successCount++;
+          } catch (error) {
+            console.error(
+              `Gagal import ATP: ${row[idx("namaAtp")] || "Unknown"}`,
+              error
+            );
+            const errorMsg = `ATP "${cleanText(
+              row[idx("namaAtp")]
+            )}" gagal diimpor: ${error.message}`;
+            errorMessages.push(errorMsg);
+            errorCount++;
+          }
+        }
+
+        // Tampilkan hasil import
+        if (successCount > 0) {
+          message.success(
+            `Import berhasil! ${successCount} ATP berhasil ditambahkan.`
+          );
+        }
+
+        if (errorCount > 0) {
+          // Tampilkan beberapa error pertama saja
+          const displayErrors = errorMessages.slice(0, 5);
+          const moreErrors =
+            errorMessages.length > 5
+              ? `\n... dan ${errorMessages.length - 5} error lainnya`
+              : "";
+
+          message.error({
+            content: `${errorCount} ATP gagal diimpor:\n${displayErrors.join(
+              "\n"
+            )}${moreErrors}`,
+            duration: 10,
+          });
+        }
+
+        // Refresh data
+        fetchATP();
+        setImportModalVisible(false);
+        setImportFile(null);
+        resolve();
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
   // Fungsi untuk menyusun data dalam format hierarkis sesuai tabel yang diminta
   const prepareHierarchicalData = (data) => {
     // Kelompokkan data berdasarkan Elemen dan ACP
@@ -532,7 +844,8 @@ const ATP = () => {
   const renderTable = () => {
     return (
       <div className="table-container">
-        <style jsx>{`
+        <style>
+          {`
           .hierarchical-table {
             width: 100%;
             border-collapse: collapse;
@@ -550,7 +863,8 @@ const ATP = () => {
             background-color: #f5f5f5;
             font-weight: bold;
           }
-        `}</style>
+          `}
+        </style>
 
         <HierarchicalAtpTable data={filteredData} />
       </div>
@@ -564,14 +878,14 @@ const ATP = () => {
           Tambahkan ATP
         </Button>
       </Col>
-      {/* <Col>
+      <Col>
         <Button
           icon={<UploadOutlined />}
           onClick={() => setImportModalVisible(true)}
         >
-          Import File
+          Import ATP
         </Button>
-      </Col> */}
+      </Col>
     </Row>
   );
 
@@ -644,6 +958,202 @@ const ATP = () => {
             onCancel={handleCancel}
             onOk={handleEditOk}
           />
+
+          {/* Modal Import ATP */}
+          <Modal
+            title="Import ATP"
+            open={importModalVisible}
+            closable={!uploading}
+            maskClosable={!uploading}
+            onCancel={() => {
+              if (!uploading) {
+                setImportModalVisible(false);
+                setImportFile(null);
+              }
+            }}
+            footer={[
+              <Button
+                key="cancel"
+                disabled={uploading}
+                onClick={() => {
+                  if (!uploading) {
+                    setImportModalVisible(false);
+                    setImportFile(null);
+                  }
+                }}
+              >
+                Cancel
+              </Button>,
+              <Button
+                key="upload"
+                type="primary"
+                loading={uploading}
+                onClick={async () => {
+                  if (importFile) {
+                    setUploading(true);
+                    await handleImportFile(importFile);
+                    setUploading(false);
+                  } else {
+                    message.warning("Pilih file terlebih dahulu!");
+                  }
+                }}
+              >
+                Import
+              </Button>,
+            ]}
+            width={600}
+          >
+            <div style={{ marginBottom: 16 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 8,
+                  fontWeight: "bold",
+                }}
+              >
+                Upload File CSV/Excel:
+              </label>
+              <Upload
+                beforeUpload={(file) => {
+                  if (!uploading) {
+                    setImportFile(file);
+                  }
+                  return false; // Jangan auto-upload
+                }}
+                accept=".csv,.xlsx,.xls"
+                showUploadList={false}
+                maxCount={1}
+                disabled={uploading}
+              >
+                <Button icon={<UploadOutlined />} disabled={uploading}>
+                  Pilih File
+                </Button>
+              </Upload>
+              {importFile && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: 8,
+                    backgroundColor: "#f0f2f5",
+                    borderRadius: 4,
+                  }}
+                >
+                  <strong>File terpilih:</strong> {importFile.name}
+                </div>
+              )}
+            </div>
+
+            <div
+              style={{
+                padding: 12,
+                backgroundColor: "#e6f7ff",
+                borderRadius: 4,
+                fontSize: "12px",
+              }}
+            >
+              <strong>
+                💡 Disarankan menggunakan format CSV untuk menghindari file
+                corrupt!
+              </strong>
+              <br />
+              <br />
+              <strong>Format CSV/Excel yang diperlukan:</strong>
+              <br />
+              <strong>Kolom Wajib:</strong> namaAtp, jumlahJpl, tahunAjaran,
+              namaSemester, namaKelas, namaMapel, namaElemen, namaAcp,
+              namaKonsentrasiSekolah, idSchool
+              <br />
+              <br />
+              <strong>Pencocokan Data (Fuzzy Matching):</strong>
+              <br />• Sistem mengabaikan spasi, tanda hubung, dan karakter
+              khusus
+              <br />• Tidak case-sensitive (tidak membedakan huruf besar/kecil)
+              <br />• Contoh: &quot;Geometri&quot; = &quot;geometri&quot; =
+              &quot;Geo-metri&quot;
+              <br />
+              <br />
+              <strong>Validasi Khusus:</strong>
+              <br />• Jika Elemen tidak ditemukan, ATP akan dilewati dengan
+              pesan error
+              <br />• Jika ACP tidak ditemukan, ATP akan dilewati dengan pesan
+              error
+              <br />• Import akan berlanjut ke data berikutnya tanpa berhenti
+              <br />
+              <br />
+              <strong>Contoh isi data:</strong>
+              <br />• <strong>namaAtp:</strong> &quot;Kongruen&quot;,
+              &quot;Operasi Pythagoras&quot;
+              <br />• <strong>jumlahJpl:</strong> &quot;2&quot;, &quot;4&quot;
+              <br />• <strong>tahunAjaran:</strong> &quot;2025/2026&quot;
+              <br />• <strong>namaSemester:</strong> &quot;Ganjil&quot; atau
+              &quot;Genap&quot;
+              <br />• <strong>namaKelas:</strong> &quot;X&quot;, &quot;XI&quot;,
+              atau &quot;XII&quot;
+              <br />• <strong>namaMapel:</strong> &quot;Matematika&quot;,
+              &quot;Bahasa Indonesia&quot;, dll.
+              <br />• <strong>namaElemen:</strong> &quot;Geometri&quot;,
+              &quot;Bilangan&quot;, dll.
+              <br />• <strong>namaAcp:</strong> &quot;Peserta didik dapat
+              menyelesaikan...&quot;
+              <br />• <strong>namaKonsentrasiSekolah:</strong> &quot;Desain
+              Komunikasi Visual&quot;, dll.
+              <br />• <strong>idSchool:</strong> &quot;RWK001&quot; (nilai
+              tetap/paten)
+              <br />
+              <br />
+              <strong>Download Template:</strong>
+              <br />
+              <div style={{ marginTop: 8 }}>
+                <a
+                  href="/templates/import-template-ATP.csv"
+                  download
+                  style={{ color: "#1890ff" }}
+                >
+                  📄 Template ATP (CSV)
+                </a>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Loading Overlay untuk Import */}
+          {uploading && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                zIndex: 9999,
+                flexDirection: "column",
+              }}
+            >
+              <Spin size="large" />
+              <div
+                style={{
+                  color: "white",
+                  marginTop: 16,
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                }}
+              >
+                Sedang mengimpor ATP...
+              </div>
+              <div
+                style={{
+                  color: "white",
+                  marginTop: 8,
+                  fontSize: "14px",
+                }}
+              >
+                Mohon tunggu, jangan menutup halaman ini
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

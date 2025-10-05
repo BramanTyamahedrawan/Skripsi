@@ -234,7 +234,22 @@ const Mapel = () => {
       const matchSemester = selectedSemester
         ? item.semester?.idSemester === selectedSemester
         : true;
-      return matchTahunAjaran && matchKelas && matchSemester;
+
+      // Global search filter
+      const matchSearch = searchQuery
+        ? item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.tahunAjaran?.tahunAjaran
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          item.semester?.namaSemester
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          item.kelas?.namaKelas
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase())
+        : true;
+
+      return matchTahunAjaran && matchKelas && matchSemester && matchSearch;
     });
   };
 
@@ -409,11 +424,13 @@ const Mapel = () => {
             <Col>
               <Input.Search
                 key="search"
-                placeholder="Cari mapel..."
+                placeholder="Cari tahun ajaran, semester, kelas, atau nama mapel..."
                 allowClear
                 enterButton
+                value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: 300 }}
+                onSearch={(value) => setSearchQuery(value)}
+                style={{ width: 400 }}
               />
             </Col>
           </Row>
