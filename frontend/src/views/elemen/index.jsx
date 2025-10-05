@@ -176,6 +176,21 @@ const Elemen = () => {
     selectedMapel
   );
 
+  const getFilteredElemenList = () => {
+    return filteredData.filter((item) => {
+      // Global search filter
+      const matchSearch = searchQuery
+        ? item.namaElemen?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.mapel?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.konsentrasiKeahlianSekolah?.namaKonsentrasiSekolah
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase())
+        : true;
+
+      return matchSearch;
+    });
+  };
+
   const handleDelete = (row) => {
     const { idElemen, namaElemen } = row;
     Modal.confirm({
@@ -371,22 +386,21 @@ const Elemen = () => {
       key: "action",
       align: "center",
       render: (_, row) => (
-        <span>
+        <Space>
           <Button
-            type="primary"
+            type="default"
             shape="circle"
             icon={<EditOutlined />}
             onClick={() => handleEdit(row)}
           />
-          <Divider type="vertical" />
           <Button
-            type="primary"
+            type="default"
             danger
             shape="circle"
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(row)}
           />
-        </span>
+        </Space>
       ),
     },
   ];
@@ -394,28 +408,10 @@ const Elemen = () => {
   const renderTable = () => (
     <Table
       rowKey="idElemen"
-      dataSource={filteredData}
+      dataSource={getFilteredElemenList()}
       columns={renderColumns()}
       pagination={{ pageSize: 10 }}
     />
-  );
-
-  const renderButtons = () => (
-    <Row gutter={[16, 16]} justify="start">
-      <Col>
-        <Button type="primary" onClick={() => setAddModalVisible(true)}>
-          Tambahkan Elemen
-        </Button>
-      </Col>
-      {/* <Col>
-        <Button
-          icon={<UploadOutlined />}
-          onClick={() => setImportModalVisible(true)}
-        >
-          Import File
-        </Button>
-      </Col> */}
-    </Row>
   );
 
   return (
@@ -431,8 +427,6 @@ const Elemen = () => {
         </Card>
       ) : (
         <>
-          <Card style={{ marginBottom: 16 }}>{renderButtons()}</Card>
-
           {/* Tampilkan selection steps atau tabel */}
           {!selectedMapel ? (
             renderSelectionSteps({
@@ -467,7 +461,41 @@ const Elemen = () => {
               })}
 
               {/* Tabel Data */}
-              <Card style={{ overflowX: "scroll" }}>{renderTable()}</Card>
+              <Card style={{ overflowX: "scroll" }}>
+                {/* Baris untuk tombol dan pencarian */}
+                <Row
+                  justify="space-between"
+                  align="middle"
+                  style={{ marginBottom: 16 }}
+                >
+                  {/* Tombol Tambah */}
+                  <Col>
+                    <Button
+                      type="primary"
+                      onClick={() => setAddModalVisible(true)}
+                    >
+                      Tambahkan Elemen
+                    </Button>
+                  </Col>
+
+                  {/* Kolom Pencarian */}
+                  <Col>
+                    <Input.Search
+                      key="search"
+                      placeholder="Cari elemen, mata pelajaran, atau konsentrasi keahlian..."
+                      allowClear
+                      enterButton
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onSearch={(value) => setSearchQuery(value)}
+                      style={{ width: 400 }}
+                    />
+                  </Col>
+                </Row>
+
+                {/* Tabel */}
+                {renderTable()}
+              </Card>
             </>
           )}
 

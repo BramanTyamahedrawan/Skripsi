@@ -338,6 +338,23 @@ const ATP = () => {
     selectedMapel
   );
 
+  const getFilteredATPList = () => {
+    return filteredData.filter((item) => {
+      // Global search filter
+      const matchSearch = searchQuery
+        ? item.namaAtp?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.acp?.namaAcp
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          item.acp?.elemen?.namaElemen
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase())
+        : true;
+
+      return matchSearch;
+    });
+  };
+
   const handleAddOk = async (values) => {
     setAddATPModalLoading(true);
     try {
@@ -499,22 +516,21 @@ const ATP = () => {
       key: "action",
       align: "center",
       render: (_, row) => (
-        <span>
+        <Space>
           <Button
-            type="primary"
+            type="default"
             shape="circle"
             icon={<EditOutlined />}
             onClick={() => handleEditATP(row)}
           />
-          <Divider type="vertical" />
           <Button
-            type="primary"
+            type="default"
             danger
             shape="circle"
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(row)}
           />
-        </span>
+        </Space>
       ),
     },
   ];
@@ -807,20 +823,21 @@ const ATP = () => {
                     <td>{atpItem.namaAtp}</td>
                     <td>{atpItem.jumlahJpl}</td>
                     <td>
-                      <Button
-                        type="primary"
-                        shape="circle"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEditATP(atpItem)}
-                        style={{ marginRight: "8px" }}
-                      />
-                      <Button
-                        type="primary"
-                        danger
-                        shape="circle"
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleDelete(atpItem)}
-                      />
+                      <Space>
+                        <Button
+                          type="default"
+                          shape="circle"
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditATP(atpItem)}
+                        />
+                        <Button
+                          type="default"
+                          danger
+                          shape="circle"
+                          icon={<DeleteOutlined />}
+                          onClick={() => handleDelete(atpItem)}
+                        />
+                      </Space>
                     </td>
                   </tr>
                 );
@@ -831,20 +848,21 @@ const ATP = () => {
                     <td>{atpItem.namaAtp}</td>
                     <td>{atpItem.jumlahJpl}</td>
                     <td>
-                      <Button
-                        type="primary"
-                        shape="circle"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEditATP(atpItem)}
-                        style={{ marginRight: "8px" }}
-                      />
-                      <Button
-                        type="primary"
-                        danger
-                        shape="circle"
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleDelete(atpItem)}
-                      />
+                      <Space>
+                        <Button
+                          type="default"
+                          shape="circle"
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditATP(atpItem)}
+                        />
+                        <Button
+                          type="default"
+                          danger
+                          shape="circle"
+                          icon={<DeleteOutlined />}
+                          onClick={() => handleDelete(atpItem)}
+                        />
+                      </Space>
                     </td>
                   </tr>
                 );
@@ -882,28 +900,10 @@ const ATP = () => {
           `}
         </style>
 
-        <HierarchicalAtpTable data={filteredData} />
+        <HierarchicalAtpTable data={getFilteredATPList()} />
       </div>
     );
   };
-
-  const renderButtons = () => (
-    <Row gutter={[16, 16]} justify="start">
-      <Col>
-        <Button type="primary" onClick={() => setAddATPModalVisible(true)}>
-          Tambahkan ATP
-        </Button>
-      </Col>
-      <Col>
-        <Button
-          icon={<UploadOutlined />}
-          onClick={() => setImportModalVisible(true)}
-        >
-          Import ATP
-        </Button>
-      </Col>
-    </Row>
-  );
 
   return (
     <div className="app-container">
@@ -918,8 +918,6 @@ const ATP = () => {
         </Card>
       ) : (
         <>
-          <Card style={{ marginBottom: 16 }}>{renderButtons()}</Card>
-
           {/* Tampilkan selection steps atau tabel */}
           {!selectedMapel ? (
             renderSelectionSteps({
@@ -954,7 +952,53 @@ const ATP = () => {
               })}
 
               {/* Tabel Data */}
-              <Card style={{ overflowX: "scroll" }}>{renderTable()}</Card>
+              <Card style={{ overflowX: "scroll" }}>
+                {/* Baris untuk tombol dan pencarian */}
+                <Row
+                  justify="space-between"
+                  align="middle"
+                  style={{ marginBottom: 16 }}
+                >
+                  {/* Tombol Tambah & Import */}
+                  <Col>
+                    <Row gutter={[8, 8]}>
+                      <Col>
+                        <Button
+                          type="primary"
+                          onClick={() => setAddATPModalVisible(true)}
+                        >
+                          Tambahkan ATP
+                        </Button>
+                      </Col>
+                      <Col>
+                        <Button
+                          icon={<UploadOutlined />}
+                          onClick={() => setImportModalVisible(true)}
+                        >
+                          Import ATP
+                        </Button>
+                      </Col>
+                    </Row>
+                  </Col>
+
+                  {/* Kolom Pencarian */}
+                  <Col>
+                    <Input.Search
+                      key="search"
+                      placeholder="Cari ATP, capaian pembelajaran, atau elemen..."
+                      allowClear
+                      enterButton
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onSearch={(value) => setSearchQuery(value)}
+                      style={{ width: 400 }}
+                    />
+                  </Col>
+                </Row>
+
+                {/* Tabel */}
+                {renderTable()}
+              </Card>
             </>
           )}
 
