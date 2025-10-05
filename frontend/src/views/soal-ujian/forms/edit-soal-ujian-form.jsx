@@ -742,21 +742,6 @@ const EditSoalUjianForm = ({
                   </Select>
                 </Form.Item>
               </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="ATP"
-                  name="idAtp"
-                  rules={[{ required: true, message: "ATP wajib diisi" }]}
-                >
-                  <Select placeholder="Pilih ATP">
-                    {atpList.map(({ idAtp, namaAtp }) => (
-                      <Option key={idAtp} value={idAtp}>
-                        {namaAtp}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
               <Col span={24}>
                 <Form.Item
                   label="Sekolah:"

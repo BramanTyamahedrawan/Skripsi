@@ -271,6 +271,14 @@ const Elemen = () => {
       render: (_, __, index) => index + 1,
     },
     {
+      title: "Elemen",
+      dataIndex: ["namaElemen"],
+      key: "namaElemen",
+      align: "center",
+      ...getColumnSearchProps("namaElemen", "namaElemen"),
+      sorter: (a, b) => a.namaElemen.localeCompare(b.namaElemen),
+    },
+    {
       title: "Mata Pelajaran",
       dataIndex: ["mapel", "name"],
       key: "name",

@@ -28,6 +28,7 @@ import {
   addSoalUjian,
   editSoalUjian,
 } from "@/api/soalUjian";
+import { deleteBankSoal, getBankSoal } from "@/api/bankSoal";
 import { Skeleton } from "antd";
 import Highlighter from "react-highlight-words";
 import TypingCard from "@/components/TypingCard";
@@ -100,14 +101,43 @@ const SoalUjian = () => {
     const { idSoalUjian } = row;
     Modal.confirm({
       title: "Konfirmasi",
-      content: "Apakah Anda yakin ingin menghapus data ini?",
+      content:
+        "Apakah Anda yakin ingin menghapus data ini? Data terkait di Bank Soal juga akan dihapus.",
       okText: "Ya",
       okType: "danger",
       cancelText: "Tidak",
       onOk: async () => {
         try {
+          // Hapus dari Soal Ujian terlebih dahulu
           await deleteSoalUjian({ idSoalUjian });
-          message.success("Berhasil dihapus");
+
+          // Cari dan hapus data terkait di Bank Soal
+          try {
+            const bankSoalResult = await getBankSoal();
+            if (bankSoalResult.data && bankSoalResult.data.content) {
+              const relatedBankSoal = bankSoalResult.data.content.find(
+                (item) =>
+                  item.soalUjian && item.soalUjian.idSoalUjian === idSoalUjian
+              );
+
+              if (relatedBankSoal) {
+                await deleteBankSoal({
+                  idBankSoal: relatedBankSoal.idBankSoal,
+                });
+                console.log(
+                  `Bank Soal ${relatedBankSoal.idBankSoal} berhasil dihapus`
+                );
+              }
+            }
+          } catch (bankSoalError) {
+            console.warn(
+              "Gagal menghapus dari Bank Soal:",
+              bankSoalError.message
+            );
+            // Tidak perlu menampilkan error karena mungkin sudah dihapus sebelumnya
+          }
+
+          message.success("Berhasil dihapus dari Soal Ujian dan Bank Soal");
           fetchSoalUjians();
         } catch (error) {
           message.error("Gagal menghapus: " + error.message);
@@ -303,14 +333,6 @@ const SoalUjian = () => {
           Tambah Soal Ujian
         </Button>
       </Col>
-      <Col>
-        <Button
-          icon={<UploadOutlined />}
-          onClick={() => setImportModalVisible(true)}
-        >
-          Import File
-        </Button>
-      </Col>
     </Row>
   );
 
@@ -494,30 +516,6 @@ const SoalUjian = () => {
           </Modal>
         </Card>
       )}
-
-      {/* Modal untuk import file */}
-      {/* <Modal
-        title="Import File"
-        open={importModalVisible}
-        onCancel={() => setImportModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setImportModalVisible(false)}>
-            Batal
-          </Button>,
-          <Button
-            key="upload"
-            type="primary"
-            loading={uploading}
-            onClick={() => {}}
-          >
-            Upload
-          </Button>,
-        ]}
-      >
-        <Upload beforeUpload={() => false} accept=".csv,.xlsx,.xls">
-          <Button icon={<UploadOutlined />}>Pilih File</Button>
-        </Upload>
-      </Modal> */}
     </div>
   );
 };

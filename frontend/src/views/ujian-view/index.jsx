@@ -966,17 +966,17 @@ const UjianCATView = () => {
         setViolationModalVisible(true);
 
         // Critical violation check - if more than 10 violations
-        if (next > 10) {
-          setCriticalViolationModal(true);
-          setViolationReason(type);
+        // if (next > 10) {
+        //   setCriticalViolationModal(true);
+        //   setViolationReason(type);
 
-          // Auto submit ujian jika pelanggaran > 10
-          if (!isFinished && sessionActive) {
-            setTimeout(() => {
-              handleSubmitUjian(true);
-            }, 3000); // Give 3 seconds for user to see the message
-          }
-        }
+        //   // Auto submit ujian jika pelanggaran > 10
+        //   if (!isFinished && sessionActive) {
+        //     setTimeout(() => {
+        //       handleSubmitUjian(true);
+        //     }, 5000); // Give 3 seconds for user to see the message
+        //   }
+        // }
 
         return next;
       });
@@ -1278,31 +1278,6 @@ const UjianCATView = () => {
                     />
                   </Card>
                 </Col>
-                {/* <Col xs={24} sm={12}>
-                  <Card size="small" style={{ backgroundColor: "#fff7e6" }}>
-                    <Statistic
-                      title="Nilai Huruf"
-                      value={hasilUjian.nilaiHuruf || "E"}
-                      valueStyle={{
-                        color: hasilUjian.lulus ? "#52c41a" : "#ff4d4f",
-                        fontWeight: "bold",
-                      }}
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <Card size="small" style={{ backgroundColor: "#f6ffed" }}>
-                    <div>
-                      <Text strong>Status:</Text>
-                      <Tag
-                        color={hasilUjian.lulus ? "success" : "error"}
-                        style={{ marginLeft: "8px", fontSize: "14px" }}
-                      >
-                        {hasilUjian.lulus ? "LULUS" : "TIDAK LULUS"}
-                      </Tag>
-                    </div>
-                  </Card>
-                </Col> */}
               </Row>
 
               {/* Detail Jawaban */}
