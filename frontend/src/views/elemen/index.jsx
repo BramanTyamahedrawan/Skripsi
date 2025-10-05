@@ -33,6 +33,8 @@ import {
 } from "@/helper/mapelSelectionHelper.jsx";
 import { useTableSearch } from "@/helper/tableSearchHelper.jsx";
 import { getElemen, deleteElemen, addElemen, editElemen } from "@/api/elemen";
+import { getACP, deleteACP } from "@/api/acp";
+import { getATP, deleteATP } from "@/api/atp";
 import TypingCard from "@/components/TypingCard";
 import AddElemenForm from "./forms/add-elemen-form";
 import EditElemenForm from "./forms/edit-elemen-form";
@@ -175,20 +177,83 @@ const Elemen = () => {
   );
 
   const handleDelete = (row) => {
-    const { idElemen } = row;
+    const { idElemen, namaElemen } = row;
     Modal.confirm({
-      title: "Konfirmasi",
-      content: "Apakah Anda yakin ingin menghapus data ini?",
-      okText: "Ya",
+      title: "Konfirmasi Cascade Delete",
+      content: (
+        <div>
+          <p>
+            <strong>⚠️ PERHATIAN: Penghapusan Berantai</strong>
+          </p>
+          <p>
+            Menghapus Elemen <strong>&quot;{namaElemen}&quot;</strong> akan
+            otomatis menghapus:
+          </p>
+          <ul>
+            <li>✅ Semua ACP yang terkait dengan Elemen ini</li>
+            <li>✅ Semua ATP yang terkait dengan ACP tersebut</li>
+          </ul>
+          <p>
+            <strong>Apakah Anda yakin ingin melanjutkan?</strong>
+          </p>
+        </div>
+      ),
+      okText: "Ya, Hapus Semua",
       okType: "danger",
-      cancelText: "Tidak",
+      cancelText: "Batal",
+      width: 500,
       onOk: async () => {
         try {
+          message.loading("Menghapus data terkait...", 0);
+
+          // Step 1: Get all ACP related to this Elemen
+          console.log(
+            "🔍 Step 1: Mencari ACP terkait dengan Elemen ID:",
+            idElemen
+          );
+          const acpResponse = await getACP();
+          const relatedACPs = acpResponse.data.content.filter(
+            (acp) => acp.elemen && acp.elemen.idElemen === idElemen
+          );
+          console.log("📊 Found ACP to delete:", relatedACPs.length);
+
+          // Step 2: Get all ATP related to these ACPs
+          const atpResponse = await getATP();
+          const relatedATPs = atpResponse.data.content.filter((atp) =>
+            relatedACPs.some((acp) => acp.idAcp === atp.acp?.idAcp)
+          );
+          console.log("📊 Found ATP to delete:", relatedATPs.length);
+
+          // Step 3: Delete ATPs first (bottom-up)
+          for (const atp of relatedATPs) {
+            console.log("🗑️ Deleting ATP:", atp.namaAtp);
+            await deleteATP({ idAtp: atp.idAtp });
+          }
+
+          // Step 4: Delete ACPs
+          for (const acp of relatedACPs) {
+            console.log(
+              "🗑️ Deleting ACP:",
+              acp.namaAcp?.substring(0, 50) + "..."
+            );
+            await deleteACP({ idAcp: acp.idAcp });
+          }
+
+          // Step 5: Finally delete the Elemen
+          console.log("🗑️ Deleting Elemen:", namaElemen);
           await deleteElemen({ idElemen });
-          message.success("Berhasil dihapus");
+
+          message.destroy();
+          message.success({
+            content: `Berhasil menghapus Elemen &quot;${namaElemen}&quot; beserta ${relatedACPs.length} ACP dan ${relatedATPs.length} ATP terkait`,
+            duration: 5,
+          });
+
           fetchELemen();
         } catch (error) {
+          message.destroy();
           message.error("Gagal menghapus: " + error.message);
+          console.error("Cascade delete error:", error);
         }
       },
     });

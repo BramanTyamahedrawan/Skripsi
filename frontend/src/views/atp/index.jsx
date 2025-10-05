@@ -527,20 +527,36 @@ const ATP = () => {
 
   // Handler untuk menghapus item ATP
   const handleDelete = (row) => {
-    const { idAtp } = row;
+    const { idAtp, namaAtp } = row;
     Modal.confirm({
-      title: "Konfirmasi",
-      content: "Apakah Anda yakin ingin menghapus data ini?",
-      okText: "Ya",
+      title: "Konfirmasi Hapus ATP",
+      content: (
+        <div>
+          <p>
+            Menghapus ATP <strong>&quot;{namaAtp}&quot;</strong>
+          </p>
+          <p>
+            <strong>ℹ️ Info:</strong> Hanya ATP yang akan dihapus. Elemen dan
+            ACP terkait tetap ada.
+          </p>
+          <p>
+            <strong>Apakah Anda yakin ingin melanjutkan?</strong>
+          </p>
+        </div>
+      ),
+      okText: "Ya, Hapus ATP",
       okType: "danger",
-      cancelText: "Tidak",
+      cancelText: "Batal",
+      width: 450,
       onOk: async () => {
         try {
+          console.log("🗑️ Deleting ATP only:", namaAtp);
           await deleteATP({ idAtp });
-          message.success("Berhasil dihapus");
+          message.success(`Berhasil menghapus ATP &quot;${namaAtp}&quot;`);
           fetchATP();
         } catch (error) {
           message.error("Gagal menghapus: " + error.message);
+          console.error("ATP delete error:", error);
         }
       },
     });

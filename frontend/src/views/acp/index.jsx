@@ -32,6 +32,7 @@ import {
   renderActiveFilters,
 } from "@/helper/mapelSelectionHelper.jsx";
 import { getACP, deleteACP, editACP, addACP } from "@/api/acp";
+import { getATP, deleteATP } from "@/api/atp";
 import TypingCard from "@/components/TypingCard";
 import EditACPForm from "./forms/edit-acp-form";
 import AddACPForm from "./forms/add-acp-form";
@@ -196,20 +197,65 @@ const ACP = () => {
   };
 
   const handleDelete = (row) => {
-    const { idAcp } = row;
+    const { idAcp, namaAcp } = row;
     Modal.confirm({
-      title: "Konfirmasi",
-      content: "Apakah Anda yakin ingin menghapus data ini?",
-      okText: "Ya",
+      title: "Konfirmasi Cascade Delete",
+      content: (
+        <div>
+          <p>
+            <strong>⚠️ PERHATIAN: Penghapusan Berantai</strong>
+          </p>
+          <p>
+            Menghapus ACP{" "}
+            <strong>&quot;{namaAcp?.substring(0, 80)}...&quot;</strong> akan
+            otomatis menghapus:
+          </p>
+          <ul>
+            <li>✅ Semua ATP yang terkait dengan ACP ini</li>
+            <li>❌ Elemen tetap tidak akan dihapus</li>
+          </ul>
+          <p>
+            <strong>Apakah Anda yakin ingin melanjutkan?</strong>
+          </p>
+        </div>
+      ),
+      okText: "Ya, Hapus ATP Terkait",
       okType: "danger",
-      cancelText: "Tidak",
+      cancelText: "Batal",
+      width: 500,
       onOk: async () => {
         try {
+          message.loading("Menghapus ATP terkait...", 0);
+
+          // Step 1: Get all ATP related to this ACP
+          console.log("🔍 Step 1: Mencari ATP terkait dengan ACP ID:", idAcp);
+          const atpResponse = await getATP();
+          const relatedATPs = atpResponse.data.content.filter(
+            (atp) => atp.acp && atp.acp.idAcp === idAcp
+          );
+          console.log("📊 Found ATP to delete:", relatedATPs.length);
+
+          // Step 2: Delete all related ATPs first
+          for (const atp of relatedATPs) {
+            console.log("🗑️ Deleting ATP:", atp.namaAtp);
+            await deleteATP({ idAtp: atp.idAtp });
+          }
+
+          // Step 3: Delete the ACP
+          console.log("🗑️ Deleting ACP:", namaAcp?.substring(0, 50) + "...");
           await deleteACP({ idAcp });
-          message.success("Berhasil dihapus");
+
+          message.destroy();
+          message.success({
+            content: `Berhasil menghapus ACP beserta ${relatedATPs.length} ATP terkait`,
+            duration: 5,
+          });
+
           fetchACP();
         } catch (error) {
+          message.destroy();
           message.error("Gagal menghapus: " + error.message);
+          console.error("Cascade delete error:", error);
         }
       },
     });
