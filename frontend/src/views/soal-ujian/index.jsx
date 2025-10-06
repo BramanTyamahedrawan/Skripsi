@@ -63,11 +63,12 @@ const SoalUjian = () => {
 
   // Filter soal ujian berdasarkan search query
   useEffect(() => {
-    if (searchQuery) {
+    if (searchQuery?.trim()) {
       const filtered = soalUjians.filter(
         (item) =>
-          item.namaUjian?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.pertanyaan?.toLowerCase().includes(searchQuery.toLowerCase())
+          item?.namaUjian?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item?.pertanyaan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item?.jenisSoal?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       setFilteredData(filtered);
     } else {
@@ -81,8 +82,24 @@ const SoalUjian = () => {
       const result = await getSoalUjian();
       const { content, statusCode } = result.data;
       if (statusCode === 200) {
-        setSoalUjians(content);
-        setFilteredData(content);
+        // Basic logging for debugging
+        console.log("Soal Ujian data received:", content?.length, "items");
+
+        // Handle empty or null content
+        const safeContent = Array.isArray(content) ? content : [];
+
+        // Log question types for debugging
+        if (safeContent.length > 0) {
+          const typeDistribution = safeContent.reduce((acc, item) => {
+            const type = item?.jenisSoal || "UNKNOWN";
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+          }, {});
+          console.log("Question types distribution:", typeDistribution);
+        }
+
+        setSoalUjians(safeContent);
+        setFilteredData(safeContent);
       } else {
         message.error("Gagal mengambil data");
       }
@@ -174,7 +191,36 @@ const SoalUjian = () => {
   const handleEditSoalUjianOk = async (values) => {
     setEditSoalUjianModalLoading(true);
     try {
-      // await editSoalUjian(values, currentRowData.idSoalUjian);
+      const idSoalUjian = values.idSoalUjian || currentRowData.idSoalUjian;
+
+      if (!idSoalUjian) {
+        throw new Error(
+          "ID Soal Ujian tidak ditemukan. Tidak dapat melakukan update."
+        );
+      }
+
+      // Structure the data properly like the working forms
+      const updatedValues = {
+        idSoalUjian: idSoalUjian,
+        namaUjian: values.namaUjian,
+        pertanyaan: values.pertanyaan,
+        bobot: values.bobot?.toString(), // Keep as string like the working example
+        jenisSoal: values.jenisSoal,
+        idUser: values.idUser,
+        idTaksonomi: values.idTaksonomi,
+        idKonsentrasiSekolah: values.idKonsentrasiSekolah,
+        idSchool: values.idSchool,
+        // Include question-specific fields
+        ...(values.opsi && { opsi: values.opsi }),
+        ...(values.pasangan && { pasangan: values.pasangan }),
+        ...(values.jawabanBenar && { jawabanBenar: values.jawabanBenar }),
+        ...(values.toleransiTypo !== undefined && {
+          toleransiTypo: values.toleransiTypo?.toString(),
+        }),
+      };
+
+      console.log("Updated values for edit:", updatedValues);
+      await editSoalUjian(updatedValues, idSoalUjian);
       setEditSoalUjianModalVisible(false);
       message.success("Berhasil mengedit");
       fetchSoalUjians();
@@ -313,15 +359,30 @@ const SoalUjian = () => {
     },
   ];
 
-  const renderTable = () => (
-    <Table
-      rowKey="idSoalUjian"
-      dataSource={filteredData}
-      columns={renderColumns()}
-      pagination={{ pageSize: 10 }}
-      loading={loading}
-    />
-  );
+  const renderTable = () => {
+    return (
+      <Table
+        rowKey="idSoalUjian"
+        dataSource={filteredData || []}
+        columns={renderColumns()}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} dari ${total} soal`,
+          showLessItems: true,
+        }}
+        loading={loading}
+        locale={{
+          emptyText:
+            soalUjians?.length === 0
+              ? "Belum ada data soal ujian"
+              : "Tidak ada data yang sesuai dengan pencarian",
+        }}
+      />
+    );
+  };
 
   const renderButtons = () => (
     <Row gutter={[16, 16]} justify="start">
@@ -478,6 +539,55 @@ const SoalUjian = () => {
               />
             </Col>
           </Row>
+
+          {/* Status Information */}
+          {soalUjians?.length > 0 && (
+            <Card
+              size="small"
+              style={{
+                marginBottom: 16,
+                backgroundColor: "#f6ffed",
+                borderColor: "#b7eb8f",
+              }}
+            >
+              <Row gutter={[16, 8]}>
+                <Col span={6}>
+                  <strong>Total Soal:</strong> {soalUjians?.length || 0}
+                </Col>
+                <Col span={6}>
+                  <strong>Ditampilkan:</strong> {filteredData?.length || 0}
+                </Col>
+                <Col span={12}>
+                  <strong>Jenis Soal:</strong>{" "}
+                  {Object.entries(
+                    soalUjians?.reduce((acc, item) => {
+                      const type = item?.jenisSoal || "UNKNOWN";
+                      acc[type] = (acc[type] || 0) + 1;
+                      return acc;
+                    }, {})
+                  ).map(([type, count]) => (
+                    <Tag
+                      key={type}
+                      color={
+                        type === "PG"
+                          ? "blue"
+                          : type === "MULTI"
+                          ? "green"
+                          : type === "COCOK"
+                          ? "orange"
+                          : type === "ISIAN"
+                          ? "purple"
+                          : "default"
+                      }
+                      style={{ marginLeft: 4 }}
+                    >
+                      {type}: {count}
+                    </Tag>
+                  ))}
+                </Col>
+              </Row>
+            </Card>
+          )}
 
           {/* Tabel */}
           {renderTable()}

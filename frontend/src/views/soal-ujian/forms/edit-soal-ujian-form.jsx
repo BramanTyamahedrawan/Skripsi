@@ -24,6 +24,7 @@ import { getSchool } from "@/api/school";
 import { reqUserInfo } from "@/api/user";
 import { getTaksonomi } from "@/api/taksonomi";
 import { getATP } from "@/api/atp";
+import { getKonsentrasiSekolah } from "@/api/konsentrasiKeahlianSekolah";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -45,6 +46,8 @@ const EditSoalUjianForm = ({
   const [schoolList, setSchoolList] = useState([]);
   const [taksonomiList, setTaksonomiList] = useState([]);
   const [atpList, setAtpList] = useState([]);
+  const [konsentrasiKeahlianSekolahList, setKonsentrasiKeahlianSekolahList] =
+    useState([]);
   const [options, setOptions] = useState(["A", "B"]); // Default to 2 options: A and B
 
   const addOption = () => {
@@ -115,6 +118,17 @@ const EditSoalUjianForm = ({
     }
   };
 
+  const fetchKonsentrasiKeahlianSekolahList = async () => {
+    try {
+      const result = await getKonsentrasiSekolah();
+      if (result.data.statusCode === 200) {
+        setKonsentrasiKeahlianSekolahList(result.data.content);
+      }
+    } catch (error) {
+      message.error("Gagal mengambil data konsentrasi keahlian sekolah");
+    }
+  };
+
   const fetchSoalUjian = async () => {
     setTableLoading(true);
     try {
@@ -135,9 +149,12 @@ const EditSoalUjianForm = ({
     fetchSoalUjian();
     fetchTaksonomiList();
     fetchAtpList();
+    fetchKonsentrasiKeahlianSekolahList();
 
     if (currentRowData) {
       const { jenisSoal, jawabanBenar, opsi, pasangan } = currentRowData;
+
+      // Process pasangan data for COCOK type
       const pasanganKiri = Object.fromEntries(
         Object.entries(pasangan || {}).filter(([key]) => key.includes("_kiri"))
       );
@@ -145,6 +162,7 @@ const EditSoalUjianForm = ({
         Object.entries(pasangan || {}).filter(([key]) => key.includes("_kanan"))
       );
 
+      // Set form values
       form.setFieldsValue({
         idSoalUjian: currentRowData.idSoalUjian,
         namaUjian: currentRowData.namaUjian,
@@ -152,40 +170,57 @@ const EditSoalUjianForm = ({
         bobot: currentRowData.bobot,
         jenisSoal: currentRowData.jenisSoal,
         idTaksonomi: currentRowData.taksonomi?.idTaksonomi,
-        idAtp: currentRowData.atp?.idAtp,
+        idKonsentrasiSekolah:
+          currentRowData.konsentrasiKeahlianSekolah?.idKonsentrasiSekolah,
         idSchool: currentRowData.school?.idSchool,
-        opsiA: currentRowData.opsi?.A,
-        opsiB: currentRowData.opsi?.B,
-        opsiC: currentRowData.opsi?.C,
-        opsiD: currentRowData.opsi?.D,
-        opsiE: currentRowData.opsi?.E,
-        opsiF: currentRowData.opsi?.F,
-        opsiG: currentRowData.opsi?.G,
-        opsiH: currentRowData.opsi?.H,
-        jawabanBenar:
-          jenisSoal === "PG" || jenisSoal === "ISIAN"
-            ? jawabanBenar?.[0]
-            : jawabanBenar, // PG & ISIAN pakai string, lainnya array
-        jawabanBenarMulti: jawabanBenar, // untuk checkbox (MULTI)
+        // Options for PG and MULTI
+        opsiA: opsi?.A,
+        opsiB: opsi?.B,
+        opsiC: opsi?.C,
+        opsiD: opsi?.D,
+        opsiE: opsi?.E,
+        // Answer handling based on question type
+        jawabanBenar: jenisSoal === "PG" ? jawabanBenar?.[0] : undefined,
+        jawabanBenarMulti: jenisSoal === "MULTI" ? jawabanBenar : undefined,
+        // Pasangan for COCOK
         pasanganKiri: Object.values(pasanganKiri),
         pasanganKanan: Object.values(pasanganKanan),
-        pasanganJawaban: jawabanBenar,
-        jawabanIsian: currentRowData.jawabanBenar,
+        pasanganJawaban: jenisSoal === "COCOK" ? jawabanBenar : undefined,
+        // Isian specific
+        jawabanIsian:
+          jenisSoal === "ISIAN"
+            ? Array.isArray(jawabanBenar)
+              ? jawabanBenar[0]
+              : jawabanBenar
+            : undefined,
         toleransiTypo: currentRowData.toleransiTypo,
       });
+
       setJenisSoal(currentRowData.jenisSoal);
-      setOptions(Object.keys(currentRowData.opsi || {})); // Set options based on existing data
+
+      // Set options based on existing data
+      if (opsi && Object.keys(opsi).length > 0) {
+        setOptions(Object.keys(opsi));
+      } else {
+        setOptions(["A", "B"]); // Default options
+      }
     }
   }, [currentRowData, form]);
 
   useEffect(() => {
-    if (userSchoolId) {
+    if (userSchoolId && !currentRowData) {
+      // Only set default values if we're not editing existing data
       form.setFieldsValue({
         idSchool: userSchoolId,
         jenisSoal: "PG",
       });
+    } else if (userSchoolId && currentRowData) {
+      // For editing, only update the school ID
+      form.setFieldsValue({
+        idSchool: userSchoolId,
+      });
     }
-  }, [userSchoolId, form]);
+  }, [userSchoolId, form, currentRowData]);
 
   // Handler for changing question type
   const handleJenisSoalChange = (value) => {
@@ -218,79 +253,78 @@ const EditSoalUjianForm = ({
     try {
       const values = await form.validateFields();
 
-      // Basic payload structure
+      // Build payload to match the working forms structure exactly
       const payload = {
         idSoalUjian: values.idSoalUjian,
         namaUjian: values.namaUjian,
         pertanyaan: values.pertanyaan,
-        bobot: values.bobot?.toString(),
+        bobot: values.bobot?.toString(), // Keep as string like manual insert
         jenisSoal: values.jenisSoal,
         idUser: userId,
         idTaksonomi: values.idTaksonomi,
-        idAtp: values.idAtp,
+        idKonsentrasiSekolah: values.idKonsentrasiSekolah,
         idSchool: values.idSchool,
       };
 
-      // Build payload based on question type
+      // Build question-specific data
       switch (values.jenisSoal) {
         case "PG": {
           const opsi = {};
           options.forEach((option) => {
-            opsi[option] = values[`opsi${option}`];
+            if (values[`opsi${option}`]) {
+              opsi[option] = values[`opsi${option}`];
+            }
           });
           payload.opsi = opsi;
-          payload.jawabanBenar = [values.jawabanBenar];
+          payload.jawabanBenar = values.jawabanBenar
+            ? [values.jawabanBenar]
+            : [];
           break;
         }
 
         case "MULTI": {
           const opsi = {};
           options.forEach((option) => {
-            opsi[option] = values[`opsi${option}`];
+            if (values[`opsi${option}`]) {
+              opsi[option] = values[`opsi${option}`];
+            }
           });
           payload.opsi = opsi;
-          payload.jawabanBenar = values.jawabanBenarMulti;
+          payload.jawabanBenar = values.jawabanBenarMulti || [];
           break;
         }
 
         case "COCOK": {
-          const kiri = {};
-          values.pasanganKiri.forEach((item, index) => {
-            kiri[`${index + 1}_kiri`] = item;
+          const pasangan = {};
+          const kiriArray = values.pasanganKiri || [];
+          const kananArray = values.pasanganKanan || [];
+
+          kiriArray.forEach((item, index) => {
+            if (item) {
+              pasangan[`${index + 1}_kiri`] = item;
+            }
           });
 
-          const kanan = {};
-          values.pasanganKanan.forEach((item, index) => {
-            kanan[`${index + values.pasanganKiri.length + 1}_kanan`] = item;
+          kananArray.forEach((item, index) => {
+            if (item) {
+              pasangan[`${index + 1}_kanan`] = item;
+            }
           });
 
-          payload.pasangan = { ...kiri, ...kanan };
-
-          // Validated and safe conversion
-          payload.jawabanBenar = values.pasanganJawaban
-            .filter((pair) => pair.includes("-"))
-            .map((pair) => {
-              const [kiriIdxStr, kananIdxStr] = pair.split("-");
-              const kiriIdx = parseInt(kiriIdxStr);
-              const kananIdx = parseInt(kananIdxStr);
-
-              if (isNaN(kiriIdx) || isNaN(kananIdx)) return null;
-
-              return `${kiriIdx + 1}_kiri=${
-                kananIdx + values.pasanganKiri.length + 1
-              }_kanan`;
-            })
-            .filter(Boolean); // Remove any null if invalid
+          payload.pasangan = pasangan;
+          payload.jawabanBenar = values.pasanganJawaban || [];
           break;
         }
 
         case "ISIAN":
-          payload.jawabanBenar = [values.jawabanIsian];
+          payload.jawabanBenar = values.jawabanIsian
+            ? [values.jawabanIsian]
+            : [];
           payload.toleransiTypo = values.toleransiTypo?.toString() || "0";
           break;
       }
 
-      console.log("Payload:", payload);
+      console.log("Edit Payload:", payload);
       onOk(payload);
     } catch (error) {
       console.error("Validation failed:", error);
@@ -658,7 +692,7 @@ const EditSoalUjianForm = ({
 
   return (
     <Modal
-      title="Tambah Soal Ujian"
+      title="Edit Soal Ujian"
       open={visible}
       onCancel={() => {
         form.resetFields();
@@ -744,10 +778,46 @@ const EditSoalUjianForm = ({
               </Col>
               <Col span={24}>
                 <Form.Item
+                  label="Konsentrasi Keahlian Sekolah"
+                  name="idKonsentrasiSekolah"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Silahkan pilih Konsentrasi Keahlian Sekolah",
+                    },
+                  ]}
+                >
+                  <Select
+                    placeholder="Pilih Konsentrasi Keahlian Sekolah"
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) =>
+                      option.children
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                    }
+                  >
+                    {konsentrasiKeahlianSekolahList.map(
+                      ({ idKonsentrasiSekolah, namaKonsentrasiSekolah }) => (
+                        <Option
+                          key={idKonsentrasiSekolah}
+                          value={idKonsentrasiSekolah}
+                        >
+                          {namaKonsentrasiSekolah}
+                        </Option>
+                      )
+                    )}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item
                   label="Sekolah:"
                   name="idSchool"
                   style={{ display: "none" }}
-                  rules={[{ required: true, message: "Silahkan pilih Kelas" }]}
+                  rules={[
+                    { required: true, message: "Silahkan pilih Sekolah" },
+                  ]}
                 >
                   <Select defaultValue={userSchoolId} disabled>
                     {schoolList

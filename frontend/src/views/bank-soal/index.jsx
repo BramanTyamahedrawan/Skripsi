@@ -28,13 +28,18 @@ import {
   SearchOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
-import { getBankSoal, deleteBankSoal, addBankSoal } from "@/api/bankSoal";
+import {
+  getBankSoal,
+  deleteBankSoal,
+  addBankSoal,
+  editBankSoal,
+} from "@/api/bankSoal";
 import { deleteSoalUjian } from "@/api/soalUjian";
 import { Skeleton } from "antd";
 import Highlighter from "react-highlight-words";
 import TypingCard from "@/components/TypingCard";
 import AddBankSoalForm from "./forms/add-bank-soal-form";
-// import EditBankSoalForm from "./forms/edit-bankSoal-form";
+import EditBankSoalForm from "./forms/edit-bank-soal-form";
 import { useTableSearch } from "@/helper/tableSearchHelper.jsx";
 import { reqUserInfo, getUserById } from "@/api/user";
 import { set } from "nprogress";
@@ -311,27 +316,20 @@ const BankSoal = () => {
     }
   };
 
-  //   const handleEditBankSoalOk = async (values) => {
-  //     setEditBankSoalModalLoading(true);
-  //     try {
-  //       const updatedData = {
-  //         // idBankSoal: values.idBankSoal,
-  //         // namaBankSoal: values.namaBankSoal,
-  //         // deskripsiBankSoal: values.deskripsiBankSoal,
-  //         // idSekolah: values.idSchool,
-  //       };
-  //       console.log("Updated Data:", updatedData);
-  //       await editBankSoal(updatedData, currentRowData.idBankSoal);
-  //       setEditBankSoalModalVisible(false);
-  //       message.success("Berhasil mengedit");
-  //       fetchBankSoals();
-  //     } catch (error) {
-  //       setEditBankSoalModalVisible(false);
-  //       message.error("Gagal mengedit: " + error.message);
-  //     } finally {
-  //       setEditBankSoalModalLoading(false);
-  //     }
-  //   };
+  const handleEditBankSoalOk = async (values) => {
+    setEditBankSoalModalLoading(true);
+    try {
+      console.log("Form values received:", values);
+      await editBankSoal(values, currentRowData.idBankSoal);
+      setEditBankSoalModalVisible(false);
+      message.success("Berhasil mengedit");
+      fetchBankSoals();
+    } catch (error) {
+      message.error("Gagal mengedit: " + error.message);
+    } finally {
+      setEditBankSoalModalLoading(false);
+    }
+  };
 
   const handleCancel = () => {
     setAddBankSoalModalVisible(false);
@@ -1193,14 +1191,14 @@ const BankSoal = () => {
             onOk={handleAddBankSoalOk}
           />
 
-          {/* <EditBankSoalForm
+          <EditBankSoalForm
             wrappedComponentRef={editBankSoalFormRef}
             currentRowData={currentRowData}
             visible={editBankSoalModalVisible}
             confirmLoading={editBankSoalModalLoading}
             onCancel={handleCancel}
             onOk={handleEditBankSoalOk}
-          /> */}
+          />
         </Card>
       )}
 
