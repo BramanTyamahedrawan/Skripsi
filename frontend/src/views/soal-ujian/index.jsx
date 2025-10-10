@@ -210,13 +210,15 @@ const SoalUjian = () => {
         idTaksonomi: values.idTaksonomi,
         idKonsentrasiSekolah: values.idKonsentrasiSekolah,
         idSchool: values.idSchool,
-        // Include question-specific fields
+        // Include question-specific fields based on jenisSoal
         ...(values.opsi && { opsi: values.opsi }),
         ...(values.pasangan && { pasangan: values.pasangan }),
         ...(values.jawabanBenar && { jawabanBenar: values.jawabanBenar }),
-        ...(values.toleransiTypo !== undefined && {
-          toleransiTypo: values.toleransiTypo?.toString(),
-        }),
+        // Only include toleransiTypo for ISIAN questions, just like add form
+        ...(values.jenisSoal === "ISIAN" &&
+          values.toleransiTypo !== undefined && {
+            toleransiTypo: values.toleransiTypo?.toString(),
+          }),
       };
 
       console.log("Updated values for edit:", updatedValues);

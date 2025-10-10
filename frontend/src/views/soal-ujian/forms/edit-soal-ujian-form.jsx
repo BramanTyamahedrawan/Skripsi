@@ -7,7 +7,6 @@ import {
   Modal,
   Select,
   Table,
-  Tabs,
   Row,
   Col,
   Button,
@@ -19,7 +18,7 @@ import {
   Divider,
 } from "antd";
 import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
-import { getSoalUjian } from "@/api/soalUjian";
+import { getSoalUjian, editSoalUjian } from "@/api/soalUjian";
 import { getSchool } from "@/api/school";
 import { reqUserInfo } from "@/api/user";
 import { getTaksonomi } from "@/api/taksonomi";
@@ -28,7 +27,6 @@ import { getKonsentrasiSekolah } from "@/api/konsentrasiKeahlianSekolah";
 
 const { TextArea } = Input;
 const { Option } = Select;
-const { TabPane } = Tabs;
 
 const EditSoalUjianForm = ({
   visible,
@@ -167,7 +165,7 @@ const EditSoalUjianForm = ({
         idSoalUjian: currentRowData.idSoalUjian,
         namaUjian: currentRowData.namaUjian,
         pertanyaan: currentRowData.pertanyaan,
-        bobot: currentRowData.bobot,
+        bobot: parseInt(currentRowData.bobot) || 10,
         jenisSoal: currentRowData.jenisSoal,
         idTaksonomi: currentRowData.taksonomi?.idTaksonomi,
         idKonsentrasiSekolah:
@@ -185,7 +183,19 @@ const EditSoalUjianForm = ({
         // Pasangan for COCOK
         pasanganKiri: Object.values(pasanganKiri),
         pasanganKanan: Object.values(pasanganKanan),
-        pasanganJawaban: jenisSoal === "COCOK" ? jawabanBenar : undefined,
+        // Convert COCOK answers to proper format
+        pasanganJawaban:
+          jenisSoal === "COCOK"
+            ? (jawabanBenar || []).map((answer) => {
+                // Parse "Cocok 1=Cocok 11" format back to indices
+                const [left, right] = answer.split("=");
+                const leftValues = Object.values(pasanganKiri);
+                const rightValues = Object.values(pasanganKanan);
+                const leftIndex = leftValues.indexOf(left);
+                const rightIndex = rightValues.indexOf(right);
+                return `${leftIndex}-${rightIndex}`;
+              })
+            : undefined,
         // Isian specific
         jawabanIsian:
           jenisSoal === "ISIAN"
@@ -193,14 +203,16 @@ const EditSoalUjianForm = ({
               ? jawabanBenar[0]
               : jawabanBenar
             : undefined,
-        toleransiTypo: currentRowData.toleransiTypo,
+        toleransiTypo: currentRowData.toleransiTypo
+          ? parseInt(currentRowData.toleransiTypo)
+          : 0,
       });
 
       setJenisSoal(currentRowData.jenisSoal);
 
       // Set options based on existing data
       if (opsi && Object.keys(opsi).length > 0) {
-        setOptions(Object.keys(opsi));
+        setOptions(Object.keys(opsi).sort());
       } else {
         setOptions(["A", "B"]); // Default options
       }
@@ -222,43 +234,17 @@ const EditSoalUjianForm = ({
     }
   }, [userSchoolId, form, currentRowData]);
 
-  // Handler for changing question type
-  const handleJenisSoalChange = (value) => {
-    setJenisSoal(value);
-
-    // Reset options to default when changing to PG or MULTI
-    if (value === "PG" || value === "MULTI") {
-      setOptions(["A", "B"]);
-    }
-
-    // Reset answer fields when changing question type
-    form.setFieldsValue({
-      opsiA: undefined,
-      opsiB: undefined,
-      opsiC: undefined,
-      opsiD: undefined,
-      opsiE: undefined,
-      jawabanBenar: undefined,
-      jawabanBenarMulti: undefined,
-      pasanganKiri: undefined,
-      pasanganKanan: undefined,
-      pasanganJawaban: undefined,
-      jawabanIsian: undefined,
-      toleransiTypo: undefined,
-    });
-  };
-
   // Submit handler
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
 
-      // Build payload to match the working forms structure exactly
+      // Build payload to match backend expectations exactly
       const payload = {
         idSoalUjian: values.idSoalUjian,
         namaUjian: values.namaUjian,
         pertanyaan: values.pertanyaan,
-        bobot: values.bobot?.toString(), // Keep as string like manual insert
+        bobot: values.bobot?.toString(), // Keep as string like backend expects
         jenisSoal: values.jenisSoal,
         idUser: userId,
         idTaksonomi: values.idTaksonomi,
@@ -266,7 +252,7 @@ const EditSoalUjianForm = ({
         idSchool: values.idSchool,
       };
 
-      // Build question-specific data
+      // Build question-specific data based on backend logic
       switch (values.jenisSoal) {
         case "PG": {
           const opsi = {};
@@ -279,6 +265,9 @@ const EditSoalUjianForm = ({
           payload.jawabanBenar = values.jawabanBenar
             ? [values.jawabanBenar]
             : [];
+          // Backend sets these to null for PG
+          payload.pasangan = null;
+          payload.toleransiTypo = null;
           break;
         }
 
@@ -291,6 +280,9 @@ const EditSoalUjianForm = ({
           });
           payload.opsi = opsi;
           payload.jawabanBenar = values.jawabanBenarMulti || [];
+          // Backend sets these to null for MULTI
+          payload.pasangan = null;
+          payload.toleransiTypo = null;
           break;
         }
 
@@ -307,12 +299,25 @@ const EditSoalUjianForm = ({
 
           kananArray.forEach((item, index) => {
             if (item) {
-              pasangan[`${index + 1}_kanan`] = item;
+              pasangan[`${index + 4}_kanan`] = item; // Start from index 4 to match API format
             }
           });
 
           payload.pasangan = pasangan;
-          payload.jawabanBenar = values.pasanganJawaban || [];
+
+          // Convert pasangan answers back to "Left=Right" format
+          const jawabanBenar = (values.pasanganJawaban || []).map((pairing) => {
+            const [leftIdx, rightIdx] = pairing
+              .split("-")
+              .map((idx) => parseInt(idx));
+            const leftItem = kiriArray[leftIdx];
+            const rightItem = kananArray[rightIdx];
+            return `${leftItem}=${rightItem}`;
+          });
+          payload.jawabanBenar = jawabanBenar;
+          // Backend sets these to null for COCOK
+          payload.opsi = null;
+          payload.toleransiTypo = null;
           break;
         }
 
@@ -320,7 +325,14 @@ const EditSoalUjianForm = ({
           payload.jawabanBenar = values.jawabanIsian
             ? [values.jawabanIsian]
             : [];
-          payload.toleransiTypo = values.toleransiTypo?.toString() || "0";
+          // Handle toleransiTypo properly - convert to string or use "0" as default
+          payload.toleransiTypo =
+            values.toleransiTypo !== undefined && values.toleransiTypo !== null
+              ? values.toleransiTypo.toString()
+              : "0";
+          // Backend sets these to null for ISIAN
+          payload.opsi = null;
+          payload.pasangan = null;
           break;
       }
 
@@ -696,146 +708,134 @@ const EditSoalUjianForm = ({
       open={visible}
       onCancel={() => {
         form.resetFields();
-        setOptions(["A", "B"]); // Reset options when closing modal
         onCancel();
       }}
       onOk={handleSubmit}
       confirmLoading={confirmLoading}
       okText="Simpan"
-      width={700}
+      width={800}
     >
       <Form form={form} layout="vertical">
-        <Tabs defaultActiveKey="1">
-          <TabPane tab="Informasi Soal" key="1">
-            <Row gutter={16}>
-              <Col span={24}>
-                <Form.Item
-                  label="Jenis Soal"
-                  name="jenisSoal"
-                  rules={[
-                    { required: true, message: "Jenis soal wajib dipilih" },
-                  ]}
-                  initialValue="PG"
-                >
-                  <Select onChange={handleJenisSoalChange}>
-                    <Option value="PG">Pilihan Ganda</Option>
-                    <Option value="MULTI">Multi Jawaban</Option>
-                    <Option value="COCOK">Mencocokkan</Option>
-                    <Option value="ISIAN">Isian</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Form.Item name="idSoalUjian" style={{ display: "none" }}>
-                <Input type="hidden" />
-              </Form.Item>
-              <Col span={24}>
-                <Form.Item
-                  label="Nama Ujian"
-                  name="namaUjian"
-                  rules={[
-                    { required: true, message: "Nama ujian wajib diisi" },
-                  ]}
-                >
-                  <Input placeholder="Nama Ujian" />
-                </Form.Item>
-              </Col>
-              <Col span={24}>
-                <Form.Item
-                  label="Pertanyaan"
-                  name="pertanyaan"
-                  rules={[
-                    { required: true, message: "Pertanyaan wajib diisi" },
-                  ]}
-                >
-                  <TextArea rows={4} placeholder="Tulis pertanyaan di sini" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="Bobot"
-                  name="bobot"
-                  rules={[{ required: true, message: "Bobot wajib diisi" }]}
-                  initialValue={10}
-                >
-                  <InputNumber min={1} max={100} style={{ width: "100%" }} />
-                </Form.Item>
-              </Col>
+        <Row gutter={16}>
+          <Col span={24}>
+            <Form.Item
+              label="Jenis Soal"
+              name="jenisSoal"
+              rules={[{ required: true, message: "Jenis soal wajib dipilih" }]}
+              tooltip="Jenis soal tidak dapat diubah setelah soal dibuat"
+            >
+              <Select disabled>
+                <Option value="PG">Pilihan Ganda</Option>
+                <Option value="MULTI">Multi Jawaban</Option>
+                <Option value="COCOK">Mencocokkan</Option>
+                <Option value="ISIAN">Isian</Option>
+              </Select>
+            </Form.Item>
+          </Col>
+          <Form.Item name="idSoalUjian" style={{ display: "none" }}>
+            <Input type="hidden" />
+          </Form.Item>
+          <Col span={24}>
+            <Form.Item
+              label="Nama Ujian"
+              name="namaUjian"
+              rules={[{ required: true, message: "Nama ujian wajib diisi" }]}
+            >
+              <Input placeholder="Nama Ujian" />
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              label="Pertanyaan"
+              name="pertanyaan"
+              rules={[{ required: true, message: "Pertanyaan wajib diisi" }]}
+            >
+              <TextArea rows={4} placeholder="Tulis pertanyaan di sini" />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="Bobot"
+              name="bobot"
+              rules={[{ required: true, message: "Bobot wajib diisi" }]}
+              initialValue={10}
+            >
+              <InputNumber min={1} max={100} style={{ width: "100%" }} />
+            </Form.Item>
+          </Col>
 
-              <Col span={12}>
-                <Form.Item
-                  label="Taksonomi"
-                  name="idTaksonomi"
-                  rules={[{ required: true, message: "Taksonomi wajib diisi" }]}
-                >
-                  <Select placeholder="Pilih Taksonomi">
-                    {taksonomiList.map(({ idTaksonomi, namaTaksonomi }) => (
-                      <Option key={idTaksonomi} value={idTaksonomi}>
-                        {namaTaksonomi}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={24}>
-                <Form.Item
-                  label="Konsentrasi Keahlian Sekolah"
-                  name="idKonsentrasiSekolah"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Silahkan pilih Konsentrasi Keahlian Sekolah",
-                    },
-                  ]}
-                >
-                  <Select
-                    placeholder="Pilih Konsentrasi Keahlian Sekolah"
-                    showSearch
-                    optionFilterProp="children"
-                    filterOption={(input, option) =>
-                      option.children
-                        .toLowerCase()
-                        .includes(input.toLowerCase())
-                    }
-                  >
-                    {konsentrasiKeahlianSekolahList.map(
-                      ({ idKonsentrasiSekolah, namaKonsentrasiSekolah }) => (
-                        <Option
-                          key={idKonsentrasiSekolah}
-                          value={idKonsentrasiSekolah}
-                        >
-                          {namaKonsentrasiSekolah}
-                        </Option>
-                      )
-                    )}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={24}>
-                <Form.Item
-                  label="Sekolah:"
-                  name="idSchool"
-                  style={{ display: "none" }}
-                  rules={[
-                    { required: true, message: "Silahkan pilih Sekolah" },
-                  ]}
-                >
-                  <Select defaultValue={userSchoolId} disabled>
-                    {schoolList
-                      .filter(({ idSchool }) => idSchool === userSchoolId) // Hanya menampilkan sekolah user
-                      .map(({ idSchool, nameSchool }) => (
-                        <Option key={idSchool} value={idSchool}>
-                          {nameSchool}
-                        </Option>
-                      ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
-          </TabPane>
-          <TabPane tab="Pilihan & Jawaban" key="2">
+          <Col span={12}>
+            <Form.Item
+              label="Taksonomi"
+              name="idTaksonomi"
+              rules={[{ required: true, message: "Taksonomi wajib diisi" }]}
+            >
+              <Select placeholder="Pilih Taksonomi">
+                {taksonomiList.map(({ idTaksonomi, namaTaksonomi }) => (
+                  <Option key={idTaksonomi} value={idTaksonomi}>
+                    {namaTaksonomi}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              label="Konsentrasi Keahlian Sekolah"
+              name="idKonsentrasiSekolah"
+              rules={[
+                {
+                  required: true,
+                  message: "Silahkan pilih Konsentrasi Keahlian Sekolah",
+                },
+              ]}
+            >
+              <Select
+                placeholder="Pilih Konsentrasi Keahlian Sekolah"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {konsentrasiKeahlianSekolahList.map(
+                  ({ idKonsentrasiSekolah, namaKonsentrasiSekolah }) => (
+                    <Option
+                      key={idKonsentrasiSekolah}
+                      value={idKonsentrasiSekolah}
+                    >
+                      {namaKonsentrasiSekolah}
+                    </Option>
+                  )
+                )}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={24}>
+            <Form.Item
+              label="Sekolah:"
+              name="idSchool"
+              style={{ display: "none" }}
+              rules={[{ required: true, message: "Silahkan pilih Sekolah" }]}
+            >
+              <Select defaultValue={userSchoolId} disabled>
+                {schoolList
+                  .filter(({ idSchool }) => idSchool === userSchoolId) // Hanya menampilkan sekolah user
+                  .map(({ idSchool, nameSchool }) => (
+                    <Option key={idSchool} value={idSchool}>
+                      {nameSchool}
+                    </Option>
+                  ))}
+              </Select>
+            </Form.Item>
+          </Col>
+
+          {/* Question-specific fields */}
+          <Col span={24}>
+            <Divider orientation="left">Pilihan & Jawaban</Divider>
             {renderQuestionForm()}
-          </TabPane>
-        </Tabs>
+          </Col>
+        </Row>
       </Form>
     </Modal>
   );
