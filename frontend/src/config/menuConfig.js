@@ -241,12 +241,12 @@ const menuList = [
     roles: ["ROLE_STUDENT"],
   },
 
-  // {
-  //   title: "Analisis Ujian",
-  //   path: "/ujian-analysis",
-  //   icon: RadarChartOutlined,
-  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
-  // },
+  {
+    title: "Analisis Ujian",
+    path: "/ujian-analysis",
+    icon: RadarChartOutlined,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
 
   {
     title: "Report Nilai Siswa",

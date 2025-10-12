@@ -9,6 +9,15 @@ export function startUjianSession({ idUjian, idPeserta }) {
   });
 }
 
+// Resume atau mulai session ujian baru (RECOMMENDED)
+export function resumeOrStartSession({ idUjian, idPeserta, kodeUjian }) {
+  return request({
+    url: "/ujian-session/resume-or-start",
+    method: "post",
+    data: { idUjian, idPeserta, kodeUjian },
+  });
+}
+
 // Simpan jawaban individual
 export function saveJawaban({
   idUjian,
@@ -144,6 +153,7 @@ export function updateCurrentSoal({
 
 export default {
   startUjianSession,
+  resumeOrStartSession,
   saveJawaban,
   submitUjian,
   getUjianProgress,

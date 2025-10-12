@@ -618,7 +618,9 @@ const AddUjianForm = ({ visible, onCancel, onOk, confirmLoading }) => {
       okText="Simpan"
       width={1000}
       style={{ top: 20 }}
-      bodyStyle={{ maxHeight: "70vh", overflowY: "auto" }}
+      styles={{
+        body: { maxHeight: "70vh", overflowY: "auto" },
+      }}
     >
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         {/* Tab 1: Informasi Dasar */}

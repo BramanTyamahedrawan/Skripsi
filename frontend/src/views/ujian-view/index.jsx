@@ -28,6 +28,10 @@ import {
   CheckCircleOutlined,
   LoginOutlined,
   SendOutlined,
+  TrophyOutlined,
+  SafetyOutlined,
+  UserOutlined,
+  BulbOutlined,
   LeftOutlined,
   RightOutlined,
   EyeOutlined,
@@ -43,6 +47,7 @@ import moment from "moment";
 import { getUjian } from "@/api/ujian"; // Gunakan yang sudah ada
 import {
   startUjianSession,
+  resumeOrStartSession,
   saveJawaban,
   submitUjian,
   getUjianProgress,
@@ -59,6 +64,21 @@ import { recordViolation } from "@/api/cheatDetection";
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
+
+// Helper function for grade colors
+const getGradeColor = (grade) => {
+  const gradeColors = {
+    A: "green",
+    B: "blue",
+    C: "orange",
+    D: "red",
+    E: "red",
+    F: "red",
+    Lulus: "green",
+    "Tidak Lulus": "red",
+  };
+  return gradeColors[grade] || "default";
+};
 
 const UjianCATView = () => {
   const screens = useBreakpoint();
@@ -100,6 +120,9 @@ const UjianCATView = () => {
 
   // Hasil ujian setelah submit - TAMBAHAN BARU
   const [hasilUjian, setHasilUjian] = useState(null);
+  // Server timeout detection
+  const [serverTimeoutDetected, setServerTimeoutDetected] = useState(false);
+  const [isWaitingAutoSubmit, setIsWaitingAutoSubmit] = useState(false);
   // Tambah state untuk pelanggaran
   const [violationCount, setViolationCount] = useState(0);
   const [violationModalVisible, setViolationModalVisible] = useState(false);
@@ -111,6 +134,28 @@ const UjianCATView = () => {
   const timerRef = useRef(null);
   const autoSaveRef = useRef(null);
   const keepAliveRef = useRef(null);
+  const timeSyncRef = useRef(null);
+  // Auto fullscreen for students on page load - SILENT MODE
+  useEffect(() => {
+    const requestFullscreenSilent = async () => {
+      try {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+          await document.documentElement.webkitRequestFullscreen();
+        } else if (document.documentElement.msRequestFullscreen) {
+          await document.documentElement.msRequestFullscreen();
+        }
+      } catch (error) {
+        // Silent error - no notification to user
+        console.warn("Auto fullscreen denied:", error);
+      }
+    };
+
+    // Auto trigger fullscreen on page load
+    requestFullscreenSilent();
+  }, []);
+
   // Fetch user info PERTAMA
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -290,7 +335,7 @@ const UjianCATView = () => {
     }
   };
 
-  // Check existing session - PERBAIKI ERROR HANDLING
+  // Check existing session - UPDATED to work with resume-or-start flow
   const checkExistingSession = async (idUjian) => {
     try {
       console.log("Checking existing session for:", {
@@ -304,32 +349,21 @@ const UjianCATView = () => {
         activeResponse.data.statusCode === 200 &&
         activeResponse.data.content
       ) {
-        // Resume existing session
+        // Show resume confirmation instead of auto-resume
         const sessionData = activeResponse.data.content;
-        setSessionId(sessionData.sessionId);
-        setSessionStarted(true);
-        setSessionActive(true);
-        setIsStarted(true);
-        setJawaban(sessionData.answers || {});
-        setCurrentSoal(sessionData.currentSoalIndex || 0);
-        setAttemptNumber(sessionData.attemptNumber || 1);
 
-        // Get remaining time
-        try {
-          const timeResponse = await getTimeRemaining(idUjian, userInfo.id);
-          if (timeResponse.data.statusCode === 200) {
-            setTimeLeft(timeResponse.data.content.remainingSeconds);
-          }
-        } catch (timeError) {
-          console.log(
-            "Failed to get remaining time, using default:",
-            timeError
-          );
-        }
+        // Auto resume without modal confirmation - SEAMLESS MODE
+        console.log("Auto-resuming existing session:", sessionData);
 
-        message.info("Melanjutkan session ujian yang ada");
+        // Brief info message only - no modal blocking
+        message.info(
+          `Melanjutkan ujian sebelumnya. Waktu tersisa: ${Math.floor(
+            (sessionData.timeRemaining || 0) / 60
+          )} menit.`,
+          3
+        );
       } else {
-        console.log("No active session found");
+        console.log("No active session found, user can start fresh");
       }
     } catch (error) {
       console.error("Failed to check existing session:", error);
@@ -379,12 +413,12 @@ const UjianCATView = () => {
     }
     return shuffled;
   };
-  // Start ujian session
+  // Start ujian session - UPDATED to use resume-or-start
   const handleStartUjian = async () => {
     try {
       setLoading(true);
 
-      // Auto fullscreen when starting exam
+      // Auto fullscreen when starting exam - SILENT MODE
       try {
         if (document.documentElement.requestFullscreen) {
           await document.documentElement.requestFullscreen();
@@ -393,15 +427,14 @@ const UjianCATView = () => {
         } else if (document.documentElement.msRequestFullscreen) {
           await document.documentElement.msRequestFullscreen();
         }
-        message.success("Mode fullscreen diaktifkan untuk ujian");
+        // No success message - silent fullscreen activation
       } catch (fullscreenError) {
+        // Silent error handling - no message to user
         console.warn("Fullscreen not supported or denied:", fullscreenError);
-        message.warning(
-          "Tidak dapat mengaktifkan fullscreen. Pastikan untuk tidak berganti tab/window selama ujian."
-        );
       }
 
-      const startResponse = await startUjianSession({
+      // Use resume-or-start endpoint (RECOMMENDED by backend)
+      const startResponse = await resumeOrStartSession({
         idUjian: ujianData.idUjian,
         kodeUjian: ujianData.pengaturan?.kodeUjian,
         idPeserta: userInfo.id,
@@ -409,33 +442,60 @@ const UjianCATView = () => {
 
       if (startResponse.data.statusCode === 200) {
         const sessionData = startResponse.data.content;
+
+        // Handle resume vs new session
+        if (sessionData.isResumed) {
+          message.success("Melanjutkan ujian dari session sebelumnya");
+
+          // Load existing answers and progress
+          setJawaban(sessionData.answers || {});
+          setCurrentSoal(sessionData.currentSoalIndex || 0);
+          setTimeLeft(sessionData.timeRemaining || 0);
+          setAttemptNumber(sessionData.attemptNumber || 1);
+        } else {
+          message.success("Session ujian baru dimulai. Selamat mengerjakan!");
+        }
+
+        // Set session data
         setSessionId(sessionData.sessionId);
         setSessionStarted(true);
         setSessionActive(true);
         setIsStarted(true);
+
         // Hide sidebar on small screens immediately when exam starts
         if (screens.xs || screens.sm) {
           setShowSoalPanel(false);
         }
 
-        message.success("Ujian dimulai. Selamat mengerjakan!");
-
         // Start keep-alive mechanism
         startKeepAlive();
+
+        // Start server time synchronization
+        startTimeSync();
       }
     } catch (error) {
+      console.error("Start ujian error:", error);
       message.error("Gagal memulai ujian: " + error.message);
     } finally {
       setLoading(false);
     }
   };
-  // Timer countdown
+  // Timer countdown - Updated with server timeout support
   useEffect(() => {
-    if (isStarted && !isFinished && timeLeft > 0 && sessionActive) {
+    if (
+      isStarted &&
+      !isFinished &&
+      timeLeft > 0 &&
+      sessionActive &&
+      !serverTimeoutDetected
+    ) {
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           if (prev <= 1) {
-            handleAutoSubmit();
+            // Only client-side auto-submit if server timeout not detected
+            if (!serverTimeoutDetected) {
+              handleAutoSubmit();
+            }
             return 0;
           }
           return prev - 1;
@@ -451,7 +511,7 @@ const UjianCATView = () => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStarted, isFinished, timeLeft, sessionActive]);
+  }, [isStarted, isFinished, timeLeft, sessionActive, serverTimeoutDetected]);
   // Auto save mechanism
   useEffect(() => {
     if (isStarted && !isFinished && sessionActive) {
@@ -481,12 +541,84 @@ const UjianCATView = () => {
     }, 60000); // Ping every minute
   };
 
+  // Server time synchronization (RECOMMENDED by backend)
+  const startTimeSync = () => {
+    timeSyncRef.current = setInterval(async () => {
+      try {
+        if (sessionActive && ujianData && userInfo && !isFinished) {
+          const timeResponse = await getTimeRemaining(
+            ujianData.idUjian,
+            userInfo.id
+          );
+
+          if (timeResponse.data.statusCode === 200) {
+            const timeData = timeResponse.data.content;
+
+            // Check if server detected timeout
+            if (timeData.hasTimedOut || timeData.remainingSeconds <= 0) {
+              console.log("Server detected timeout, preparing for auto-submit");
+              handleServerTimeout();
+            } else {
+              // Sync client time with server time
+              setTimeLeft(timeData.remainingSeconds);
+
+              // Show warning if less than 5 minutes
+              if (
+                timeData.remainingSeconds < 300 &&
+                timeData.remainingSeconds > 0
+              ) {
+                const minutes = Math.ceil(timeData.remainingSeconds / 60);
+                message.warning(`⚠️ Waktu tersisa ${minutes} menit!`, 3);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Time sync failed:", error);
+      }
+    }, 30000); // Sync every 30 seconds as recommended
+  };
+
+  // Handle server-side timeout detection
+  const handleServerTimeout = () => {
+    if (isWaitingAutoSubmit || isFinished) return;
+
+    setServerTimeoutDetected(true);
+    setIsWaitingAutoSubmit(true);
+    setSessionActive(false);
+
+    // Disable all form inputs
+    const formElements = document.querySelectorAll(
+      "input, button, textarea, select"
+    );
+    formElements.forEach((element) => {
+      element.disabled = true;
+    });
+
+    message.warning({
+      content:
+        "⏰ Waktu ujian telah berakhir. Jawaban Anda sedang diproses secara otomatis...",
+      duration: 0, // Don't auto-close
+      key: "auto-submit-warning",
+    });
+
+    // Poll for hasil ujian (since server handles auto-submit)
+    setTimeout(() => {
+      // Redirect to results or check submission status
+      setIsFinished(true);
+      setIsStarted(false);
+      message.destroy("auto-submit-warning");
+      message.success("Ujian telah selesai dan jawaban otomatis dikumpulkan!");
+    }, 5000);
+  };
+
   // Clean up intervals
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (autoSaveRef.current) clearInterval(autoSaveRef.current);
       if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+      if (timeSyncRef.current) clearInterval(timeSyncRef.current);
     };
   }, []);
   // Auto save function
@@ -895,27 +1027,40 @@ const UjianCATView = () => {
     }
   };
 
-  // Fetch analysis after ujian selesai
+  // Fetch analysis after ujian selesai - HANYA UNTUK OPERATOR & TEACHER
   useEffect(() => {
-    if (isFinished && ujianData) {
-      const fetchAnalysis = async () => {
-        setAnalysisLoading(true);
-        try {
-          const res = await getAnalysisByUjian(ujianData.idUjian);
-          if (res.data && res.data.content && res.data.content.length > 0) {
-            setUjianAnalysis(res.data.content[0]);
-          } else {
+    if (isFinished && ujianData && userInfo) {
+      // Check if user is OPERATOR or TEACHER
+      const canViewAnalysis =
+        userInfo.authorities &&
+        userInfo.authorities.some((auth) =>
+          ["ROLE_OPERATOR", "ROLE_TEACHER"].includes(auth.authority)
+        );
+
+      if (canViewAnalysis) {
+        const fetchAnalysis = async () => {
+          setAnalysisLoading(true);
+          try {
+            const res = await getAnalysisByUjian(ujianData.idUjian);
+            if (res.data && res.data.content && res.data.content.length > 0) {
+              setUjianAnalysis(res.data.content[0]);
+            } else {
+              setUjianAnalysis(null);
+            }
+          } catch (err) {
             setUjianAnalysis(null);
+          } finally {
+            setAnalysisLoading(false);
           }
-        } catch (err) {
-          setUjianAnalysis(null);
-        } finally {
-          setAnalysisLoading(false);
-        }
-      };
-      fetchAnalysis();
+        };
+        fetchAnalysis();
+      } else {
+        // Siswa tidak bisa melihat analisis
+        setUjianAnalysis(null);
+        setAnalysisLoading(false);
+      }
     }
-  }, [isFinished, ujianData]);
+  }, [isFinished, ujianData, userInfo]);
   // === ANTI-CHEAT EVENT LISTENER ===
   useEffect(() => {
     if (!(isStarted && sessionActive && ujianData && userInfo && sessionId))
@@ -1007,7 +1152,7 @@ const UjianCATView = () => {
         !document.mozFullScreenElement
       ) {
         handleViolation("FULLSCREEN_EXIT");
-        // Try to re-enter fullscreen after a short delay
+        // Immediately re-enter fullscreen - NO DELAY
         setTimeout(() => {
           try {
             if (document.documentElement.requestFullscreen) {
@@ -1020,7 +1165,7 @@ const UjianCATView = () => {
           } catch (error) {
             console.warn("Cannot re-enter fullscreen:", error);
           }
-        }, 1000); // Delay to allow user to see violation message
+        }, 100); // Minimal delay for immediate re-entry
       }
     };
     // Keyboard shortcut (Ctrl+C, Ctrl+V, Alt+Tab, F12, dsb)
@@ -1310,67 +1455,344 @@ const UjianCATView = () => {
             </div>
           )}
           <Divider />
-          {/* Analisis Ujian */}
-          {analysisLoading ? (
-            <div style={{ textAlign: "center" }}>
-              <Spin tip="Memuat analisis ujian..." size="large" />
-            </div>
-          ) : ujianAnalysis ? (
-            <div>
-              <Title level={4}>Analisis Ujian Kelas</Title>
-              <Row gutter={[16, 16]}>
-                <Col xs={24} sm={8}>
-                  <Card size="small">
-                    <Statistic
-                      title="Rata-rata Kelas"
-                      value={ujianAnalysis.averageScore}
-                      precision={2}
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={8}>
-                  <Card size="small">
-                    <Statistic
-                      title="Tingkat Kelulusan"
-                      value={ujianAnalysis.passRate}
-                      precision={1}
-                      suffix="%"
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={8}>
-                  <Card size="small">
-                    <Statistic
-                      title="Skor Integritas"
-                      value={ujianAnalysis.integrityScore}
-                      precision={2}
-                    />
-                  </Card>
-                </Col>
-              </Row>
+          {/* Analisis Ujian - HANYA UNTUK OPERATOR & TEACHER */}
+          {userInfo &&
+          userInfo.authorities &&
+          userInfo.authorities.some((auth) =>
+            ["ROLE_OPERATOR", "ROLE_TEACHER"].includes(auth.authority)
+          ) ? (
+            <>
+              {analysisLoading ? (
+                <div style={{ textAlign: "center" }}>
+                  <Spin tip="Memuat analisis ujian..." size="large" />
+                </div>
+              ) : ujianAnalysis ? (
+                <div>
+                  <Title level={4}>📊 Analisis Ujian Kelas</Title>
 
-              {ujianAnalysis.recommendations &&
-                ujianAnalysis.recommendations.length > 0 && (
-                  <div style={{ marginTop: "16px" }}>
-                    <Title level={5}>Rekomendasi Belajar</Title>
-                    <List
-                      size="small"
-                      dataSource={ujianAnalysis.recommendations}
-                      renderItem={(item, index) => (
-                        <List.Item>
-                          <Text>
-                            <BookOutlined style={{ color: "#1890ff" }} /> {item}
-                          </Text>
-                        </List.Item>
+                  {/* Enhanced Statistics Cards */}
+                  <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
+                    <Col xs={24} sm={6}>
+                      <Card size="small" style={{ backgroundColor: "#f6ffed" }}>
+                        <Statistic
+                          title="Rata-rata Kelas"
+                          value={ujianAnalysis.averageScore}
+                          precision={2}
+                          prefix={<TrophyOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={6}>
+                      <Card size="small" style={{ backgroundColor: "#f0f5ff" }}>
+                        <Statistic
+                          title="Tingkat Kelulusan"
+                          value={ujianAnalysis.passRate}
+                          precision={1}
+                          suffix="%"
+                          prefix={<CheckCircleOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={6}>
+                      <Card size="small" style={{ backgroundColor: "#fff2f0" }}>
+                        <Statistic
+                          title="Skor Integritas"
+                          value={
+                            ujianAnalysis.integrityScore
+                              ? (ujianAnalysis.integrityScore * 100).toFixed(1)
+                              : 0
+                          }
+                          precision={1}
+                          suffix="%"
+                          prefix={<SafetyOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={6}>
+                      <Card size="small" style={{ backgroundColor: "#f9f0ff" }}>
+                        <Statistic
+                          title="Total Peserta"
+                          value={ujianAnalysis.totalParticipants || 0}
+                          prefix={<UserOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
+
+                  {/* Enhanced Detailed Statistics */}
+                  {(ujianAnalysis.medianScore ||
+                    ujianAnalysis.standardDeviation ||
+                    ujianAnalysis.gradeDistribution) && (
+                    <Card size="small" style={{ marginBottom: "16px" }}>
+                      <Title level={5}>📈 Statistik Detail</Title>
+                      <Row gutter={[16, 8]}>
+                        {ujianAnalysis.medianScore && (
+                          <Col xs={24} sm={8}>
+                            <Text>
+                              <strong>Median:</strong>{" "}
+                              {ujianAnalysis.medianScore.toFixed(1)}
+                            </Text>
+                          </Col>
+                        )}
+                        {ujianAnalysis.standardDeviation && (
+                          <Col xs={24} sm={8}>
+                            <Text>
+                              <strong>Std. Deviasi:</strong>{" "}
+                              {ujianAnalysis.standardDeviation.toFixed(1)}
+                            </Text>
+                          </Col>
+                        )}
+                        {ujianAnalysis.highestScore &&
+                          ujianAnalysis.lowestScore && (
+                            <Col xs={24} sm={8}>
+                              <Text>
+                                <strong>Range:</strong>{" "}
+                                {ujianAnalysis.lowestScore.toFixed(1)} -{" "}
+                                {ujianAnalysis.highestScore.toFixed(1)}
+                              </Text>
+                            </Col>
+                          )}
+                      </Row>
+
+                      {/* Grade Distribution */}
+                      {ujianAnalysis.gradeDistribution && (
+                        <div style={{ marginTop: "12px" }}>
+                          <Text strong>Distribusi Nilai:</Text>
+                          <div style={{ marginTop: "8px" }}>
+                            {Object.entries(
+                              ujianAnalysis.gradeDistribution
+                            ).map(([grade, count]) => (
+                              <Tag
+                                key={grade}
+                                color={getGradeColor(grade)}
+                                style={{ margin: "2px" }}
+                              >
+                                {grade}: {count} siswa (
+                                {ujianAnalysis.gradePercentages?.[
+                                  grade
+                                ]?.toFixed(1) || 0}
+                                %)
+                              </Tag>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                    />
-                  </div>
-                )}
-            </div>
+                    </Card>
+                  )}
+
+                  {/* Item Analysis Preview */}
+                  {ujianAnalysis.easiestQuestions &&
+                    ujianAnalysis.easiestQuestions.length > 0 && (
+                      <Card size="small" style={{ marginBottom: "16px" }}>
+                        <Title level={5}>📝 Analisis Soal</Title>
+                        <Row gutter={[16, 8]}>
+                          <Col xs={24} sm={12}>
+                            <Text>
+                              <strong>Soal Termudah:</strong>
+                            </Text>
+                            <div style={{ marginTop: "4px" }}>
+                              {ujianAnalysis.easiestQuestions
+                                .slice(0, 3)
+                                .map((questionId, index) => (
+                                  <Tag
+                                    key={questionId}
+                                    color="green"
+                                    style={{ margin: "2px", fontSize: "10px" }}
+                                  >
+                                    #{index + 1}
+                                  </Tag>
+                                ))}
+                            </div>
+                          </Col>
+                          {ujianAnalysis.hardestQuestions &&
+                            ujianAnalysis.hardestQuestions.length > 0 && (
+                              <Col xs={24} sm={12}>
+                                <Text>
+                                  <strong>Soal Tersulit:</strong>
+                                </Text>
+                                <div style={{ marginTop: "4px" }}>
+                                  {ujianAnalysis.hardestQuestions
+                                    .slice(0, 3)
+                                    .map((questionId, index) => (
+                                      <Tag
+                                        key={questionId}
+                                        color="red"
+                                        style={{
+                                          margin: "2px",
+                                          fontSize: "10px",
+                                        }}
+                                      >
+                                        #{index + 1}
+                                      </Tag>
+                                    ))}
+                                </div>
+                              </Col>
+                            )}
+                        </Row>
+                      </Card>
+                    )}
+
+                  {/* Security Analysis */}
+                  {(ujianAnalysis.suspiciousSubmissions > 0 ||
+                    ujianAnalysis.flaggedParticipants > 0) && (
+                    <Card
+                      size="small"
+                      style={{ marginBottom: "16px", borderColor: "#ff7875" }}
+                    >
+                      <Title level={5} style={{ color: "#ff7875" }}>
+                        🔒 Analisis Keamanan
+                      </Title>
+                      <Row gutter={[16, 8]}>
+                        <Col xs={24} sm={8}>
+                          <Text>
+                            <strong>Pelanggaran:</strong>{" "}
+                            {ujianAnalysis.suspiciousSubmissions || 0}
+                          </Text>
+                        </Col>
+                        <Col xs={24} sm={8}>
+                          <Text>
+                            <strong>Peserta Ter-flag:</strong>{" "}
+                            {ujianAnalysis.flaggedParticipants || 0}
+                          </Text>
+                        </Col>
+                        <Col xs={24} sm={8}>
+                          <Text>
+                            <strong>Status:</strong>
+                            <Tag
+                              color={
+                                ujianAnalysis.integrityScore > 0.8
+                                  ? "green"
+                                  : ujianAnalysis.integrityScore > 0.6
+                                  ? "orange"
+                                  : "red"
+                              }
+                            >
+                              {ujianAnalysis.integrityScore > 0.8
+                                ? "Aman"
+                                : ujianAnalysis.integrityScore > 0.6
+                                ? "Perlu Perhatian"
+                                : "Berisiko Tinggi"}
+                            </Tag>
+                          </Text>
+                        </Col>
+                      </Row>
+                    </Card>
+                  )}
+
+                  {/* Enhanced Recommendations */}
+                  {ujianAnalysis.recommendations &&
+                    ujianAnalysis.recommendations.length > 0 && (
+                      <Card size="small" style={{ marginBottom: "16px" }}>
+                        <Title level={5}>💡 Rekomendasi & Saran</Title>
+                        <List
+                          size="small"
+                          dataSource={ujianAnalysis.recommendations}
+                          renderItem={(item, index) => (
+                            <List.Item style={{ padding: "4px 0" }}>
+                              <Text>
+                                <BookOutlined
+                                  style={{
+                                    color: "#1890ff",
+                                    marginRight: "8px",
+                                  }}
+                                />
+                                {item}
+                              </Text>
+                            </List.Item>
+                          )}
+                        />
+
+                        {/* Improvement Suggestions */}
+                        {ujianAnalysis.improvementSuggestions &&
+                          ujianAnalysis.improvementSuggestions.length > 0 && (
+                            <div style={{ marginTop: "12px" }}>
+                              <Text strong>Saran Perbaikan:</Text>
+                              <List
+                                size="small"
+                                dataSource={
+                                  ujianAnalysis.improvementSuggestions
+                                }
+                                renderItem={(item, index) => (
+                                  <List.Item style={{ padding: "2px 0" }}>
+                                    <Text type="secondary">
+                                      <BulbOutlined
+                                        style={{
+                                          color: "#faad14",
+                                          marginRight: "8px",
+                                        }}
+                                      />
+                                      {item}
+                                    </Text>
+                                  </List.Item>
+                                )}
+                              />
+                            </div>
+                          )}
+                      </Card>
+                    )}
+
+                  {/* Performance by Class */}
+                  {ujianAnalysis.performanceByKelas &&
+                    Object.keys(ujianAnalysis.performanceByKelas).length >
+                      0 && (
+                      <Card size="small">
+                        <Title level={5}>🏫 Performa per Kelas</Title>
+                        {Object.entries(ujianAnalysis.performanceByKelas).map(
+                          ([kelas, data]) => (
+                            <div key={kelas} style={{ marginBottom: "8px" }}>
+                              <Text strong>Kelas {kelas}:</Text>
+                              <Row gutter={[8, 4]} style={{ marginTop: "4px" }}>
+                                <Col xs={24} sm={6}>
+                                  <Text>
+                                    <small>
+                                      Rata-rata:{" "}
+                                      {data.averageScore?.toFixed(1) || 0}
+                                    </small>
+                                  </Text>
+                                </Col>
+                                <Col xs={24} sm={6}>
+                                  <Text>
+                                    <small>
+                                      Kelulusan:{" "}
+                                      {data.passRate?.toFixed(1) || 0}%
+                                    </small>
+                                  </Text>
+                                </Col>
+                                <Col xs={24} sm={6}>
+                                  <Text>
+                                    <small>
+                                      Peserta: {data.participantCount || 0}
+                                    </small>
+                                  </Text>
+                                </Col>
+                                <Col xs={24} sm={6}>
+                                  <Text>
+                                    <small>
+                                      Tertinggi:{" "}
+                                      {data.highestScore?.toFixed(1) || 0}
+                                    </small>
+                                  </Text>
+                                </Col>
+                              </Row>
+                            </div>
+                          )
+                        )}
+                      </Card>
+                    )}
+                </div>
+              ) : (
+                <Alert
+                  message="Analisis Kelas"
+                  description="Analisis ujian sedang diproses dan akan tersedia segera."
+                  type="info"
+                  showIcon
+                />
+              )}
+            </>
           ) : (
             <Alert
-              message="Analisis Kelas"
-              description="Analisis ujian sedang diproses dan akan tersedia segera."
+              message="Fitur Analisis"
+              description="Analisis ujian hanya tersedia untuk Operator dan Guru."
               type="info"
               showIcon
             />

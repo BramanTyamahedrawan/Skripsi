@@ -495,11 +495,11 @@ export default [
     component: UjianHistory,
     roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
   },
-  // {
-  //   path: "/ujian-analysis",
-  //   component: PesertaAnalysis,
-  //   roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
-  // },
+  {
+    path: "/ujian-analysis",
+    component: UjianAnalysis,
+    roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
+  },
   {
     path: "/ujian-analysis/detail/:idUjian",
     component: UjianAnalysisDetail,
