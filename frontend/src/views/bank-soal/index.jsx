@@ -477,58 +477,125 @@ const BankSoal = () => {
             // Handle berbagai jenis soal berdasarkan questionType
             switch (questionType) {
               case "PG": {
-                bankSoalData.opsi = {
+                // Build opsi object, remove empty options
+                const opsiRaw = {
                   A: cleanText(row[idx("opsiA")] || ""),
                   B: cleanText(row[idx("opsiB")] || ""),
                   C: cleanText(row[idx("opsiC")] || ""),
                   D: cleanText(row[idx("opsiD")] || ""),
                   E: cleanText(row[idx("opsiE")] || ""),
                 };
-                bankSoalData.jawabanBenar = [
-                  clean(row[idx("jawabanBenar")]) || "A",
-                ];
+
+                // Remove empty options for cleaner data
+                bankSoalData.opsi = {};
+                Object.keys(opsiRaw).forEach((key) => {
+                  if (opsiRaw[key] && opsiRaw[key].trim()) {
+                    bankSoalData.opsi[key] = opsiRaw[key];
+                  }
+                });
+
+                // Validate jawaban benar
+                const jawabanBenar = clean(row[idx("jawabanBenar")]) || "A";
+                if (!bankSoalData.opsi[jawabanBenar]) {
+                  throw new Error(
+                    `Jawaban benar "${jawabanBenar}" tidak ada di dalam pilihan opsi yang tersedia`
+                  );
+                }
+
+                bankSoalData.jawabanBenar = [jawabanBenar];
+
+                console.log("PG parsing result:", {
+                  opsi: bankSoalData.opsi,
+                  jawabanBenar: bankSoalData.jawabanBenar,
+                });
                 break;
               }
 
               case "MULTI": {
-                bankSoalData.opsi = {
+                // Build opsi object, remove empty options
+                const opsiRaw = {
                   A: cleanText(row[idx("opsiA")] || ""),
                   B: cleanText(row[idx("opsiB")] || ""),
                   C: cleanText(row[idx("opsiC")] || ""),
                   D: cleanText(row[idx("opsiD")] || ""),
                   E: cleanText(row[idx("opsiE")] || ""),
                 };
-                // Multiple answers separated by comma
+
+                // Remove empty options for cleaner data
+                bankSoalData.opsi = {};
+                Object.keys(opsiRaw).forEach((key) => {
+                  if (opsiRaw[key] && opsiRaw[key].trim()) {
+                    bankSoalData.opsi[key] = opsiRaw[key];
+                  }
+                });
+
+                // Parse multiple answers separated by comma
                 const multiAnswers = cleanText(row[idx("jawabanBenar")] || "A")
                   .split(",")
-                  .map((ans) => ans.trim());
+                  .map((ans) => ans.trim())
+                  .filter((ans) => ans.length > 0);
+
+                // Validate all answers exist in options
+                multiAnswers.forEach((jawaban) => {
+                  if (!bankSoalData.opsi[jawaban]) {
+                    throw new Error(
+                      `Jawaban benar "${jawaban}" tidak ada di dalam pilihan opsi yang tersedia`
+                    );
+                  }
+                });
+
                 bankSoalData.jawabanBenar = multiAnswers;
+
+                console.log("MULTI parsing result:", {
+                  opsi: bankSoalData.opsi,
+                  jawabanBenar: bankSoalData.jawabanBenar,
+                });
                 break;
               }
 
               case "COCOK": {
                 bankSoalData.pasangan = {};
-                // Parse matching pairs from columns
+
+                // Parse kiri dan kanan items - struktur: 1_kiri, 2_kiri, 3_kiri, 4_kanan, 5_kanan, 6_kanan
                 let kiriIndex = 1;
-                let kananIndex = 4; // Dimulai dari 4 berdasarkan contoh manual
-                for (let i = 1; i <= 5; i++) {
+                let kananStartIndex = 4; // Mulai dari 4 untuk kanan sesuai format backend
+
+                // Process kiri items (1_kiri, 2_kiri, 3_kiri)
+                for (let i = 1; i <= 3; i++) {
                   const kiri = cleanText(row[idx(`kiri${i}`)] || "");
-                  const kanan = cleanText(row[idx(`kanan${i}`)] || "");
                   if (kiri) {
                     bankSoalData.pasangan[`${kiriIndex}_kiri`] = kiri;
                     kiriIndex++;
                   }
+                }
+
+                // Process kanan items (4_kanan, 5_kanan, 6_kanan)
+                let kananIndex = kananStartIndex;
+                for (let i = 1; i <= 3; i++) {
+                  const kanan = cleanText(row[idx(`kanan${i}`)] || "");
                   if (kanan) {
                     bankSoalData.pasangan[`${kananIndex}_kanan`] = kanan;
                     kananIndex++;
                   }
                 }
-                // Jawaban benar untuk mencocokkan (array of pairs)
-                const cocokAnswers = cleanText(row[idx("jawabanBenar")] || "")
+
+                // Parse jawaban benar format: "H2O=Air,CO2=Karbon Dioksida,NaCl=Garam"
+                // Convert to backend format: ["H2O=Air", "CO2=Karbon Dioksida", "NaCl=Garam"]
+                const jawabanBenarText = cleanText(
+                  row[idx("jawabanBenar")] || ""
+                );
+                const cocokAnswers = jawabanBenarText
                   .split(",")
-                  .map((ans) => ans.trim())
-                  .filter((ans) => ans.length > 0);
+                  .map((pair) => pair.trim())
+                  .filter((pair) => pair.includes("=") && pair.length > 0);
+
                 bankSoalData.jawabanBenar = cocokAnswers;
+
+                console.log("COCOK parsing result:", {
+                  pasangan: bankSoalData.pasangan,
+                  jawabanBenar: bankSoalData.jawabanBenar,
+                  rawJawaban: jawabanBenarText,
+                });
                 break;
               }
 
@@ -1462,7 +1529,7 @@ const BankSoal = () => {
           <label
             style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}
           >
-            Upload File CSV/Excel:
+            Upload File CSV:
           </label>
           <Upload
             beforeUpload={(file) => {
@@ -1523,7 +1590,7 @@ const BankSoal = () => {
           (contoh: 20 soal &quot;UTS IPA&quot;)
           <br />
           <br />
-          <strong>Format CSV/Excel yang diperlukan:</strong>
+          <strong>Format CSV yang diperlukan:</strong>
           <br />
           <strong>Kolom Wajib:</strong> namaUjian, pertanyaan, bobot,
           jawabanBenar, tahunAjaran, namaSemester, namaKelas, namaMapel,
@@ -1545,20 +1612,28 @@ const BankSoal = () => {
           &quot;bahasaindonesia&quot; = &quot;Bahasa-Indonesia&quot;
           <br />
           <br />
-          <strong>Contoh isi data:</strong>
-          <br />• <strong>namaUjian:</strong> &quot;UTS Matematika&quot; (bisa
-          diulang untuk multiple soal)
+          <strong>📝 Contoh soal realistis dalam template:</strong>
+          <br />• <strong>PG:</strong> &quot;Hasil dari 15 + 27 adalah...&quot;
+          dengan opsi A: 40, B: 41, C: 42, D: 43
+          <br />• <strong>MULTI:</strong> &quot;Manakah yang termasuk planet
+          dalam tata surya?&quot; (jawaban: A,B,D)
+          <br />• <strong>COCOK:</strong> &quot;Cocokkan rumus kimia dengan nama
+          senyawa&quot; (H2O=Air, CO2=Karbon dioksida)
+          <br />• <strong>ISIAN:</strong> &quot;Ibu kota negara Indonesia
+          adalah...&quot; (jawaban: Jakarta)
+          <br />
+          <br />
+          <strong>📋 Format data umum:</strong>
+          <br />• <strong>namaUjian:</strong> &quot;UTS Matematika&quot;,
+          &quot;UTS IPA&quot;, &quot;UTS Kimia&quot;
+          <br />• <strong>pertanyaan:</strong> Gunakan kalimat lengkap dan jelas
+          seperti contoh di template
           <br />• <strong>tahunAjaran:</strong> &quot;2025/2026&quot;
           <br />• <strong>namaSemester:</strong> &quot;Ganjil&quot; atau
           &quot;Genap&quot;
-          <br />• <strong>namaKelas:</strong> &quot;X&quot;, &quot;XI&quot;,
-          atau &quot;XII&quot;
-          <br />• <strong>namaMapel:</strong> &quot;Bahasa Indonesia&quot;,
-          &quot;Matematika&quot;, dll.
-          <br />• <strong>namaKonsentrasiSekolah:</strong> &quot;Desain
-          Komunikasi Visual&quot;, dll.
-          <br />• <strong>idSchool:</strong> &quot;RWK001&quot; (nilai
-          tetap/paten)
+          <br />• <strong>namaMapel:</strong> &quot;Matematika&quot;,
+          &quot;IPA&quot;, &quot;Kimia&quot;, &quot;Geografi&quot;
+          <br />• <strong>idSchool:</strong> &quot;RWK001&quot; (nilai tetap)
           <br />
           <br />
           <strong>Download Template:</strong>
@@ -1592,6 +1667,9 @@ const BankSoal = () => {
             >
               📄 Template ISIAN (CSV)
             </a>
+
+            <br />
+            <br />
           </div>
         </div>
       </Modal>

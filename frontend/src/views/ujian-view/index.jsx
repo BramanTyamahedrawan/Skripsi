@@ -84,6 +84,23 @@ const UjianCATView = () => {
   const screens = useBreakpoint();
   const navigate = useNavigate();
   const { kodeUjian } = useParams();
+
+  // Add CSS animation for pulse effect
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   // State management
   const [ujianData, setUjianData] = useState(null);
   const [soalList, setSoalList] = useState([]);
@@ -118,6 +135,9 @@ const UjianCATView = () => {
   const [ujianAnalysis, setUjianAnalysis] = useState(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
 
+  // State untuk soal matching/cocok
+  const [selectedLeftItem, setSelectedLeftItem] = useState(null);
+
   // Hasil ujian setelah submit - TAMBAHAN BARU
   const [hasilUjian, setHasilUjian] = useState(null);
   // Server timeout detection
@@ -135,26 +155,126 @@ const UjianCATView = () => {
   const autoSaveRef = useRef(null);
   const keepAliveRef = useRef(null);
   const timeSyncRef = useRef(null);
-  // Auto fullscreen for students on page load - SILENT MODE
+
+  // Enhanced Auto Fullscreen - Cannot be disabled during exam
   useEffect(() => {
     const requestFullscreenSilent = async () => {
       try {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen();
-        } else if (document.documentElement.webkitRequestFullscreen) {
-          await document.documentElement.webkitRequestFullscreen();
-        } else if (document.documentElement.msRequestFullscreen) {
-          await document.documentElement.msRequestFullscreen();
+        if (!document.fullscreenElement) {
+          if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+          } else if (document.documentElement.mozRequestFullScreen) {
+            await document.documentElement.mozRequestFullScreen();
+          } else if (document.documentElement.webkitRequestFullscreen) {
+            await document.documentElement.webkitRequestFullscreen();
+          } else if (document.documentElement.msRequestFullscreen) {
+            await document.documentElement.msRequestFullscreen();
+          }
         }
       } catch (error) {
-        // Silent error - no notification to user
         console.warn("Auto fullscreen denied:", error);
       }
     };
 
     // Auto trigger fullscreen on page load
     requestFullscreenSilent();
-  }, []);
+
+    // Enhanced fullscreen exit handler - auto re-enter during exam
+    const handleFullscreenChange = () => {
+      // Re-enter fullscreen if user exits during active exam session
+      if (
+        !document.fullscreenElement &&
+        !document.webkitFullscreenElement &&
+        !document.msFullscreenElement &&
+        !document.mozFullScreenElement &&
+        isStarted &&
+        sessionActive &&
+        !isFinished
+      ) {
+        // Show warning message
+        message.warning({
+          content: "⚠️ Mode fullscreen wajib selama ujian berlangsung!",
+          duration: 2,
+        });
+
+        // Auto re-enter fullscreen after short delay
+        setTimeout(() => {
+          requestFullscreenSilent();
+        }, 500);
+      }
+    };
+
+    // Listen for all fullscreen change events
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
+    // Prevent ESC key during exam
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isStarted && sessionActive && !isFinished) {
+        e.preventDefault();
+        e.stopPropagation();
+        message.warning("⚠️ Tidak dapat keluar dari fullscreen selama ujian!");
+        return false;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    // Prevent browser navigation during exam
+    const handleBeforeUnload = (e) => {
+      if (isStarted && sessionActive && !isFinished) {
+        e.preventDefault();
+        e.returnValue =
+          "Ujian sedang berlangsung. Yakin ingin meninggalkan halaman?";
+        return "Ujian sedang berlangsung. Yakin ingin meninggalkan halaman?";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        handleFullscreenChange
+      );
+      document.removeEventListener(
+        "mozfullscreenchange",
+        handleFullscreenChange
+      );
+      document.removeEventListener(
+        "MSFullscreenChange",
+        handleFullscreenChange
+      );
+      document.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isStarted, sessionActive, isFinished]);
+
+  // Set body style untuk mode ujian fullscreen
+  useEffect(() => {
+    // Set CSS untuk body saat ujian aktif
+    if (isStarted && sessionActive && !isFinished) {
+      // Simpan style original
+      const originalOverflow = document.body.style.overflow;
+      const originalMargin = document.body.style.margin;
+      const originalPadding = document.body.style.padding;
+
+      // Set style untuk ujian
+      document.body.style.overflow = "hidden";
+      document.body.style.margin = "0";
+      document.body.style.padding = "0";
+
+      // Cleanup saat component unmount atau ujian selesai
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.margin = originalMargin;
+        document.body.style.padding = originalPadding;
+      };
+    }
+  }, [isStarted, sessionActive, isFinished]);
 
   // Fetch user info PERTAMA
   useEffect(() => {
@@ -418,19 +538,26 @@ const UjianCATView = () => {
     try {
       setLoading(true);
 
-      // Auto fullscreen when starting exam - SILENT MODE
+      // Enhanced fullscreen when starting exam - MANDATORY MODE
       try {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen();
-        } else if (document.documentElement.webkitRequestFullscreen) {
-          await document.documentElement.webkitRequestFullscreen();
-        } else if (document.documentElement.msRequestFullscreen) {
-          await document.documentElement.msRequestFullscreen();
+        if (!document.fullscreenElement) {
+          if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+          } else if (document.documentElement.mozRequestFullScreen) {
+            await document.documentElement.mozRequestFullScreen();
+          } else if (document.documentElement.webkitRequestFullscreen) {
+            await document.documentElement.webkitRequestFullscreen();
+          } else if (document.documentElement.msRequestFullscreen) {
+            await document.documentElement.msRequestFullscreen();
+          }
         }
-        // No success message - silent fullscreen activation
+        // Show success message for fullscreen activation
+        message.success("Mode fullscreen diaktifkan untuk ujian", 2);
       } catch (fullscreenError) {
-        // Silent error handling - no message to user
         console.warn("Fullscreen not supported or denied:", fullscreenError);
+        message.warning(
+          "Peringatan: Gunakan fullscreen untuk pengalaman ujian terbaik"
+        );
       }
 
       // Use resume-or-start endpoint (RECOMMENDED by backend)
@@ -719,6 +846,7 @@ const UjianCATView = () => {
   // Navigasi soal
   const goToSoal = async (index) => {
     setCurrentSoal(index);
+    setSelectedLeftItem(null); // Reset selected item when changing questions
 
     // Update current soal index on server
     try {
@@ -890,75 +1018,372 @@ const UjianCATView = () => {
           </Checkbox.Group>
         );
 
-      case "COCOK":
+      case "COCOK": {
+        // Initialize matching state if not exists
+        const currentMatching = jawaban[soal.idBankSoal] || {};
+
+        // Parse left and right items from soal.pasangan
+        const leftItems = Object.entries(soal.pasangan || {})
+          .filter(([key]) => key.includes("_kiri"))
+          .map(([key, value]) => ({
+            id: key.replace("_kiri", ""),
+            label: key.replace("_kiri", "").toUpperCase(),
+            text: value,
+          }));
+
+        const rightItems = Object.entries(soal.pasangan || {})
+          .filter(([key]) => key.includes("_kanan"))
+          .map(([key, value]) => ({
+            id: key.replace("_kanan", ""),
+            label: key.replace("_kanan", "").toUpperCase(),
+            text: value,
+          }));
+
         return (
           <div>
             <Alert
-              message="Instruksi"
-              description="Cocokkan item di sebelah kiri dengan item di sebelah kanan yang sesuai."
+              message="Instruksi Menjodohkan"
+              description="1️⃣ Klik item di sebelah kiri (akan berwarna biru) → 2️⃣ Klik item di sebelah kanan untuk menjodohkan. Klik item berpasangan untuk membatalkan."
               type="info"
               style={{ marginBottom: "16px" }}
             />
-            <Row gutter={16}>
-              <Col span={12}>
-                <Text strong>Sisi Kiri:</Text>
-                {Object.entries(soal.pasangan || {})
-                  .filter(([key]) => key.includes("_kiri"))
-                  .map(([key, value]) => (
-                    <div
-                      key={key}
-                      style={{
-                        margin: "8px 0",
-                        padding: "8px",
-                        border: "1px solid #d9d9d9",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {value}
-                    </div>
-                  ))}
+
+            <Row gutter={24}>
+              <Col span={11}>
+                <div
+                  style={{
+                    backgroundColor: "#f8f9fa",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "2px solid #e9ecef",
+                  }}
+                >
+                  <Text
+                    strong
+                    style={{
+                      fontSize: "16px",
+                      marginBottom: "12px",
+                      display: "block",
+                    }}
+                  >
+                    📋 Sisi Kiri
+                  </Text>
+                  <Space direction="vertical" style={{ width: "100%" }}>
+                    {leftItems.map((item) => {
+                      const isMatched = Object.keys(currentMatching).includes(
+                        item.id
+                      );
+                      const isSelected = selectedLeftItem === item.id;
+                      const rightMatch = currentMatching[item.id];
+                      const rightMatchLabel = rightItems.find(
+                        (r) => r.id === rightMatch
+                      )?.label;
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            if (isMatched) {
+                              // Remove matching if already matched
+                              const newMatching = { ...currentMatching };
+                              delete newMatching[item.id];
+                              handleJawaban(soal.idBankSoal, newMatching);
+                              setSelectedLeftItem(null);
+                            } else {
+                              // Select this left item
+                              setSelectedLeftItem(item.id);
+                            }
+                          }}
+                          style={{
+                            padding: "12px 16px",
+                            border: isSelected
+                              ? "2px solid #1890ff"
+                              : isMatched
+                              ? "2px solid #52c41a"
+                              : "2px solid #d9d9d9",
+                            borderRadius: "8px",
+                            backgroundColor: isSelected
+                              ? "#e6f7ff"
+                              : isMatched
+                              ? "#f6ffed"
+                              : "#ffffff",
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
+                            position: "relative",
+                            boxShadow: isSelected
+                              ? "0 0 8px rgba(24, 144, 255, 0.3)"
+                              : "none",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{
+                              color: isSelected
+                                ? "#1890ff"
+                                : isMatched
+                                ? "#52c41a"
+                                : "#666",
+                            }}
+                          >
+                            {item.label}.
+                          </Text>{" "}
+                          {item.text}
+                          {isSelected && (
+                            <span
+                              style={{
+                                position: "absolute",
+                                right: "8px",
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                color: "#1890ff",
+                                fontSize: "14px",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              👆
+                            </span>
+                          )}
+                          {isMatched && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                right: "8px",
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                color: "#52c41a",
+                                fontSize: "12px",
+                              }}
+                            >
+                              → {rightMatchLabel}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </Space>
+                </div>
               </Col>
-              <Col span={12}>
-                <Text strong>Sisi Kanan:</Text>
-                {Object.entries(soal.pasangan || {})
-                  .filter(([key]) => key.includes("_kanan"))
-                  .map(([key, value]) => (
+
+              <Col
+                span={2}
+                style={{ textAlign: "center", alignSelf: "center" }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    minHeight: "200px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "32px",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    🔗
+                  </div>
+                  {selectedLeftItem && (
                     <div
-                      key={key}
                       style={{
-                        margin: "8px 0",
-                        padding: "8px",
-                        border: "1px solid #d9d9d9",
+                        padding: "4px 8px",
+                        backgroundColor: "#1890ff",
+                        color: "white",
                         borderRadius: "4px",
+                        fontSize: "10px",
+                        textAlign: "center",
+                        animation: "pulse 1.5s infinite",
                       }}
                     >
-                      {value}
+                      {
+                        leftItems.find((item) => item.id === selectedLeftItem)
+                          ?.label
+                      }{" "}
+                      terpilih
                     </div>
-                  ))}
+                  )}
+                  <Text
+                    type="secondary"
+                    style={{
+                      fontSize: "12px",
+                      textAlign: "center",
+                      marginTop: "8px",
+                    }}
+                  >
+                    {selectedLeftItem
+                      ? "Pilih pasangan di kanan →"
+                      : "Pilih item kiri dulu ←"}
+                  </Text>
+                </div>
+              </Col>
+
+              <Col span={11}>
+                <div
+                  style={{
+                    backgroundColor: "#f0f8ff",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "2px solid #cce7ff",
+                  }}
+                >
+                  <Text
+                    strong
+                    style={{
+                      fontSize: "16px",
+                      marginBottom: "12px",
+                      display: "block",
+                    }}
+                  >
+                    📝 Sisi Kanan
+                  </Text>
+                  <Space direction="vertical" style={{ width: "100%" }}>
+                    {rightItems.map((item) => {
+                      const matchingLeft = Object.keys(currentMatching).find(
+                        (leftKey) => currentMatching[leftKey] === item.id
+                      );
+                      const isMatched = !!matchingLeft;
+                      const canSelect = selectedLeftItem && !isMatched;
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            if (isMatched) {
+                              // Remove matching if already matched
+                              const newMatching = { ...currentMatching };
+                              delete newMatching[matchingLeft];
+                              handleJawaban(soal.idBankSoal, newMatching);
+                              setSelectedLeftItem(null);
+                            } else if (selectedLeftItem) {
+                              // Create new matching
+                              const newMatching = {
+                                ...currentMatching,
+                                [selectedLeftItem]: item.id,
+                              };
+                              handleJawaban(soal.idBankSoal, newMatching);
+                              setSelectedLeftItem(null);
+                            } else {
+                              message.info(
+                                "Pilih item di sebelah kiri terlebih dahulu"
+                              );
+                            }
+                          }}
+                          style={{
+                            padding: "12px 16px",
+                            border: canSelect
+                              ? "2px dashed #1890ff"
+                              : isMatched
+                              ? "2px solid #52c41a"
+                              : "2px solid #d9d9d9",
+                            borderRadius: "8px",
+                            backgroundColor: canSelect
+                              ? "#f0f9ff"
+                              : isMatched
+                              ? "#f6ffed"
+                              : "#ffffff",
+                            cursor:
+                              selectedLeftItem || isMatched
+                                ? "pointer"
+                                : "not-allowed",
+                            transition: "all 0.3s ease",
+                            position: "relative",
+                            opacity: !selectedLeftItem && !isMatched ? 0.6 : 1,
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{
+                              color: canSelect
+                                ? "#1890ff"
+                                : isMatched
+                                ? "#52c41a"
+                                : "#666",
+                            }}
+                          >
+                            {item.label}.
+                          </Text>{" "}
+                          {item.text}
+                          {canSelect && (
+                            <span
+                              style={{
+                                position: "absolute",
+                                right: "8px",
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                color: "#1890ff",
+                                fontSize: "14px",
+                              }}
+                            >
+                              👈
+                            </span>
+                          )}
+                          {isMatched && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                right: "8px",
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                color: "#52c41a",
+                                fontSize: "12px",
+                              }}
+                            >
+                              ←{" "}
+                              {
+                                leftItems.find((l) => l.id === matchingLeft)
+                                  ?.label
+                              }
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </Space>
+                </div>
               </Col>
             </Row>
-            <div style={{ marginTop: "16px" }}>
-              <Text strong>Jawaban Anda:</Text>
-              <Input.TextArea
-                placeholder="Masukkan pasangan jawaban (contoh: a=f, b=e, c=d)"
-                value={
-                  Array.isArray(jawaban[soal.idBankSoal])
-                    ? jawaban[soal.idBankSoal].join(", ")
-                    : jawaban[soal.idBankSoal] || ""
-                }
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const pairs = value
-                    .split(",")
-                    .map((p) => p.trim())
-                    .filter((p) => p);
-                  handleJawaban(soal.idBankSoal, pairs);
+
+            {/* Display current matches */}
+            {Object.keys(currentMatching).length > 0 && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "12px",
+                  backgroundColor: "#f6ffed",
+                  border: "1px solid #b7eb8f",
+                  borderRadius: "6px",
                 }}
-                rows={3}
-              />
-            </div>
+              >
+                <Text strong style={{ color: "#52c41a" }}>
+                  ✅ Pasangan yang sudah dibuat:
+                </Text>
+                <div style={{ marginTop: "8px" }}>
+                  {Object.entries(currentMatching).map(([leftId, rightId]) => {
+                    const leftItem = leftItems.find(
+                      (item) => item.id === leftId
+                    );
+                    const rightItem = rightItems.find(
+                      (item) => item.id === rightId
+                    );
+                    return (
+                      <Tag
+                        key={`${leftId}-${rightId}`}
+                        color="green"
+                        style={{ margin: "2px" }}
+                      >
+                        {leftItem?.label} ↔ {rightItem?.label}
+                      </Tag>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         );
+      }
 
       case "ISIAN":
         return (
@@ -1815,17 +2240,44 @@ const UjianCATView = () => {
     );
   }
 
-  // Main exam interface
+  // Main exam interface - FULLSCREEN MODE
   return (
     <div
       style={{
-        padding: screens.xs ? "12px" : "24px",
+        padding: 0, // Hilangkan padding untuk fullscreen
+        margin: 0,
         minHeight: "100vh",
+        height: "100vh", // Full viewport height
         backgroundColor: "#f5f5f5",
+        overflow: "hidden", // Prevent scrolling in fullscreen
+        position: "relative",
       }}
     >
-      {/* Header */}
-      <Card style={{ marginBottom: "16px" }}>
+      {/* Fullscreen Mode Indicator */}
+      {isStarted && sessionActive && !isFinished && (
+        <div
+          style={{
+            backgroundColor: "#52c41a",
+            color: "white",
+            textAlign: "center",
+            padding: "4px 8px",
+            fontSize: "12px",
+            fontWeight: "500",
+          }}
+        >
+          🔒 MODE UJIAN AKTIF - Fullscreen Wajib | ESC Dinonaktifkan
+        </div>
+      )}
+
+      {/* Header - Compact for fullscreen */}
+      <Card
+        style={{
+          marginBottom: "8px",
+          marginLeft: "8px",
+          marginRight: "8px",
+          marginTop: isStarted && sessionActive && !isFinished ? "0" : "8px",
+        }}
+      >
         <Row align="middle" justify="space-between">
           <Col xs={24} sm={12} md={8}>
             <div>
@@ -1920,236 +2372,250 @@ const UjianCATView = () => {
           </Col>
         </Row>
       </Card>
-      <Row gutter={16}>
-        {/* Panel Soal */}
-        {(!screens.xs && !screens.sm) || showSoalPanel ? (
-          <Col xs={24} sm={24} md={6} style={{ marginBottom: "16px" }}>
-            <Card
-              title={`Daftar Soal (${jawabanStats.dijawab}/${soalList.length})`}
-              size="small"
-            >
-              <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-                <Row gutter={[8, 8]}>
-                  {soalList.map((_, index) => (
-                    <Col span={6} key={index}>
-                      <Badge
-                        dot={getSoalStatus(index) === "answered"}
-                        color="#52c41a"
-                      >
-                        <Button
-                          size="small"
-                          type={currentSoal === index ? "primary" : "default"}
-                          onClick={() => goToSoal(index)}
-                          style={{
-                            width: "100%",
-                            backgroundColor:
-                              getSoalStatus(index) === "answered"
-                                ? "#f6ffed"
-                                : undefined,
-                          }}
+
+      <div
+        style={{
+          padding: "0 8px",
+          height: "calc(100vh - 120px)",
+          overflow: "auto",
+        }}
+      >
+        <Row gutter={8}>
+          {/* Panel Soal */}
+          {(!screens.xs && !screens.sm) || showSoalPanel ? (
+            <Col xs={24} sm={24} md={6} style={{ marginBottom: "16px" }}>
+              <Card
+                title={`Daftar Soal (${jawabanStats.dijawab}/${soalList.length})`}
+                size="small"
+              >
+                <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                  <Row gutter={[8, 8]}>
+                    {soalList.map((_, index) => (
+                      <Col span={6} key={index}>
+                        <Badge
+                          dot={getSoalStatus(index) === "answered"}
+                          color="#52c41a"
                         >
-                          {index + 1}
-                        </Button>
-                      </Badge>
-                    </Col>
-                  ))}
+                          <Button
+                            size="small"
+                            type={currentSoal === index ? "primary" : "default"}
+                            onClick={() => goToSoal(index)}
+                            style={{
+                              width: "100%",
+                              backgroundColor:
+                                getSoalStatus(index) === "answered"
+                                  ? "#f6ffed"
+                                  : undefined,
+                            }}
+                          >
+                            {index + 1}
+                          </Button>
+                        </Badge>
+                      </Col>
+                    ))}
+                  </Row>
+                </div>
+
+                <Divider />
+
+                <Row gutter={8}>
+                  <Col span={12}>
+                    <div style={{ textAlign: "center" }}>
+                      <Badge color="#52c41a" />
+                      <Text style={{ fontSize: "12px" }}>
+                        Dijawab: {jawabanStats.dijawab}
+                      </Text>
+                    </div>
+                  </Col>
+                  <Col span={12}>
+                    <div style={{ textAlign: "center" }}>
+                      <Badge color="#d9d9d9" />
+                      <Text style={{ fontSize: "12px" }}>
+                        Kosong: {jawabanStats.belumDijawab}
+                      </Text>
+                    </div>
+                  </Col>
                 </Row>
-              </div>
+              </Card>
+            </Col>
+          ) : null}
+
+          {/* Area Soal */}
+          <Col
+            xs={24}
+            sm={24}
+            md={(!screens.xs && !screens.sm) || showSoalPanel ? 18 : 24}
+          >
+            <Card>
+              {soalList[currentSoal] && (
+                <>
+                  <div style={{ marginBottom: "16px" }}>
+                    <Tag color="blue">
+                      Soal {currentSoal + 1} dari {soalList.length}
+                    </Tag>
+                    <Tag color="purple">
+                      Jenis: {soalList[currentSoal].jenisSoal}
+                    </Tag>
+                    <Tag color="orange">
+                      Bobot: {soalList[currentSoal].bobot}
+                    </Tag>
+                    {getSoalStatus(currentSoal) === "answered" && (
+                      <Tag color="green">Sudah Dijawab</Tag>
+                    )}
+                    {lastSaved && (
+                      <Text
+                        type="secondary"
+                        style={{ fontSize: "12px", marginLeft: "8px" }}
+                      >
+                        Terakhir disimpan:{" "}
+                        {moment(lastSaved).format("HH:mm:ss")}
+                      </Text>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "16px",
+                      lineHeight: "1.6",
+                      marginBottom: "24px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    {soalList[currentSoal].pertanyaan}
+                  </div>
+
+                  {renderSoalComponent(soalList[currentSoal])}
+                </>
+              )}
 
               <Divider />
 
-              <Row gutter={8}>
-                <Col span={12}>
-                  <div style={{ textAlign: "center" }}>
-                    <Badge color="#52c41a" />
-                    <Text style={{ fontSize: "12px" }}>
-                      Dijawab: {jawabanStats.dijawab}
-                    </Text>
-                  </div>
+              <Row justify="space-between" align="middle">
+                <Col>
+                  <Button
+                    icon={<LeftOutlined />}
+                    onClick={prevSoal}
+                    disabled={currentSoal === 0 || !ujianData.allowBacktrack}
+                  >
+                    Sebelumnya
+                  </Button>
                 </Col>
-                <Col span={12}>
-                  <div style={{ textAlign: "center" }}>
-                    <Badge color="#d9d9d9" />
-                    <Text style={{ fontSize: "12px" }}>
-                      Kosong: {jawabanStats.belumDijawab}
-                    </Text>
-                  </div>
+                <Col>
+                  <Text type="secondary">
+                    {currentSoal + 1} / {soalList.length}
+                  </Text>
+                </Col>
+                <Col>
+                  <Button
+                    type="primary"
+                    icon={<RightOutlined />}
+                    onClick={nextSoal}
+                    disabled={currentSoal === soalList.length - 1}
+                  >
+                    Selanjutnya
+                  </Button>
                 </Col>
               </Row>
             </Card>
           </Col>
-        ) : null}
-
-        {/* Area Soal */}
-        <Col
-          xs={24}
-          sm={24}
-          md={(!screens.xs && !screens.sm) || showSoalPanel ? 18 : 24}
-        >
-          <Card>
-            {soalList[currentSoal] && (
-              <>
-                <div style={{ marginBottom: "16px" }}>
-                  <Tag color="blue">
-                    Soal {currentSoal + 1} dari {soalList.length}
-                  </Tag>
-                  <Tag color="purple">
-                    Jenis: {soalList[currentSoal].jenisSoal}
-                  </Tag>
-                  <Tag color="orange">Bobot: {soalList[currentSoal].bobot}</Tag>
-                  {getSoalStatus(currentSoal) === "answered" && (
-                    <Tag color="green">Sudah Dijawab</Tag>
-                  )}
-                  {lastSaved && (
-                    <Text
-                      type="secondary"
-                      style={{ fontSize: "12px", marginLeft: "8px" }}
-                    >
-                      Terakhir disimpan: {moment(lastSaved).format("HH:mm:ss")}
-                    </Text>
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "16px",
-                    lineHeight: "1.6",
-                    marginBottom: "24px",
-                    fontWeight: "500",
-                  }}
-                >
-                  {soalList[currentSoal].pertanyaan}
-                </div>
-
-                {renderSoalComponent(soalList[currentSoal])}
-              </>
-            )}
-
-            <Divider />
-
-            <Row justify="space-between" align="middle">
-              <Col>
-                <Button
-                  icon={<LeftOutlined />}
-                  onClick={prevSoal}
-                  disabled={currentSoal === 0 || !ujianData.allowBacktrack}
-                >
-                  Sebelumnya
-                </Button>
-              </Col>
-              <Col>
-                <Text type="secondary">
-                  {currentSoal + 1} / {soalList.length}
-                </Text>
-              </Col>
-              <Col>
-                <Button
-                  type="primary"
-                  icon={<RightOutlined />}
-                  onClick={nextSoal}
-                  disabled={currentSoal === soalList.length - 1}
-                >
-                  Selanjutnya
-                </Button>
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-      </Row>
-      {/* Warning untuk waktu hampir habis */}
-      {timeLeft <= 300 && timeLeft > 0 && ujianData.showTimerToParticipants && (
-        <Modal
-          title={
-            <span style={{ color: "#fa8c16" }}>
-              <ExclamationCircleOutlined /> Peringatan!
-            </span>
-          }
-          open={timeLeft <= 300 && timeLeft > 60}
-          footer={null}
-          closable={false}
-          centered
-        >
-          <Alert
-            message={`Waktu tersisa ${Math.floor(timeLeft / 60)} menit ${
-              timeLeft % 60
-            } detik!`}
-            description="Segera selesaikan ujian Anda. Ujian akan otomatis terkumpul ketika waktu habis."
-            type="warning"
-            showIcon
-          />
-        </Modal>
-      )}{" "}
-      {/* Modal notifikasi pelanggaran individual */}
-      {violationModalVisible && (
-        <Modal
-          open={violationModalVisible}
-          title={
-            <span style={{ color: "#ff4d4f" }}>
-              <ExclamationCircleOutlined /> Pelanggaran Terdeteksi!
-            </span>
-          }
-          onOk={() => setViolationModalVisible(false)}
-          onCancel={() => setViolationModalVisible(false)}
-          okText="Mengerti"
-          cancelButtonProps={{ style: { display: "none" } }}
-          centered
-          destroyOnClose
-        >
-          <Alert
-            message={`Pelanggaran ${violationCount}: ${lastViolationType}`}
-            description={
-              <>
-                <div style={{ marginBottom: 8 }}>
-                  <b>{violationDetails}</b>
-                </div>
-                <div>
-                  Total pelanggaran: <b>{violationCount}</b>
-                </div>
-                <div style={{ color: "#ff4d4f", marginTop: 8 }}>
-                  ⚠️ Peringatan: Jika pelanggaran melebihi 10 kali, ujian akan
-                  otomatis dikumpulkan!
-                </div>
-              </>
+        </Row>
+        {/* Warning untuk waktu hampir habis */}
+        {timeLeft <= 300 &&
+          timeLeft > 0 &&
+          ujianData.showTimerToParticipants && (
+            <Modal
+              title={
+                <span style={{ color: "#fa8c16" }}>
+                  <ExclamationCircleOutlined /> Peringatan!
+                </span>
+              }
+              open={timeLeft <= 300 && timeLeft > 60}
+              footer={null}
+              closable={false}
+              centered
+            >
+              <Alert
+                message={`Waktu tersisa ${Math.floor(timeLeft / 60)} menit ${
+                  timeLeft % 60
+                } detik!`}
+                description="Segera selesaikan ujian Anda. Ujian akan otomatis terkumpul ketika waktu habis."
+                type="warning"
+                showIcon
+              />
+            </Modal>
+          )}{" "}
+        {/* Modal notifikasi pelanggaran individual */}
+        {violationModalVisible && (
+          <Modal
+            open={violationModalVisible}
+            title={
+              <span style={{ color: "#ff4d4f" }}>
+                <ExclamationCircleOutlined /> Pelanggaran Terdeteksi!
+              </span>
             }
-            type="warning"
-            showIcon
-          />
-        </Modal>
-      )}
-      {/* Modal pelanggaran kritis (>10) */}
-      {criticalViolationModal && (
-        <Modal
-          open={criticalViolationModal}
-          title={
-            <span style={{ color: "#ff4d4f" }}>
-              <ExclamationCircleOutlined /> UJIAN DIHENTIKAN!
-            </span>
-          }
-          closable={false}
-          footer={null}
-          centered
-          destroyOnClose
-        >
-          <Alert
-            message="Ujian Anda telah dihentikan karena terlalu banyak pelanggaran!"
-            description={
-              <>
-                <div style={{ marginBottom: 8 }}>
-                  Total pelanggaran: <b>{violationCount}</b>
-                </div>
-                <div style={{ marginBottom: 8 }}>
-                  Pelanggaran terakhir: <b>{violationReason}</b>
-                </div>
-                <div style={{ color: "#ff4d4f", fontWeight: "bold" }}>
-                  🚫 Ujian akan otomatis dikumpulkan dalam 3 detik...
-                </div>
-              </>
+            onOk={() => setViolationModalVisible(false)}
+            onCancel={() => setViolationModalVisible(false)}
+            okText="Mengerti"
+            cancelButtonProps={{ style: { display: "none" } }}
+            centered
+            destroyOnClose
+          >
+            <Alert
+              message={`Pelanggaran ${violationCount}: ${lastViolationType}`}
+              description={
+                <>
+                  <div style={{ marginBottom: 8 }}>
+                    <b>{violationDetails}</b>
+                  </div>
+                  <div>
+                    Total pelanggaran: <b>{violationCount}</b>
+                  </div>
+                  <div style={{ color: "#ff4d4f", marginTop: 8 }}>
+                    ⚠️ Peringatan: Jika pelanggaran melebihi 10 kali, ujian akan
+                    otomatis dikumpulkan!
+                  </div>
+                </>
+              }
+              type="warning"
+              showIcon
+            />
+          </Modal>
+        )}
+        {/* Modal pelanggaran kritis (>10) */}
+        {criticalViolationModal && (
+          <Modal
+            open={criticalViolationModal}
+            title={
+              <span style={{ color: "#ff4d4f" }}>
+                <ExclamationCircleOutlined /> UJIAN DIHENTIKAN!
+              </span>
             }
-            type="error"
-            showIcon
-          />
-        </Modal>
-      )}
+            closable={false}
+            footer={null}
+            centered
+            destroyOnClose
+          >
+            <Alert
+              message="Ujian Anda telah dihentikan karena terlalu banyak pelanggaran!"
+              description={
+                <>
+                  <div style={{ marginBottom: 8 }}>
+                    Total pelanggaran: <b>{violationCount}</b>
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    Pelanggaran terakhir: <b>{violationReason}</b>
+                  </div>
+                  <div style={{ color: "#ff4d4f", fontWeight: "bold" }}>
+                    🚫 Ujian akan otomatis dikumpulkan dalam 3 detik...
+                  </div>
+                </>
+              }
+              type="error"
+              showIcon
+            />
+          </Modal>
+        )}
+      </div>
     </div>
   );
 };

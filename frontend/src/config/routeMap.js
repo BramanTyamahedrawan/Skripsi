@@ -485,11 +485,7 @@ export default [
     component: Ujian,
     roles: ["ROLE_OPERATOR", "ROLE_TEACHER"],
   },
-  {
-    path: "/ujian-view",
-    component: UjianView,
-    roles: ["ROLE_OPERATOR", "ROLE_TEACHER", "ROLE_STUDENT"],
-  },
+  // ujian-view dihapus dari sini karena sudah dihandle di router utama tanpa layout
   {
     path: "/ujian-history",
     component: UjianHistory,
