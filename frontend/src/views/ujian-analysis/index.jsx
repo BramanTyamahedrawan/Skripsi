@@ -1,5 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useCallback } from "react";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import {
   Card,
   Table,
@@ -20,6 +22,7 @@ import {
   message,
   List,
   Badge,
+  Tabs,
 } from "antd";
 import {
   EyeOutlined,
@@ -33,6 +36,10 @@ import {
   UsergroupAddOutlined,
   DownloadOutlined,
   CheckCircleOutlined,
+  BookOutlined,
+  SafetyOutlined,
+  BulbOutlined,
+  SecurityScanOutlined,
 } from "@ant-design/icons";
 import { getUjian } from "@/api/ujian";
 import { getHasilByUjian, getHasilUjian } from "@/api/hasilUjian";
@@ -41,6 +48,7 @@ import {
   getAllAnalysis,
   generateAnalysis,
 } from "@/api/ujianAnalysis";
+import { getUsers, getUserById } from "@/api/user";
 import { useNavigate } from "react-router-dom";
 
 const { Title, Text } = Typography;
@@ -64,6 +72,142 @@ const AnalisisUjian = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedDetailData, setSelectedDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Students data for name mapping
+  const [studentsData, setStudentsData] = useState({});
+  const [studentNamesCache, setStudentNamesCache] = useState({});
+
+  // Helper function for grade colors
+  const getGradeColor = (grade) => {
+    const gradeColors = {
+      A: "green",
+      B: "blue",
+      C: "orange",
+      D: "red",
+      E: "red",
+      F: "red",
+      Lulus: "green",
+      "Tidak Lulus": "red",
+    };
+    return gradeColors[grade] || "default";
+  };
+
+  // Export to PDF function
+  const exportToPDF = (data) => {
+    try {
+      const doc = new jsPDF();
+
+      // Header
+      doc.setFontSize(16);
+      doc.setFont(undefined, "bold");
+      doc.text("Laporan Analisis Ujian Komprehensif", 20, 20);
+
+      // Basic Info
+      doc.setFontSize(12);
+      doc.setFont(undefined, "normal");
+      doc.text(`Ujian: ${data.ujianNama || "N/A"}`, 20, 35);
+      doc.text(`Total Peserta: ${data.totalParticipants || 0}`, 20, 45);
+      doc.text(
+        `Rata-rata Nilai: ${(data.averageScore || 0).toFixed(1)}`,
+        20,
+        55
+      );
+      doc.text(
+        `Tingkat Kelulusan: ${(data.passRate || 0).toFixed(1)}%`,
+        20,
+        65
+      );
+      doc.text(`Dibuat: ${new Date().toLocaleDateString("id-ID")}`, 20, 75);
+
+      // Statistics Table
+      const statisticData = [
+        ["Median", (data.medianScore || 0).toFixed(1)],
+        ["Std. Deviasi", (data.standardDeviation || 0).toFixed(1)],
+        ["Nilai Tertinggi", (data.highestScore || 0).toFixed(1)],
+        ["Nilai Terendah", (data.lowestScore || 0).toFixed(1)],
+        ["Jumlah Lulus", data.passedCount || 0],
+        ["Jumlah Tidak Lulus", data.failedCount || 0],
+      ];
+
+      doc.autoTable({
+        head: [["Statistik", "Nilai"]],
+        body: statisticData,
+        startY: 85,
+        theme: "grid",
+        styles: { fontSize: 10 },
+      });
+
+      // Grade Distribution
+      if (
+        data.gradeDistribution &&
+        Object.keys(data.gradeDistribution).length > 0
+      ) {
+        const gradeData = Object.entries(data.gradeDistribution).map(
+          ([grade, count]) => [
+            `Nilai ${grade}`,
+            count,
+            `${(data.gradePercentages?.[grade] || 0).toFixed(1)}%`,
+          ]
+        );
+
+        doc.autoTable({
+          head: [["Grade", "Jumlah Siswa", "Persentase"]],
+          body: gradeData,
+          startY: doc.lastAutoTable.finalY + 10,
+          theme: "grid",
+          styles: { fontSize: 10 },
+        });
+      }
+
+      // Item Analysis Summary
+      if (data.itemAnalysis) {
+        const itemData = Object.entries(data.itemAnalysis).map(
+          ([id, item], index) => [
+            index + 1,
+            item.pertanyaan?.substring(0, 50) + "...",
+            item.jenisSoal,
+            item.totalResponses,
+            item.correctResponses,
+            `${(item.correctPercentage || 0).toFixed(1)}%`,
+            item.difficultyLevel,
+          ]
+        );
+
+        doc.autoTable({
+          head: [
+            [
+              "No",
+              "Pertanyaan",
+              "Jenis",
+              "Respons",
+              "Benar",
+              "%Benar",
+              "Kesulitan",
+            ],
+          ],
+          body: itemData,
+          startY: doc.lastAutoTable.finalY + 10,
+          theme: "grid",
+          styles: { fontSize: 8 },
+          columnStyles: {
+            1: { cellWidth: 60 },
+          },
+        });
+      }
+
+      // Save PDF
+      doc.save(
+        `Analisis_Ujian_${data.ujianNama?.replace(/\s+/g, "_") || "Report"}_${
+          new Date().toISOString().split("T")[0]
+        }.pdf`
+      );
+
+      message.success("Laporan PDF berhasil diunduh!");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      message.error("Gagal membuat laporan PDF");
+    }
+  };
 
   const navigate = useNavigate();
 
@@ -487,6 +631,147 @@ const AnalisisUjian = () => {
     [filterUjian, searchText]
   );
 
+  // Function to fetch student names by IDs
+  const fetchStudentNames = useCallback(
+    async (studentIds) => {
+      try {
+        // Check which student IDs we don't have cached yet
+        const uncachedIds = studentIds.filter((id) => !studentNamesCache[id]);
+
+        if (uncachedIds.length === 0) {
+          return studentNamesCache;
+        }
+
+        console.log("🔍 Fetching student names for IDs:", uncachedIds);
+
+        // First try to get all users and filter by IDs
+        try {
+          const usersResponse = await getUsers();
+          const allUsers =
+            usersResponse.data?.content || usersResponse.data || [];
+
+          const newNameCache = { ...studentNamesCache };
+
+          // Map student IDs to names from users data
+          uncachedIds.forEach((studentId) => {
+            const user = allUsers.find(
+              (u) =>
+                u.id === studentId ||
+                u.userId === studentId ||
+                u.username === studentId ||
+                u.pesertaId === studentId
+            );
+
+            if (user) {
+              newNameCache[studentId] =
+                user.nama ||
+                user.namaLengkap ||
+                user.name ||
+                user.fullName ||
+                `User ${studentId.substring(0, 8)}`;
+            } else {
+              // Fallback: try to get individual user by ID
+              newNameCache[studentId] = `Loading...`;
+            }
+          });
+
+          setStudentNamesCache(newNameCache);
+
+          // For any remaining "Loading..." entries, try individual API calls
+          const stillLoading = Object.entries(newNameCache).filter(
+            ([id, name]) => name === "Loading..."
+          );
+
+          if (stillLoading.length > 0 && stillLoading.length <= 10) {
+            // Limit concurrent requests
+            const individualFetches = stillLoading.map(async ([studentId]) => {
+              try {
+                const userResponse = await getUserById(studentId);
+                const user = userResponse.data;
+                if (user) {
+                  return {
+                    id: studentId,
+                    name:
+                      user.nama ||
+                      user.namaLengkap ||
+                      user.name ||
+                      user.fullName ||
+                      `Siswa ${studentId.substring(0, 8)}`,
+                  };
+                }
+              } catch (error) {
+                console.warn(`Failed to fetch user ${studentId}:`, error);
+                return {
+                  id: studentId,
+                  name: `ID: ${
+                    studentId.length > 10
+                      ? studentId.substring(0, 8) + "..."
+                      : studentId
+                  }`,
+                };
+              }
+            });
+
+            const results = await Promise.all(individualFetches);
+            const finalNameCache = { ...newNameCache };
+
+            results.forEach((result) => {
+              if (result) {
+                finalNameCache[result.id] = result.name;
+              }
+            });
+
+            setStudentNamesCache(finalNameCache);
+            return finalNameCache;
+          }
+
+          return newNameCache;
+        } catch (error) {
+          console.error("Error fetching users:", error);
+
+          // Fallback: Create default names for unknown IDs
+          const fallbackCache = { ...studentNamesCache };
+          uncachedIds.forEach((studentId) => {
+            fallbackCache[studentId] = `ID: ${
+              studentId.length > 10
+                ? studentId.substring(0, 8) + "..."
+                : studentId
+            }`;
+          });
+
+          setStudentNamesCache(fallbackCache);
+          return fallbackCache;
+        }
+      } catch (error) {
+        console.error("Error in fetchStudentNames:", error);
+        return studentNamesCache;
+      }
+    },
+    [studentNamesCache]
+  );
+
+  // Function to get student name from cache
+  const getStudentName = useCallback(
+    (studentId) => {
+      if (!studentId) return "Nama tidak tersedia";
+
+      // Check cache first
+      const cachedName = studentNamesCache[studentId];
+      if (cachedName) {
+        return cachedName;
+      }
+
+      // If not in cache and not currently loading, trigger fetch
+      if (!studentNamesCache[studentId]) {
+        fetchStudentNames([studentId]);
+      }
+
+      // Return a user-friendly loading state
+      return "Memuat nama...";
+    },
+    [studentNamesCache, fetchStudentNames]
+  );
+
   useEffect(() => {
     fetchUjianList();
     fetchHasilUjian();
@@ -577,6 +862,11 @@ const AnalisisUjian = () => {
         }
       }
 
+      // Add ujian name to the analysis data for modal display
+      if (analysisData) {
+        analysisData.ujianNama =
+          record.ujianNama || analysisData.ujian?.namaUjian;
+      }
       setSelectedDetailData(analysisData);
     } catch (error) {
       console.error("Error fetching analysis detail:", error);
@@ -783,503 +1073,1586 @@ const AnalisisUjian = () => {
     lulusCount: siswaData.filter((item) => item.lulus).length,
   };
 
-  // Render detailed analysis modal in HBase style
+  // Effect to fetch student names when modal opens with studyRecommendations
+  useEffect(() => {
+    if (selectedDetailData?.studyRecommendations && detailModalVisible) {
+      const studentIds = Object.keys(selectedDetailData.studyRecommendations);
+      if (studentIds.length > 0) {
+        console.log(
+          "🎓 Fetching student names for study recommendations:",
+          studentIds
+        );
+        fetchStudentNames(studentIds);
+      }
+    }
+  }, [selectedDetailData, detailModalVisible, fetchStudentNames]);
+
+  // Render detailed analysis modal in modern style
   const renderDetailModal = () => {
     if (!selectedDetailData) return null;
 
     const data = selectedDetailData;
 
+    // Calculate additional metrics for better insights
+    const totalQuestions = Object.keys(data.itemAnalysis || {}).length;
+    const easyQuestions = Object.values(data.itemAnalysis || {}).filter(
+      (q) => q.difficultyLevel === "EASY"
+    ).length;
+    const hardQuestions = Object.values(data.itemAnalysis || {}).filter(
+      (q) => q.difficultyLevel === "HARD"
+    ).length;
+    const veryHardQuestions = Object.values(data.itemAnalysis || {}).filter(
+      (q) => q.difficultyLevel === "VERY_HARD"
+    ).length;
+    const goodQuestions = Object.values(data.itemAnalysis || {}).filter((q) =>
+      q.recommendation?.includes("GOOD")
+    ).length;
+
+    const avgDifficultyIndex =
+      totalQuestions > 0
+        ? Object.values(data.questionDifficulty || {}).reduce(
+            (sum, val) => sum + val,
+            0
+          ) / totalQuestions
+        : 0;
+
+    const securityStatus =
+      data.integrityScore >= 0.9
+        ? "AMAN"
+        : data.integrityScore >= 0.7
+        ? "PERLU_PERHATIAN"
+        : "RISIKO_TINGGI";
+
+    // Helper function untuk difficulty level color
+    const getDifficultyColor = (level) => {
+      const colors = {
+        EASY: "green",
+        HARD: "orange",
+        VERY_HARD: "red",
+      };
+      return colors[level] || "default";
+    };
+
+    // Helper function untuk recommendation color
+    const getRecommendationColor = (recommendation) => {
+      if (recommendation?.includes("GOOD")) return "green";
+      if (recommendation?.includes("REVIEW")) return "orange";
+      return "default";
+    };
+
     return (
       <Modal
-        title="📊 Data Analisis Ujian - Format HBase"
-        visible={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
-        width={1200}
+        title={
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <BarChartOutlined style={{ color: "#1890ff" }} />
+            <span>📊 Analisis Komprehensif Ujian</span>
+          </div>
+        }
+        open={detailModalVisible}
+        onCancel={() => {
+          setDetailModalVisible(false);
+          setSelectedDetailData(null);
+        }}
         footer={[
-          <Button key="close" onClick={() => setDetailModalVisible(false)}>
+          <Button
+            key="export"
+            type="primary"
+            icon={<DownloadOutlined />}
+            onClick={() => exportToPDF(data)}
+          >
+            Export PDF
+          </Button>,
+          <Button
+            key="close"
+            onClick={() => {
+              setDetailModalVisible(false);
+              setSelectedDetailData(null);
+            }}
+          >
             Tutup
           </Button>,
         ]}
-        bodyStyle={{ maxHeight: "70vh", overflow: "auto" }}
+        width={1200}
+        style={{ top: 20 }}
+        bodyStyle={{ maxHeight: "80vh", overflow: "auto" }}
       >
-        {detailLoading ? (
-          <div style={{ textAlign: "center", padding: "50px" }}>
-            <Spin size="large" />
-            <div style={{ marginTop: 16 }}>Memuat detail analisis...</div>
-          </div>
-        ) : (
-          <div>
-            {/* Header Info */}
-            <Card
-              title="📊 Informasi Utama (main)"
-              style={{ marginBottom: 16 }}
+        <Spin spinning={detailLoading}>
+          {/* Header Information */}
+          <Card
+            size="small"
+            style={{
+              marginBottom: "16px",
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+            }}
+          >
+            <Row gutter={[16, 8]}>
+              <Col xs={24} sm={6}>
+                <Statistic
+                  title={
+                    <span style={{ color: "rgba(255,255,255,0.85)" }}>
+                      Ujian
+                    </span>
+                  }
+                  value={data.ujianNama || "N/A"}
+                  valueStyle={{ color: "#fff", fontSize: "16px" }}
+                />
+              </Col>
+              <Col xs={24} sm={6}>
+                <Statistic
+                  title={
+                    <span style={{ color: "rgba(255,255,255,0.85)" }}>
+                      Total Peserta
+                    </span>
+                  }
+                  value={data.totalParticipants || 0}
+                  valueStyle={{ color: "#fff" }}
+                  prefix={<UserOutlined />}
+                />
+              </Col>
+              <Col xs={24} sm={6}>
+                <Statistic
+                  title={
+                    <span style={{ color: "rgba(255,255,255,0.85)" }}>
+                      Rata-rata Nilai
+                    </span>
+                  }
+                  value={data.averageScore || 0}
+                  precision={1}
+                  valueStyle={{ color: "#fff" }}
+                  prefix={<TrophyOutlined />}
+                />
+              </Col>
+              <Col xs={24} sm={6}>
+                <Statistic
+                  title={
+                    <span style={{ color: "rgba(255,255,255,0.85)" }}>
+                      Tingkat Kelulusan
+                    </span>
+                  }
+                  value={data.passRate || 0}
+                  precision={1}
+                  suffix="%"
+                  valueStyle={{ color: "#fff" }}
+                  prefix={<CheckCircleOutlined />}
+                />
+              </Col>
+            </Row>
+          </Card>
+
+          <Tabs defaultActiveKey="executive" type="card">
+            {/* Tab Executive Summary */}
+            <Tabs.TabPane
+              tab={
+                <span>
+                  <TrophyOutlined />
+                  Executive Summary
+                </span>
+              }
+              key="executive"
             >
               <Row gutter={[16, 16]}>
-                <Col span={8}>
-                  <Statistic title="ID Analysis" value={data.idAnalysis} />
-                </Col>
-                <Col span={8}>
-                  <Statistic title="ID Ujian" value={data.idUjian} />
-                </Col>
-                <Col span={8}>
-                  <Statistic title="ID Sekolah" value={data.idSchool} />
-                </Col>
-                <Col span={8}>
-                  <Statistic title="Tipe Analisis" value={data.analysisType} />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Versi Analisis"
-                    value={data.analysisVersion}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic title="Generated By" value={data.generatedBy} />
-                </Col>
-                <Col span={12}>
-                  <Statistic
-                    title="Generated At"
-                    value={new Date(data.generatedAt).toLocaleString("id-ID")}
-                  />
-                </Col>
-                <Col span={12}>
-                  <Statistic
-                    title="Updated At"
-                    value={new Date(data.updatedAt).toLocaleString("id-ID")}
-                  />
-                </Col>
-              </Row>
-            </Card>
-
-            {/* Descriptive Statistics */}
-            <Card
-              title="📈 Statistik Deskriptif (descriptive)"
-              style={{ marginBottom: 16 }}
-            >
-              <Row gutter={[16, 16]}>
-                <Col span={8}>
-                  <Statistic
-                    title="Total Peserta"
-                    value={data.totalParticipants}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Peserta Selesai"
-                    value={data.completedParticipants}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Peserta Belum Selesai"
-                    value={data.incompleteParticipants}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Rata-rata Skor"
-                    value={data.averageScore?.toFixed(1)}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Skor Tertinggi"
-                    value={data.highestScore?.toFixed(1)}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Skor Terendah"
-                    value={data.lowestScore?.toFixed(1)}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Median Skor"
-                    value={data.medianScore?.toFixed(1)}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Standar Deviasi"
-                    value={data.standardDeviation?.toFixed(2)}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Variance"
-                    value={data.variance?.toFixed(2)}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic title="Jumlah Lulus" value={data.passedCount} />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Jumlah Tidak Lulus"
-                    value={data.failedCount}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Pass Rate"
-                    value={`${data.passRate?.toFixed(1)}%`}
-                  />
-                </Col>
-              </Row>
-
-              {/* Grade Distribution */}
-              <div style={{ marginTop: 16 }}>
-                <Title level={5}>Distribusi Nilai:</Title>
-                <Row gutter={16}>
-                  {Object.entries(data.gradeDistribution || {}).map(
-                    ([grade, count]) => (
-                      <Col key={grade} span={6}>
-                        <Card size="small">
-                          <Statistic
-                            title={`Nilai ${grade}`}
-                            value={`${count} peserta`}
-                            suffix={`(${data.gradePercentages?.[grade]?.toFixed(
-                              1
-                            )}%)`}
-                          />
-                        </Card>
+                {/* Performance Overview */}
+                <Col span={24}>
+                  <Card
+                    title="🎯 Ringkasan Eksekutif"
+                    size="small"
+                    extra={
+                      <Tag
+                        color={
+                          data.averageScore >= 80
+                            ? "green"
+                            : data.averageScore >= 60
+                            ? "orange"
+                            : "red"
+                        }
+                      >
+                        {data.averageScore >= 80
+                          ? "EXCELLENT"
+                          : data.averageScore >= 60
+                          ? "GOOD"
+                          : "NEEDS IMPROVEMENT"}
+                      </Tag>
+                    }
+                  >
+                    <Row gutter={[16, 16]}>
+                      <Col xs={24} sm={6}>
+                        <Statistic
+                          title="Performa Keseluruhan"
+                          value={data.averageScore || 0}
+                          precision={1}
+                          suffix="/100"
+                          valueStyle={{
+                            color:
+                              data.averageScore >= 75
+                                ? "#3f8600"
+                                : data.averageScore >= 60
+                                ? "#fa8c16"
+                                : "#cf1322",
+                          }}
+                        />
                       </Col>
-                    )
-                  )}
-                </Row>
-              </div>
-            </Card>
+                      <Col xs={24} sm={6}>
+                        <Statistic
+                          title="Tingkat Kelulusan"
+                          value={data.passRate || 0}
+                          precision={1}
+                          suffix="%"
+                          valueStyle={{
+                            color:
+                              data.passRate >= 80
+                                ? "#3f8600"
+                                : data.passRate >= 60
+                                ? "#fa8c16"
+                                : "#cf1322",
+                          }}
+                        />
+                      </Col>
+                      <Col xs={24} sm={6}>
+                        <Statistic
+                          title="Indeks Kesulitan Soal"
+                          value={avgDifficultyIndex * 100 || 0}
+                          precision={1}
+                          suffix="%"
+                          valueStyle={{ color: "#1890ff" }}
+                        />
+                      </Col>
+                      <Col xs={24} sm={6}>
+                        <Statistic
+                          title="Status Keamanan"
+                          value={securityStatus}
+                          valueStyle={{
+                            color:
+                              securityStatus === "AMAN"
+                                ? "#3f8600"
+                                : securityStatus === "PERLU_PERHATIAN"
+                                ? "#fa8c16"
+                                : "#cf1322",
+                          }}
+                        />
+                      </Col>
+                    </Row>
+                  </Card>
+                </Col>
 
-            {/* Time Analysis */}
-            <Card
-              title="📝 Analisis Waktu (analysis)"
-              style={{ marginBottom: 16 }}
-            >
-              <Row gutter={[16, 16]}>
-                <Col span={8}>
-                  <Statistic
-                    title="Waktu Rata-rata"
-                    value={`${data.averageCompletionTime?.toFixed(2)} menit`}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Waktu Tercepat"
-                    value={`${data.shortestCompletionTime?.toFixed(2)} menit`}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Waktu Terlama"
-                    value={`${data.longestCompletionTime?.toFixed(2)} menit`}
-                  />
-                </Col>
-              </Row>
-            </Card>
-
-            {/* Item Analysis */}
-            <Card title="📊 Analisis Item Detail" style={{ marginBottom: 16 }}>
-              <List
-                dataSource={Object.entries(data.itemAnalysis || {})}
-                renderItem={([soalId, soal]) => (
-                  <List.Item>
-                    <Card size="small" style={{ width: "100%" }}>
-                      <Title level={5}>
-                        Soal: &quot;{soal.pertanyaan}&quot;
-                      </Title>
-                      <Row gutter={16}>
-                        <Col span={6}>
-                          <Statistic title="ID" value={soal.idBankSoal} />
-                        </Col>
-                        <Col span={6}>
-                          <Statistic title="Jenis" value={soal.jenisSoal} />
-                        </Col>
-                        <Col span={6}>
-                          <Statistic
-                            title="Total Respons"
-                            value={soal.totalResponses}
-                          />
-                        </Col>
-                        <Col span={6}>
-                          <Statistic
-                            title="Jawaban Benar"
-                            value={`${
-                              soal.correctResponses
-                            } (${soal.correctPercentage?.toFixed(1)}%)`}
-                          />
-                        </Col>
-                        <Col span={8}>
-                          <Statistic
-                            title="Difficulty Index"
-                            value={soal.difficultyIndex?.toFixed(2)}
-                          />
-                        </Col>
-                        <Col span={8}>
-                          <Tag
-                            color={
-                              soal.difficultyLevel === "EASY"
-                                ? "green"
-                                : soal.difficultyLevel === "HARD"
-                                ? "red"
-                                : "orange"
-                            }
+                {/* Key Insights */}
+                <Col xs={24} lg={12}>
+                  <Card title="📊 Insight Utama" size="small">
+                    <List
+                      size="small"
+                      dataSource={[
+                        {
+                          icon: "🎯",
+                          title: "Performa Siswa",
+                          content: `${
+                            data.totalParticipants
+                          } siswa mengikuti ujian dengan rata-rata ${data.averageScore?.toFixed(
+                            1
+                          )} poin`,
+                        },
+                        {
+                          icon: "📚",
+                          title: "Kualitas Soal",
+                          content: `${goodQuestions}/${totalQuestions} soal berkualitas baik (${(
+                            (goodQuestions / totalQuestions) *
+                            100
+                          ).toFixed(1)}%)`,
+                        },
+                        {
+                          icon: "⏱️",
+                          title: "Efisiensi Waktu",
+                          content: `Rata-rata pengerjaan ${data.averageCompletionTime?.toFixed(
+                            1
+                          )} menit`,
+                        },
+                        {
+                          icon: "🔒",
+                          title: "Integritas Ujian",
+                          content: `${
+                            data.suspiciousSubmissions || 0
+                          } pelanggaran terdeteksi pada ${
+                            data.flaggedParticipants || 0
+                          } siswa`,
+                        },
+                      ]}
+                      renderItem={(item) => (
+                        <List.Item>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "12px",
+                            }}
                           >
-                            {soal.difficultyLevel}
-                          </Tag>
-                        </Col>
-                        <Col span={8}>
-                          <Text type="secondary">{soal.recommendation}</Text>
-                        </Col>
-                      </Row>
-
-                      {/* Option Distribution */}
-                      <div style={{ marginTop: 8 }}>
-                        <Text strong>Pilihan yang dipilih: </Text>
-                        {Object.entries(soal.optionFrequency || {}).map(
-                          ([option, count]) => (
-                            <Tag key={option} color="blue">
-                              {option}: {count} (
-                              {soal.optionPercentage?.[option]?.toFixed(1)}%)
-                            </Tag>
-                          )
-                        )}
-                      </div>
-                    </Card>
-                  </List.Item>
-                )}
-              />
-            </Card>
-
-            {/* Performance by Class */}
-            <Card
-              title="👥 Performa Berdasarkan Kelas"
-              style={{ marginBottom: 16 }}
-            >
-              <List
-                dataSource={Object.entries(data.performanceByKelas || {})}
-                renderItem={([kelas, performance]) => (
-                  <List.Item>
-                    <Card size="small" style={{ width: "100%" }}>
-                      <Title level={5}>Kelas {kelas}:</Title>
-                      <Row gutter={16}>
-                        <Col span={6}>
-                          <Statistic
-                            title="Jumlah Peserta"
-                            value={performance.participantCount}
-                          />
-                        </Col>
-                        <Col span={6}>
-                          <Statistic
-                            title="Rata-rata Skor"
-                            value={performance.averageScore?.toFixed(1)}
-                          />
-                        </Col>
-                        <Col span={6}>
-                          <Statistic
-                            title="Skor Tertinggi"
-                            value={performance.highestScore?.toFixed(1)}
-                          />
-                        </Col>
-                        <Col span={6}>
-                          <Statistic
-                            title="Pass Rate"
-                            value={`${performance.passRate?.toFixed(1)}%`}
-                          />
-                        </Col>
-                      </Row>
-                    </Card>
-                  </List.Item>
-                )}
-              />
-            </Card>
-
-            {/* Cheating Detection */}
-            <Card
-              title="🚨 Deteksi Kecurangan (cheating)"
-              style={{ marginBottom: 16 }}
-            >
-              <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-                <Col span={8}>
-                  <Statistic
-                    title="Integrity Score"
-                    value={`${data.integrityScore?.toFixed(1)} ⚠️`}
-                    valueStyle={{
-                      color: data.integrityScore < 50 ? "#cf1322" : "#52c41a",
-                    }}
-                  />
+                            <span style={{ fontSize: "20px" }}>
+                              {item.icon}
+                            </span>
+                            <div>
+                              <Text strong>{item.title}</Text>
+                              <br />
+                              <Text type="secondary">{item.content}</Text>
+                            </div>
+                          </div>
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
                 </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Flagged Participants"
-                    value={data.flaggedParticipants}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Suspicious Submissions"
-                    value={data.suspiciousSubmissions}
-                  />
-                </Col>
-              </Row>
 
-              <Title level={5}>Pelanggaran yang Terdeteksi:</Title>
-              <List
-                dataSource={data.cheatDetections || []}
-                renderItem={(violation, index) => (
-                  <List.Item>
-                    <Card size="small" style={{ width: "100%" }}>
-                      <Title level={5}>
-                        Violation {index + 1} - {violation.typeViolation}
-                      </Title>
-                      <Row gutter={16}>
-                        <Col span={8}>
-                          <Text>
-                            <strong>ID Detection:</strong>{" "}
-                            {violation.idDetection}
-                          </Text>
-                          <br />
-                          <Text>
-                            <strong>Session:</strong> {violation.sessionId}
-                          </Text>
-                          <br />
-                          <Text>
-                            <strong>Peserta:</strong> {violation.idPeserta}
-                          </Text>
-                        </Col>
-                        <Col span={8}>
-                          <Text>
-                            <strong>Severity:</strong>{" "}
+                {/* Action Items */}
+                <Col xs={24} lg={12}>
+                  <Card title="⚡ Rekomendasi Tindakan" size="small">
+                    <List
+                      size="small"
+                      dataSource={[
+                        ...(data.recommendations?.slice(0, 2) || []).map(
+                          (rec, index) => ({
+                            type: "recommendation",
+                            priority: index === 0 ? "HIGH" : "MEDIUM",
+                            content: rec,
+                          })
+                        ),
+                        ...(data.improvementSuggestions?.slice(0, 2) || []).map(
+                          (suggestion) => ({
+                            type: "improvement",
+                            priority: "MEDIUM",
+                            content: suggestion,
+                          })
+                        ),
+                      ].slice(0, 4)}
+                      renderItem={(item) => (
+                        <List.Item>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
                             <Tag
                               color={
-                                violation.severity === "HIGH" ? "red" : "orange"
+                                item.priority === "HIGH" ? "red" : "orange"
                               }
                             >
-                              {violation.severity}
+                              {item.priority}
                             </Tag>
-                          </Text>
-                          <br />
-                          <Text>
-                            <strong>Violation Count:</strong>{" "}
-                            {violation.violationCount}
-                          </Text>
-                          <br />
-                          <Text>
-                            <strong>Critical:</strong>{" "}
-                            {violation.critical ? "Ya" : "Tidak"}
-                          </Text>
-                        </Col>
-                        <Col span={8}>
-                          <Text>
-                            <strong>Detected At:</strong>{" "}
-                            {new Date(violation.detectedAt).toLocaleString(
-                              "id-ID"
-                            )}
-                          </Text>
-                          <br />
-                          <Text>
-                            <strong>Status:</strong>{" "}
-                            <Tag color={violation.resolved ? "green" : "red"}>
-                              {violation.resolved
-                                ? "Resolved"
-                                : "Belum Resolved"}
-                            </Tag>
-                          </Text>
-                          <br />
-                          <Text>
-                            <strong>Source:</strong>{" "}
-                            {violation.evidence?.source}{" "}
-                            {violation.evidence?.detector}
-                          </Text>
-                        </Col>
-                      </Row>
-                    </Card>
-                  </List.Item>
-                )}
-              />
-            </Card>
+                            <Text style={{ fontSize: "13px" }}>
+                              {item.content}
+                            </Text>
+                          </div>
+                        </List.Item>
+                      )}
+                    />
+                  </Card>
+                </Col>
 
-            {/* Recommendations */}
-            <Card
-              title="💡 Rekomendasi (recommendation)"
-              style={{ marginBottom: 16 }}
+                {/* Quick Stats Grid */}
+                <Col span={24}>
+                  <Card title="📈 Statistik Cepat" size="small">
+                    <Row gutter={[16, 8]}>
+                      <Col xs={12} sm={6}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "12px",
+                            background: "#f0f9ff",
+                            borderRadius: "6px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ color: "#1890ff", fontSize: "18px" }}
+                          >
+                            {easyQuestions}
+                          </Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            Soal Mudah
+                          </Text>
+                        </div>
+                      </Col>
+                      <Col xs={12} sm={6}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "12px",
+                            background: "#fff7e6",
+                            borderRadius: "6px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ color: "#fa8c16", fontSize: "18px" }}
+                          >
+                            {hardQuestions}
+                          </Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            Soal Sulit
+                          </Text>
+                        </div>
+                      </Col>
+                      <Col xs={12} sm={6}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "12px",
+                            background: "#fff2f0",
+                            borderRadius: "6px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ color: "#ff4d4f", fontSize: "18px" }}
+                          >
+                            {veryHardQuestions}
+                          </Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            Sangat Sulit
+                          </Text>
+                        </div>
+                      </Col>
+                      <Col xs={12} sm={6}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "12px",
+                            background: "#f6ffed",
+                            borderRadius: "6px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ color: "#52c41a", fontSize: "18px" }}
+                          >
+                            {data.passedCount}
+                          </Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: "12px" }}>
+                            Siswa Lulus
+                          </Text>
+                        </div>
+                      </Col>
+                    </Row>
+                  </Card>
+                </Col>
+              </Row>
+            </Tabs.TabPane>
+
+            {/* Tab Detailed Overview */}
+            <Tabs.TabPane
+              tab={
+                <span>
+                  <BarChartOutlined />
+                  Analisis Detil
+                </span>
+              }
+              key="overview"
             >
-              <div style={{ marginBottom: 16 }}>
-                <Title level={5}>Rekomendasi Umum:</Title>
-                <List
-                  dataSource={data.recommendations || []}
-                  renderItem={(rec) => (
-                    <List.Item>
-                      <Text>• {rec}</Text>
-                    </List.Item>
-                  )}
-                />
-              </div>
-
-              <div>
-                <Title level={5}>Saran Perbaikan:</Title>
-                <List
-                  dataSource={data.improvementSuggestions || []}
-                  renderItem={(suggestion) => (
-                    <List.Item>
-                      <Text>• {suggestion}</Text>
-                    </List.Item>
-                  )}
-                />
-              </div>
-            </Card>
-
-            {/* School & Exam Info */}
-            <Card title="🏫 Data Sekolah & Ujian" style={{ marginBottom: 16 }}>
               <Row gutter={[16, 16]}>
-                <Col span={8}>
-                  <Statistic title="ID Sekolah" value={data.school?.idSchool} />
+                {/* Statistik Deskriptif */}
+                <Col xs={24} lg={12}>
+                  <Card title="📈 Statistik Deskriptif" size="small">
+                    <Row gutter={[8, 16]}>
+                      <Col span={12}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "12px",
+                            background: "#f0f9ff",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "20px", color: "#1890ff" }}
+                          >
+                            {data.medianScore?.toFixed(1) || 0}
+                          </Text>
+                          <br />
+                          <Text type="secondary">Median</Text>
+                        </div>
+                      </Col>
+                      <Col span={12}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "12px",
+                            background: "#f6ffed",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "20px", color: "#52c41a" }}
+                          >
+                            {data.standardDeviation?.toFixed(1) || 0}
+                          </Text>
+                          <br />
+                          <Text type="secondary">Std. Deviasi</Text>
+                        </div>
+                      </Col>
+                      <Col span={12}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "12px",
+                            background: "#fff2f0",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "20px", color: "#ff4d4f" }}
+                          >
+                            {data.lowestScore?.toFixed(1) || 0}
+                          </Text>
+                          <br />
+                          <Text type="secondary">Nilai Terendah</Text>
+                        </div>
+                      </Col>
+                      <Col span={12}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "12px",
+                            background: "#f9f0ff",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "20px", color: "#722ed1" }}
+                          >
+                            {data.highestScore?.toFixed(1) || 0}
+                          </Text>
+                          <br />
+                          <Text type="secondary">Nilai Tertinggi</Text>
+                        </div>
+                      </Col>
+                    </Row>
+
+                    {/* Distribusi Grade */}
+                    {data.gradeDistribution &&
+                      Object.keys(data.gradeDistribution).length > 0 && (
+                        <div style={{ marginTop: "20px" }}>
+                          <Text
+                            strong
+                            style={{ marginBottom: "12px", display: "block" }}
+                          >
+                            📊 Distribusi Nilai:
+                          </Text>
+                          {Object.entries(data.gradeDistribution).map(
+                            ([grade, count]) => (
+                              <div key={grade} style={{ marginBottom: "12px" }}>
+                                <Row align="middle" gutter={8}>
+                                  <Col span={3}>
+                                    <Tag
+                                      color={getGradeColor(grade)}
+                                      style={{
+                                        fontSize: "14px",
+                                        fontWeight: "bold",
+                                      }}
+                                    >
+                                      {grade}
+                                    </Tag>
+                                  </Col>
+                                  <Col span={13}>
+                                    <Progress
+                                      percent={
+                                        data.gradePercentages?.[grade] || 0
+                                      }
+                                      size="small"
+                                      showInfo={false}
+                                      strokeColor={getGradeColor(grade)}
+                                    />
+                                  </Col>
+                                  <Col span={8}>
+                                    <Text strong>
+                                      {count} siswa (
+                                      {data.gradePercentages?.[grade]?.toFixed(
+                                        1
+                                      ) || 0}
+                                      %)
+                                    </Text>
+                                  </Col>
+                                </Row>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      )}
+                  </Card>
                 </Col>
-                <Col span={16}>
-                  <Statistic
-                    title="Nama Sekolah"
-                    value={data.school?.nameSchool}
-                  />
-                </Col>
-                <Col span={8}>
-                  <Statistic title="ID Ujian" value={data.ujian?.idUjian} />
-                </Col>
-                <Col span={8}>
-                  <Statistic title="Nama Ujian" value={data.ujian?.namaUjian} />
-                </Col>
-                <Col span={8}>
-                  <Statistic
-                    title="Status Ujian"
-                    value={data.ujian?.statusUjian}
-                    prefix={data.ujian?.statusUjian === "SELESAI" ? "✅" : "🔄"}
-                  />
+
+                {/* Performance by Kelas */}
+                <Col xs={24} lg={12}>
+                  <Card title="🏫 Performa per Kelas" size="small">
+                    {data.performanceByKelas &&
+                    Object.keys(data.performanceByKelas).length > 0 ? (
+                      Object.entries(data.performanceByKelas).map(
+                        ([kelas, klasData]) => (
+                          <Card
+                            key={kelas}
+                            size="small"
+                            style={{
+                              marginBottom: "12px",
+                              border: "1px solid #d9d9d9",
+                              borderRadius: "8px",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "8px",
+                              }}
+                            >
+                              <Text strong style={{ fontSize: "16px" }}>
+                                Kelas {kelas}
+                              </Text>
+                              <Tag color="blue">
+                                {klasData.participantCount} siswa
+                              </Tag>
+                            </div>
+                            <Row gutter={[8, 8]}>
+                              <Col span={12}>
+                                <div
+                                  style={{
+                                    textAlign: "center",
+                                    padding: "8px",
+                                    background: "#f0f9ff",
+                                    borderRadius: "6px",
+                                  }}
+                                >
+                                  <Text strong style={{ color: "#1890ff" }}>
+                                    {klasData.averageScore?.toFixed(1) || 0}
+                                  </Text>
+                                  <br />
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: "12px" }}
+                                  >
+                                    Rata-rata
+                                  </Text>
+                                </div>
+                              </Col>
+                              <Col span={12}>
+                                <div
+                                  style={{
+                                    textAlign: "center",
+                                    padding: "8px",
+                                    background: "#f6ffed",
+                                    borderRadius: "6px",
+                                  }}
+                                >
+                                  <Text strong style={{ color: "#52c41a" }}>
+                                    {klasData.passRate?.toFixed(1) || 0}%
+                                  </Text>
+                                  <br />
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: "12px" }}
+                                  >
+                                    Kelulusan
+                                  </Text>
+                                </div>
+                              </Col>
+                              <Col span={12}>
+                                <div
+                                  style={{
+                                    textAlign: "center",
+                                    padding: "8px",
+                                    background: "#fff7e6",
+                                    borderRadius: "6px",
+                                  }}
+                                >
+                                  <Text strong style={{ color: "#fa8c16" }}>
+                                    {klasData.highestScore?.toFixed(1) || 0}
+                                  </Text>
+                                  <br />
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: "12px" }}
+                                  >
+                                    Tertinggi
+                                  </Text>
+                                </div>
+                              </Col>
+                              <Col span={12}>
+                                <div
+                                  style={{
+                                    textAlign: "center",
+                                    padding: "8px",
+                                    background: "#fff2f0",
+                                    borderRadius: "6px",
+                                  }}
+                                >
+                                  <Text strong style={{ color: "#ff4d4f" }}>
+                                    {klasData.lowestScore?.toFixed(1) || 0}
+                                  </Text>
+                                  <br />
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: "12px" }}
+                                  >
+                                    Terendah
+                                  </Text>
+                                </div>
+                              </Col>
+                            </Row>
+                          </Card>
+                        )
+                      )
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "40px" }}>
+                        <Text type="secondary">
+                          Data performa kelas tidak tersedia
+                        </Text>
+                      </div>
+                    )}
+                  </Card>
                 </Col>
               </Row>
-            </Card>
 
-            {/* Metadata */}
-            <Card title="⚙️ Metadata">
-              <Row gutter={[16, 16]}>
-                <Col span={12}>
-                  <Statistic
-                    title="Allow Duplicate"
-                    value={
-                      data.configurationUsed?.allowDuplicate ? "true" : "false"
-                    }
-                  />
-                </Col>
-                <Col span={12}>
-                  <Statistic
-                    title="Auto Generated"
-                    value={
-                      data.configurationUsed?.autoGenerated ? "true" : "false"
-                    }
-                  />
+              {/* Analisis Waktu */}
+              <Row gutter={[16, 16]} style={{ marginTop: "16px" }}>
+                <Col span={24}>
+                  <Card title="⏱️ Analisis Waktu Pengerjaan" size="small">
+                    <Row gutter={[16, 8]}>
+                      <Col xs={24} sm={8}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "16px",
+                            background: "#e6f7ff",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "20px", color: "#1890ff" }}
+                          >
+                            {data.averageCompletionTime?.toFixed(1) || 0} menit
+                          </Text>
+                          <br />
+                          <Text type="secondary">Rata-rata Waktu</Text>
+                        </div>
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "16px",
+                            background: "#f6ffed",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "20px", color: "#52c41a" }}
+                          >
+                            {data.shortestCompletionTime?.toFixed(1) || 0} menit
+                          </Text>
+                          <br />
+                          <Text type="secondary">Tercepat</Text>
+                        </div>
+                      </Col>
+                      <Col xs={24} sm={8}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "16px",
+                            background: "#fff2f0",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "20px", color: "#ff4d4f" }}
+                          >
+                            {data.longestCompletionTime?.toFixed(1) || 0} menit
+                          </Text>
+                          <br />
+                          <Text type="secondary">Terlama</Text>
+                        </div>
+                      </Col>
+                    </Row>
+                  </Card>
                 </Col>
               </Row>
-            </Card>
-          </div>
-        )}
+            </Tabs.TabPane>
+
+            {/* Tab Item Analysis */}
+            <Tabs.TabPane
+              tab={
+                <span>
+                  <BookOutlined />
+                  Analisis Soal
+                </span>
+              }
+              key="item-analysis"
+            >
+              <Row gutter={[16, 16]}>
+                {/* Summary Item Analysis */}
+                <Col span={24}>
+                  <Card title="📊 Ringkasan Analisis Soal" size="small">
+                    <Row gutter={[16, 8]}>
+                      <Col xs={24} sm={6}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "16px",
+                            background: "#f0f9ff",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "24px", color: "#1890ff" }}
+                          >
+                            {Object.keys(data.itemAnalysis || {}).length}
+                          </Text>
+                          <br />
+                          <Text type="secondary">Total Soal</Text>
+                        </div>
+                      </Col>
+                      <Col xs={24} sm={6}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "16px",
+                            background: "#f6ffed",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "24px", color: "#52c41a" }}
+                          >
+                            {
+                              Object.values(data.itemAnalysis || {}).filter(
+                                (item) => item.recommendation?.includes("GOOD")
+                              ).length
+                            }
+                          </Text>
+                          <br />
+                          <Text type="secondary">Soal Baik</Text>
+                        </div>
+                      </Col>
+                      <Col xs={24} sm={6}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "16px",
+                            background: "#fff7e6",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "24px", color: "#fa8c16" }}
+                          >
+                            {
+                              Object.values(data.itemAnalysis || {}).filter(
+                                (item) =>
+                                  item.recommendation?.includes("REVIEW")
+                              ).length
+                            }
+                          </Text>
+                          <br />
+                          <Text type="secondary">Perlu Review</Text>
+                        </div>
+                      </Col>
+                      <Col xs={24} sm={6}>
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "16px",
+                            background: "#fff2f0",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <Text
+                            strong
+                            style={{ fontSize: "24px", color: "#ff4d4f" }}
+                          >
+                            {
+                              Object.values(data.itemAnalysis || {}).filter(
+                                (item) => item.difficultyLevel === "VERY_HARD"
+                              ).length
+                            }
+                          </Text>
+                          <br />
+                          <Text type="secondary">Sangat Sulit</Text>
+                        </div>
+                      </Col>
+                    </Row>
+                  </Card>
+                </Col>
+
+                {/* Soal Termudah & Tersulit */}
+                <Col xs={24} lg={12}>
+                  <Card title="✅ Soal Termudah" size="small">
+                    {data.easiestQuestions &&
+                    data.easiestQuestions.length > 0 ? (
+                      <List
+                        size="small"
+                        dataSource={data.easiestQuestions.slice(0, 5)}
+                        renderItem={(questionId, index) => {
+                          const questionData = data.itemAnalysis?.[questionId];
+                          return (
+                            <List.Item>
+                              <div style={{ width: "100%" }}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                    marginBottom: "4px",
+                                  }}
+                                >
+                                  <Badge
+                                    count={index + 1}
+                                    style={{ backgroundColor: "#52c41a" }}
+                                  />
+                                  <Tag color="green">MUDAH</Tag>
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: "12px" }}
+                                  >
+                                    {(
+                                      data.questionDifficulty?.[questionId] *
+                                        100 || 0
+                                    ).toFixed(1)}
+                                    % benar
+                                  </Text>
+                                </div>
+                                <Text ellipsis style={{ fontSize: "13px" }}>
+                                  {questionData?.pertanyaan?.substring(0, 80)}
+                                  ...
+                                </Text>
+                              </div>
+                            </List.Item>
+                          );
+                        }}
+                      />
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "20px" }}>
+                        <Text type="secondary">
+                          Tidak ada data soal termudah
+                        </Text>
+                      </div>
+                    )}
+                  </Card>
+                </Col>
+
+                <Col xs={24} lg={12}>
+                  <Card title="❌ Soal Tersulit" size="small">
+                    {data.hardestQuestions &&
+                    data.hardestQuestions.length > 0 ? (
+                      <List
+                        size="small"
+                        dataSource={data.hardestQuestions.slice(0, 5)}
+                        renderItem={(questionId, index) => {
+                          const questionData = data.itemAnalysis?.[questionId];
+                          return (
+                            <List.Item>
+                              <div style={{ width: "100%" }}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                    marginBottom: "4px",
+                                  }}
+                                >
+                                  <Badge
+                                    count={index + 1}
+                                    style={{ backgroundColor: "#ff4d4f" }}
+                                  />
+                                  <Tag color="red">SULIT</Tag>
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: "12px" }}
+                                  >
+                                    {(
+                                      data.questionDifficulty?.[questionId] *
+                                        100 || 0
+                                    ).toFixed(1)}
+                                    % benar
+                                  </Text>
+                                </div>
+                                <Text ellipsis style={{ fontSize: "13px" }}>
+                                  {questionData?.pertanyaan?.substring(0, 80)}
+                                  ...
+                                </Text>
+                              </div>
+                            </List.Item>
+                          );
+                        }}
+                      />
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "20px" }}>
+                        <Text type="secondary">
+                          Tidak ada data soal tersulit
+                        </Text>
+                      </div>
+                    )}
+                  </Card>
+                </Col>
+
+                {/* Detailed Item Analysis Table */}
+                <Col span={24}>
+                  <Card title="📝 Detail Analisis per Soal" size="small">
+                    <Table
+                      dataSource={Object.entries(data.itemAnalysis || {}).map(
+                        ([id, item], index) => ({
+                          key: id,
+                          no: index + 1,
+                          id,
+                          ...item,
+                        })
+                      )}
+                      columns={[
+                        {
+                          title: "No",
+                          dataIndex: "no",
+                          key: "no",
+                          width: 50,
+                          align: "center",
+                        },
+                        {
+                          title: "Pertanyaan",
+                          dataIndex: "pertanyaan",
+                          key: "pertanyaan",
+                          ellipsis: true,
+                          width: 250,
+                          render: (text) => (
+                            <Tooltip title={text}>
+                              <Text>{text?.substring(0, 50)}...</Text>
+                            </Tooltip>
+                          ),
+                        },
+                        {
+                          title: "Jenis",
+                          dataIndex: "jenisSoal",
+                          key: "jenisSoal",
+                          width: 80,
+                          render: (type) => <Tag color="blue">{type}</Tag>,
+                        },
+                        {
+                          title: "Respons",
+                          key: "responses",
+                          width: 100,
+                          render: (_, record) => (
+                            <div style={{ textAlign: "center" }}>
+                              <Text strong>{record.totalResponses}</Text>
+                              <br />
+                              <Text type="success">
+                                {record.correctResponses} benar
+                              </Text>
+                            </div>
+                          ),
+                        },
+                        {
+                          title: "Tingkat Kesulitan",
+                          dataIndex: "difficultyLevel",
+                          key: "difficultyLevel",
+                          width: 120,
+                          render: (level, record) => (
+                            <div style={{ textAlign: "center" }}>
+                              <Tag color={getDifficultyColor(level)}>
+                                {level}
+                              </Tag>
+                              <br />
+                              <Text type="secondary">
+                                {((record.difficultyIndex || 0) * 100).toFixed(
+                                  1
+                                )}
+                                %
+                              </Text>
+                            </div>
+                          ),
+                        },
+                        {
+                          title: "Persentase Benar",
+                          dataIndex: "correctPercentage",
+                          key: "correctPercentage",
+                          width: 120,
+                          render: (percentage) => (
+                            <div style={{ textAlign: "center" }}>
+                              <Progress
+                                type="circle"
+                                percent={percentage || 0}
+                                width={50}
+                                strokeColor={
+                                  percentage >= 75
+                                    ? "#52c41a"
+                                    : percentage >= 50
+                                    ? "#faad14"
+                                    : "#ff4d4f"
+                                }
+                              />
+                            </div>
+                          ),
+                        },
+                        {
+                          title: "Rekomendasi",
+                          dataIndex: "recommendation",
+                          key: "recommendation",
+                          width: 150,
+                          render: (rec) => (
+                            <Tag color={getRecommendationColor(rec)}>
+                              {rec?.split(" - ")[0] || "N/A"}
+                            </Tag>
+                          ),
+                        },
+                      ]}
+                      size="small"
+                      pagination={{
+                        pageSize: 8,
+                        showSizeChanger: true,
+                        showTotal: (total, range) =>
+                          `${range[0]}-${range[1]} dari ${total} soal`,
+                      }}
+                      scroll={{ x: 900 }}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+            </Tabs.TabPane>
+
+            {/* Tab Security Analysis */}
+            <Tabs.TabPane
+              tab={
+                <span>
+                  <SecurityScanOutlined />
+                  Keamanan Ujian
+                </span>
+              }
+              key="security"
+            >
+              <Row gutter={[16, 16]}>
+                {/* Security Overview */}
+                <Col span={24}>
+                  <Alert
+                    message={
+                      data.integrityScore >= 0.9
+                        ? "🛡️ Ujian Aman - Tidak ada indikasi kecurangan signifikan"
+                        : data.integrityScore >= 0.7
+                        ? "⚠️ Perlu Perhatian - Ada beberapa aktivitas mencurigakan"
+                        : "🚨 Risiko Tinggi - Terdeteksi banyak pelanggaran"
+                    }
+                    type={
+                      data.integrityScore >= 0.9
+                        ? "success"
+                        : data.integrityScore >= 0.7
+                        ? "warning"
+                        : "error"
+                    }
+                    showIcon
+                    style={{ marginBottom: "16px" }}
+                  />
+                </Col>
+
+                {/* Security Metrics */}
+                <Col xs={24} lg={8}>
+                  <Card title="🔒 Metrik Keamanan" size="small">
+                    <Space
+                      direction="vertical"
+                      style={{ width: "100%" }}
+                      size="middle"
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text>
+                          <strong>Skor Integritas:</strong>
+                        </Text>
+                        <Progress
+                          percent={(data.integrityScore || 0) * 100}
+                          size="small"
+                          strokeColor={
+                            data.integrityScore >= 0.9
+                              ? "#52c41a"
+                              : data.integrityScore >= 0.7
+                              ? "#faad14"
+                              : "#ff4d4f"
+                          }
+                        />
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text>
+                          <strong>Total Pelanggaran:</strong>
+                        </Text>
+                        <Tag color="red" style={{ fontSize: "14px" }}>
+                          {data.suspiciousSubmissions || 0}
+                        </Tag>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text>
+                          <strong>Peserta Ter-flag:</strong>
+                        </Text>
+                        <Tag color="orange" style={{ fontSize: "14px" }}>
+                          {data.flaggedParticipants || 0}
+                        </Tag>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text>
+                          <strong>ID Pelanggaran:</strong>
+                        </Text>
+                        <Tag color="red">
+                          {data.violationIds?.length || 0} ID
+                        </Tag>
+                      </div>
+                    </Space>
+                  </Card>
+                </Col>
+
+                {/* Violation Details */}
+                <Col xs={24} lg={16}>
+                  <Card title="🚨 Detail Pelanggaran" size="small">
+                    {data.cheatDetections && data.cheatDetections.length > 0 ? (
+                      <Table
+                        dataSource={data.cheatDetections}
+                        rowKey="idDetection"
+                        size="small"
+                        columns={[
+                          {
+                            title: "ID Peserta",
+                            dataIndex: "idPeserta",
+                            key: "idPeserta",
+                            width: 120,
+                            render: (id) => <Text code>{id}</Text>,
+                          },
+                          {
+                            title: "Jenis Pelanggaran",
+                            dataIndex: "typeViolation",
+                            key: "typeViolation",
+                            render: (type) => (
+                              <Tag color="red" style={{ fontSize: "11px" }}>
+                                {type?.replace("_", " ")}
+                              </Tag>
+                            ),
+                          },
+                          {
+                            title: "Tingkat",
+                            dataIndex: "severity",
+                            key: "severity",
+                            render: (sev) => (
+                              <Tag
+                                color={
+                                  sev === "CRITICAL"
+                                    ? "red"
+                                    : sev === "HIGH"
+                                    ? "orange"
+                                    : sev === "MEDIUM"
+                                    ? "blue"
+                                    : "default"
+                                }
+                              >
+                                {sev}
+                              </Tag>
+                            ),
+                          },
+                          {
+                            title: "Waktu",
+                            dataIndex: "detectedAt",
+                            key: "detectedAt",
+                            render: (time) =>
+                              time
+                                ? new Date(time).toLocaleString("id-ID", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
+                                : "-",
+                            width: 130,
+                          },
+                          {
+                            title: "Status",
+                            dataIndex: "resolved",
+                            key: "resolved",
+                            render: (resolved) => (
+                              <Tag color={resolved ? "green" : "red"}>
+                                {resolved ? "Resolved" : "Pending"}
+                              </Tag>
+                            ),
+                          },
+                        ]}
+                        pagination={{ pageSize: 8 }}
+                        locale={{
+                          emptyText: "Tidak ada pelanggaran terdeteksi",
+                        }}
+                      />
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "40px" }}>
+                        <CheckCircleOutlined
+                          style={{ fontSize: "48px", color: "#52c41a" }}
+                        />
+                        <br />
+                        <Text type="success" style={{ fontSize: "16px" }}>
+                          Tidak ada pelanggaran terdeteksi
+                        </Text>
+                      </div>
+                    )}
+                  </Card>
+                </Col>
+              </Row>
+            </Tabs.TabPane>
+
+            {/* Tab Recommendations */}
+            <Tabs.TabPane
+              tab={
+                <span>
+                  <BulbOutlined />
+                  Rekomendasi
+                </span>
+              }
+              key="recommendations"
+            >
+              <Row gutter={[16, 16]}>
+                <Col xs={24} lg={12}>
+                  <Card title="💡 Rekomendasi Umum" size="small">
+                    {data.recommendations && data.recommendations.length > 0 ? (
+                      <List
+                        size="small"
+                        dataSource={data.recommendations}
+                        renderItem={(rec, index) => (
+                          <List.Item style={{ border: "none", paddingLeft: 0 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: "12px",
+                              }}
+                            >
+                              <Badge
+                                count={index + 1}
+                                style={{ backgroundColor: "#1890ff" }}
+                              />
+                              <Text>{rec}</Text>
+                            </div>
+                          </List.Item>
+                        )}
+                      />
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "40px" }}>
+                        <BulbOutlined
+                          style={{ fontSize: "48px", color: "#faad14" }}
+                        />
+                        <br />
+                        <Text type="secondary">
+                          Tidak ada rekomendasi khusus tersedia.
+                        </Text>
+                      </div>
+                    )}
+                  </Card>
+                </Col>
+
+                <Col xs={24} lg={12}>
+                  <Card title="🔧 Saran Perbaikan" size="small">
+                    {data.improvementSuggestions &&
+                    data.improvementSuggestions.length > 0 ? (
+                      <List
+                        size="small"
+                        dataSource={data.improvementSuggestions}
+                        renderItem={(suggestion, index) => (
+                          <List.Item style={{ border: "none", paddingLeft: 0 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: "12px",
+                              }}
+                            >
+                              <Badge
+                                count={index + 1}
+                                style={{ backgroundColor: "#52c41a" }}
+                              />
+                              <Text>{suggestion}</Text>
+                            </div>
+                          </List.Item>
+                        )}
+                      />
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "40px" }}>
+                        <CheckCircleOutlined
+                          style={{ fontSize: "48px", color: "#52c41a" }}
+                        />
+                        <br />
+                        <Text type="secondary">
+                          Tidak ada saran perbaikan khusus.
+                        </Text>
+                      </div>
+                    )}
+                  </Card>
+                </Col>
+
+                {/* Learning Gaps */}
+                {data.learningGaps &&
+                  Object.keys(data.learningGaps).length > 0 && (
+                    <Col span={24}>
+                      <Card
+                        title="📚 Gap Pembelajaran yang Teridentifikasi"
+                        size="small"
+                      >
+                        <Row gutter={[8, 8]}>
+                          {Object.entries(data.learningGaps).map(
+                            ([topik, deskripsi]) => (
+                              <Col xs={24} sm={12} lg={8} key={topik}>
+                                <Card
+                                  size="small"
+                                  style={{
+                                    border: "1px solid #ff7875",
+                                    borderRadius: "8px",
+                                    backgroundColor: "#fff2f0",
+                                  }}
+                                >
+                                  <Text strong style={{ color: "#cf1322" }}>
+                                    {topik}
+                                  </Text>
+                                  <br />
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: "12px" }}
+                                  >
+                                    {Array.isArray(deskripsi)
+                                      ? deskripsi[0]?.substring(0, 60) + "..."
+                                      : deskripsi}
+                                  </Text>
+                                </Card>
+                              </Col>
+                            )
+                          )}
+                        </Row>
+                      </Card>
+                    </Col>
+                  )}
+
+                {/* Study Recommendations */}
+                {data.studyRecommendations &&
+                  Object.keys(data.studyRecommendations).length > 0 && (
+                    <Col span={24}>
+                      <Card
+                        title="👨‍🎓 Rekomendasi Belajar per Siswa"
+                        size="small"
+                      >
+                        <List
+                          size="small"
+                          dataSource={Object.entries(data.studyRecommendations)}
+                          renderItem={([studentId, recommendation]) => {
+                            // Get student name using the new API-based function
+                            const studentName = getStudentName(studentId);
+
+                            // Show loading indicator if name is being fetched
+                            const isLoading = studentName === "Memuat nama...";
+
+                            return (
+                              <List.Item>
+                                <div style={{ width: "100%" }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      marginBottom: "4px",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                      }}
+                                    >
+                                      {isLoading && <Spin size="small" />}
+                                      <Text
+                                        strong
+                                        style={{
+                                          color: isLoading ? "#999" : "inherit",
+                                          fontStyle: isLoading
+                                            ? "italic"
+                                            : "normal",
+                                        }}
+                                      >
+                                        {studentName}
+                                      </Text>
+                                    </div>
+                                    <Tag color="blue">Individual</Tag>
+                                  </div>
+                                  <Text>{recommendation}</Text>
+                                </div>
+                              </List.Item>
+                            );
+                          }}
+                        />
+                      </Card>
+                    </Col>
+                  )}
+              </Row>
+            </Tabs.TabPane>
+          </Tabs>
+
+          {/* Footer Information */}
+          <Card
+            size="small"
+            style={{
+              marginTop: "16px",
+              background: "#fafafa",
+              border: "1px solid #d9d9d9",
+            }}
+          >
+            <Row gutter={[16, 8]} align="middle">
+              <Col xs={24} sm={8}>
+                <Text type="secondary">
+                  <strong>📅 Dibuat:</strong>{" "}
+                  {data.generatedAt
+                    ? new Date(data.generatedAt).toLocaleString("id-ID")
+                    : "-"}
+                </Text>
+              </Col>
+              <Col xs={24} sm={8}>
+                <Text type="secondary">
+                  <strong>🆔 ID Analisis:</strong>{" "}
+                  {data.idAnalysis?.substring(0, 8)}...
+                </Text>
+              </Col>
+              <Col xs={24} sm={8}>
+                <Text type="secondary">
+                  <strong>📊 Versi:</strong> {data.analysisVersion || "1.0"}
+                  <Tag color="green" style={{ marginLeft: "8px" }}>
+                    {data.analysisType || "COMPREHENSIVE"}
+                  </Tag>
+                </Text>
+              </Col>
+            </Row>
+          </Card>
+        </Spin>
       </Modal>
     );
   };
