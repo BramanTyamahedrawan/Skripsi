@@ -40,7 +40,8 @@ import { getMapel } from "@/api/mapel";
 import { getKelas } from "@/api/kelas";
 import { getSemester } from "@/api/semester";
 import { getTahunAjaran } from "@/api/tahun-ajaran";
-import { getACP } from "@/api/acp";
+import { getACP, addACP } from "@/api/acp";
+import { getElemen, addElemen } from "@/api/elemen";
 import { getKonsentrasiSekolah } from "@/api/konsentrasiKeahlianSekolah";
 import TypingCard from "@/components/TypingCard";
 import EditATPForm from "./forms/edit-atp-form";
@@ -149,6 +150,7 @@ const ATP = () => {
         semesterRes,
         mapelRes,
         tahunAjaranRes,
+        elemenRes,
         kelasRes,
         acpRes,
         konsentrasiSekolahRes,
@@ -156,27 +158,37 @@ const ATP = () => {
         getSemester(),
         getMapel(),
         getTahunAjaran(),
+        getElemen(),
         getKelas(),
         getACP(),
         getKonsentrasiSekolah(),
       ]);
 
-      // Extract Elemen data from ACP response
+      // Get Elemen data directly and also from ACP response
       const acpData = acpRes.data.content || [];
-      const elemenData = acpData
-        .filter((acp) => acp.elemen && acp.elemen.valid)
-        .map((acp) => acp.elemen)
-        .filter(
-          (elemen, index, self) =>
-            index === self.findIndex((e) => e.idElemen === elemen.idElemen)
-        ); // Remove duplicates
+      const elemenDataDirect = elemenRes.data.content || [];
 
-      console.log("=== DEBUG: Extracted Elemen data from ACP ===");
+      // Combine Elemen data from direct call and ACP relationships
+      const elemenFromAcp = acpData
+        .filter((acp) => acp.elemen)
+        .map((acp) => acp.elemen);
+
+      const allElemenData = [...elemenDataDirect, ...elemenFromAcp];
+
+      // Remove duplicates based on idElemen
+      const elemenData = allElemenData.filter(
+        (elemen, index, self) =>
+          index === self.findIndex((e) => e.idElemen === elemen.idElemen)
+      );
+
+      console.log("=== DEBUG: Mapping Data Summary ===");
       console.log("📊 Total ACP entries:", acpData.length);
-      console.log("📊 Unique Elemen entries found:", elemenData.length);
+      console.log("📊 Direct Elemen entries:", elemenDataDirect.length);
+      console.log("📊 Elemen from ACP:", elemenFromAcp.length);
+      console.log("📊 Final unique Elemen entries:", elemenData.length);
       console.log("📊 Sample Elemen data:", elemenData.slice(0, 3));
 
-      setMappingData({
+      const mappingDataToSet = {
         semesterList: semesterRes.data.content || [],
         mapelList: mapelRes.data.content || [],
         tahunAjaranList: tahunAjaranRes.data.content || [],
@@ -184,7 +196,21 @@ const ATP = () => {
         kelasList: kelasRes.data.content || [],
         acpList: acpData,
         konsentrasiSekolahList: konsentrasiSekolahRes.data.content || [],
-      });
+      };
+
+      console.log("📊 Mapping data counts:");
+      console.log("  Semester:", mappingDataToSet.semesterList.length);
+      console.log("  Mapel:", mappingDataToSet.mapelList.length);
+      console.log("  Tahun Ajaran:", mappingDataToSet.tahunAjaranList.length);
+      console.log("  Elemen:", mappingDataToSet.elemenList.length);
+      console.log("  Kelas:", mappingDataToSet.kelasList.length);
+      console.log("  ACP:", mappingDataToSet.acpList.length);
+      console.log(
+        "  Konsentrasi Sekolah:",
+        mappingDataToSet.konsentrasiSekolahList.length
+      );
+
+      setMappingData(mappingDataToSet);
     } catch (error) {
       console.error("Error fetching mapping data:", error);
       message.error("Gagal mengambil data mapping");
@@ -198,6 +224,203 @@ const ATP = () => {
       .toString()
       .toLowerCase()
       .replace(/[\s\-_.,!@#$%^&*()]/g, "");
+  };
+
+  // Auto-create Elemen if not exists
+  const createElemenIfNotExists = async (elemenName, rowData) => {
+    try {
+      console.log(`🔄 Creating new Elemen: "${elemenName}"`);
+
+      // Get required IDs for Elemen
+      const tahunAjaranId = mapTahunAjaranToId(rowData.tahunAjaran);
+      const semesterId = mapSemesterNameToId(rowData.namaSemester);
+      const kelasId = mapKelasNameToId(rowData.namaKelas);
+      const mapelId = mapMapelNameToId(rowData.namaMapel);
+      const konsentrasiId = mapKonsentrasiNameToId(
+        rowData.namaKonsentrasiSekolah
+      );
+
+      console.log(`🔍 Master data mapping in createElemenIfNotExists:`);
+      console.log(
+        `  Tahun Ajaran: "${rowData.tahunAjaran}" → ${tahunAjaranId}`
+      );
+      console.log(`  Semester: "${rowData.namaSemester}" → ${semesterId}`);
+      console.log(`  Kelas: "${rowData.namaKelas}" → ${kelasId}`);
+      console.log(`  Mapel: "${rowData.namaMapel}" → ${mapelId}`);
+      console.log(
+        `  Konsentrasi: "${rowData.namaKonsentrasiSekolah}" → ${konsentrasiId}`
+      );
+
+      if (
+        !tahunAjaranId ||
+        !semesterId ||
+        !kelasId ||
+        !mapelId ||
+        !konsentrasiId
+      ) {
+        const missingData = [];
+        if (!tahunAjaranId)
+          missingData.push(`Tahun Ajaran "${rowData.tahunAjaran}"`);
+        if (!semesterId) missingData.push(`Semester "${rowData.namaSemester}"`);
+        if (!kelasId) missingData.push(`Kelas "${rowData.namaKelas}"`);
+        if (!mapelId) missingData.push(`Mapel "${rowData.namaMapel}"`);
+        if (!konsentrasiId)
+          missingData.push(`Konsentrasi "${rowData.namaKonsentrasiSekolah}"`);
+
+        throw new Error(
+          `Data master tidak lengkap untuk membuat Elemen: ${missingData.join(
+            ", "
+          )}`
+        );
+      }
+
+      const elemenData = {
+        idElemen: null,
+        namaElemen: elemenName,
+        idKonsentrasiSekolah: konsentrasiId,
+        idKelas: kelasId,
+        idTahun: tahunAjaranId,
+        idSemester: semesterId,
+        idMapel: mapelId,
+        idSekolah: rowData.idSchool || "RWK001",
+      };
+
+      const result = await addElemen(elemenData);
+      console.log(`✅ Elemen API Response:`, result);
+      console.log(`✅ Elemen Data Response:`, result.data);
+
+      // Refresh mapping data to include new Elemen
+      await fetchMappingData();
+
+      // Try multiple ways to get the ID from response
+      let newElemenId = null;
+      if (result.data) {
+        newElemenId =
+          result.data.content?.idElemen ||
+          result.data.idElemen ||
+          result.data.data?.idElemen ||
+          result.data.content ||
+          result.data.id;
+      }
+
+      if (!newElemenId) {
+        // If we can't get ID from response, try to find it by name
+        console.log(
+          `⚠️ Cannot get Elemen ID from response, searching by name...`
+        );
+        newElemenId = mapElemenNameToId(elemenName);
+      }
+
+      console.log(`✅ Final Elemen ID: ${newElemenId}`);
+
+      if (!newElemenId) {
+        throw new Error(`Gagal mendapatkan ID Elemen setelah pembuatan`);
+      }
+
+      return newElemenId;
+    } catch (error) {
+      console.error(`❌ Failed to create Elemen "${elemenName}":`, error);
+      throw error;
+    }
+  };
+
+  // Auto-create ACP if not exists
+  const createACPIfNotExists = async (acpName, elemenId, rowData) => {
+    try {
+      console.log(
+        `🔄 Creating new ACP: "${acpName}" for Elemen ID: ${elemenId}`
+      );
+
+      // Get required IDs for ACP
+      const tahunAjaranId = mapTahunAjaranToId(rowData.tahunAjaran);
+      const semesterId = mapSemesterNameToId(rowData.namaSemester);
+      const kelasId = mapKelasNameToId(rowData.namaKelas);
+      const mapelId = mapMapelNameToId(rowData.namaMapel);
+      const konsentrasiId = mapKonsentrasiNameToId(
+        rowData.namaKonsentrasiSekolah
+      );
+
+      console.log(`🔍 Master data mapping in createACPIfNotExists:`);
+      console.log(
+        `  Tahun Ajaran: "${rowData.tahunAjaran}" → ${tahunAjaranId}`
+      );
+      console.log(`  Semester: "${rowData.namaSemester}" → ${semesterId}`);
+      console.log(`  Kelas: "${rowData.namaKelas}" → ${kelasId}`);
+      console.log(`  Mapel: "${rowData.namaMapel}" → ${mapelId}`);
+      console.log(
+        `  Konsentrasi: "${rowData.namaKonsentrasiSekolah}" → ${konsentrasiId}`
+      );
+
+      if (
+        !tahunAjaranId ||
+        !semesterId ||
+        !kelasId ||
+        !mapelId ||
+        !konsentrasiId
+      ) {
+        const missingData = [];
+        if (!tahunAjaranId)
+          missingData.push(`Tahun Ajaran "${rowData.tahunAjaran}"`);
+        if (!semesterId) missingData.push(`Semester "${rowData.namaSemester}"`);
+        if (!kelasId) missingData.push(`Kelas "${rowData.namaKelas}"`);
+        if (!mapelId) missingData.push(`Mapel "${rowData.namaMapel}"`);
+        if (!konsentrasiId)
+          missingData.push(`Konsentrasi "${rowData.namaKonsentrasiSekolah}"`);
+
+        throw new Error(
+          `Data master tidak lengkap untuk membuat ACP: ${missingData.join(
+            ", "
+          )}`
+        );
+      }
+
+      const acpData = {
+        idAcp: null,
+        namaAcp: acpName,
+        idElemen: elemenId,
+        idKonsentrasiSekolah: konsentrasiId,
+        idKelas: kelasId,
+        idTahun: tahunAjaranId,
+        idSemester: semesterId,
+        idMapel: mapelId,
+        idSchool: rowData.idSchool || "RWK001",
+      };
+
+      const result = await addACP(acpData);
+      console.log(`✅ ACP API Response:`, result);
+      console.log(`✅ ACP Data Response:`, result.data);
+
+      // Refresh mapping data to include new ACP
+      await fetchMappingData();
+
+      // Try multiple ways to get the ID from response
+      let newAcpId = null;
+      if (result.data) {
+        newAcpId =
+          result.data.content?.idAcp ||
+          result.data.idAcp ||
+          result.data.data?.idAcp ||
+          result.data.content ||
+          result.data.id;
+      }
+
+      if (!newAcpId) {
+        // If we can't get ID from response, try to find it by name
+        console.log(`⚠️ Cannot get ACP ID from response, searching by name...`);
+        newAcpId = mapAcpNameToId(acpName);
+      }
+
+      console.log(`✅ Final ACP ID: ${newAcpId}`);
+
+      if (!newAcpId) {
+        throw new Error(`Gagal mendapatkan ID ACP setelah pembuatan`);
+      }
+
+      return newAcpId;
+    } catch (error) {
+      console.error(`❌ Failed to create ACP "${acpName}":`, error);
+      throw error;
+    }
   };
 
   // Mapping functions to convert names to IDs dengan fuzzy matching
@@ -604,15 +827,27 @@ const ATP = () => {
           const cleanText = (val) => (val ?? "").toString();
 
           try {
+            // Prepare row data for auto-creation
+            const rowData = {
+              tahunAjaran: cleanText(row[idx("tahunAjaran")]),
+              namaSemester: cleanText(row[idx("namaSemester")]),
+              namaKelas: cleanText(row[idx("namaKelas")]),
+              namaMapel: cleanText(row[idx("namaMapel")]),
+              namaElemen: cleanText(row[idx("namaElemen")]),
+              namaAcp: cleanText(row[idx("namaAcp")]),
+              namaKonsentrasiSekolah: cleanText(
+                row[idx("namaKonsentrasiSekolah")]
+              ),
+              idSchool: row[idx("idSchool")] || "RWK001",
+            };
+
             // Map names to IDs using the mapping functions
-            const tahunAjaranId = mapTahunAjaranToId(row[idx("tahunAjaran")]);
-            const semesterId = mapSemesterNameToId(row[idx("namaSemester")]);
-            const kelasId = mapKelasNameToId(row[idx("namaKelas")]);
-            const mapelId = mapMapelNameToId(row[idx("namaMapel")]);
-            const elemenId = mapElemenNameToId(row[idx("namaElemen")]);
-            const acpId = mapAcpNameToId(row[idx("namaAcp")]);
+            const tahunAjaranId = mapTahunAjaranToId(rowData.tahunAjaran);
+            const semesterId = mapSemesterNameToId(rowData.namaSemester);
+            const kelasId = mapKelasNameToId(rowData.namaKelas);
+            const mapelId = mapMapelNameToId(rowData.namaMapel);
             const konsentrasiId = mapKonsentrasiNameToId(
-              row[idx("namaKonsentrasiSekolah")]
+              rowData.namaKonsentrasiSekolah
             );
 
             // Validate required fields
@@ -620,32 +855,7 @@ const ATP = () => {
               throw new Error("Field wajib kosong: namaAtp atau jumlahJpl");
             }
 
-            // Validasi khusus untuk Elemen dan ACP
-            if (!elemenId) {
-              const errorMsg = `ATP "${cleanText(
-                row[idx("namaAtp")]
-              )}" dengan Elemen "${cleanText(
-                row[idx("namaElemen")]
-              )}" gagal diimpor karena data Elemen tidak ditemukan`;
-              errorMessages.push(errorMsg);
-              console.warn(errorMsg);
-              errorCount++;
-              continue; // Skip ke data berikutnya
-            }
-
-            if (!acpId) {
-              const errorMsg = `ATP "${cleanText(
-                row[idx("namaAtp")]
-              )}" dengan ACP "${cleanText(
-                row[idx("namaAcp")]
-              )}" gagal diimpor karena data ACP tidak ditemukan`;
-              errorMessages.push(errorMsg);
-              console.warn(errorMsg);
-              errorCount++;
-              continue; // Skip ke data berikutnya
-            }
-
-            // Validasi field lainnya
+            // Validasi field master data yang wajib ada
             if (
               !tahunAjaranId ||
               !semesterId ||
@@ -662,7 +872,7 @@ const ATP = () => {
 
               const errorMsg = `ATP "${cleanText(
                 row[idx("namaAtp")]
-              )}" gagal diimpor karena data tidak ditemukan: ${missingFields.join(
+              )}" gagal diimpor karena data master tidak ditemukan: ${missingFields.join(
                 ", "
               )}`;
               errorMessages.push(errorMsg);
@@ -671,7 +881,143 @@ const ATP = () => {
               continue;
             }
 
-            // Buat data ATP
+            // Debug: Print all master data IDs
+            console.log(
+              `🔍 Debug Master Data Mapping for "${rowData.namaElemen}":`
+            );
+            console.log(
+              `  tahunAjaranId: ${tahunAjaranId} (${rowData.tahunAjaran})`
+            );
+            console.log(
+              `  semesterId: ${semesterId} (${rowData.namaSemester})`
+            );
+            console.log(`  kelasId: ${kelasId} (${rowData.namaKelas})`);
+            console.log(`  mapelId: ${mapelId} (${rowData.namaMapel})`);
+            console.log(
+              `  konsentrasiId: ${konsentrasiId} (${rowData.namaKonsentrasiSekolah})`
+            );
+
+            console.log(`\n🔄 STEP 1/3: ELEMEN PROCESSING`);
+            console.log(`================================================`);
+
+            // STEP 1: Check or create Elemen (HARUS PERTAMA)
+            let elemenId = mapElemenNameToId(rowData.namaElemen);
+            console.log(
+              `🔍 Initial Elemen search: "${rowData.namaElemen}" → ID: ${elemenId}`
+            );
+
+            if (!elemenId && rowData.namaElemen) {
+              console.log(`🔄 Auto-creating Elemen: "${rowData.namaElemen}"`);
+              console.log(`📋 Elemen Data to be created:`, {
+                namaElemen: rowData.namaElemen,
+                tahunAjaranId,
+                semesterId,
+                kelasId,
+                mapelId,
+                konsentrasiId,
+                idSchool: rowData.idSchool,
+              });
+
+              try {
+                elemenId = await createElemenIfNotExists(
+                  rowData.namaElemen,
+                  rowData
+                );
+                console.log(`✅ Elemen created with ID: ${elemenId}`);
+              } catch (error) {
+                console.error(`❌ Full error creating Elemen:`, error);
+                const errorMsg = `ATP "${cleanText(
+                  row[idx("namaAtp")]
+                )}" gagal diimpor karena gagal membuat Elemen "${
+                  rowData.namaElemen
+                }": ${error.message}`;
+                errorMessages.push(errorMsg);
+                console.error(errorMsg);
+                errorCount++;
+                continue;
+              }
+            }
+
+            if (!elemenId) {
+              const errorMsg = `ATP "${cleanText(
+                row[idx("namaAtp")]
+              )}" dengan Elemen "${
+                rowData.namaElemen
+              }" gagal diimpor karena Elemen tidak dapat ditemukan atau dibuat`;
+              errorMessages.push(errorMsg);
+              console.warn(errorMsg);
+              errorCount++;
+              continue;
+            }
+
+            console.log(
+              `✅ STEP 1 COMPLETED: Elemen "${rowData.namaElemen}" ready with ID: ${elemenId}`
+            );
+
+            console.log(`\n🔄 STEP 2/3: ACP PROCESSING`);
+            console.log(`================================================`);
+
+            // STEP 2: Check or create ACP (SETELAH ELEMEN SELESAI)
+            let acpId = mapAcpNameToId(rowData.namaAcp);
+            console.log(
+              `🔍 Initial ACP search: "${rowData.namaAcp}" → ID: ${acpId}`
+            );
+
+            if (!acpId && rowData.namaAcp) {
+              console.log(`🔄 Auto-creating ACP: "${rowData.namaAcp}"`);
+              console.log(`📋 ACP Data to be created:`, {
+                namaAcp: rowData.namaAcp,
+                elemenId: elemenId,
+                tahunAjaranId,
+                semesterId,
+                kelasId,
+                mapelId,
+                konsentrasiId,
+                idSchool: rowData.idSchool,
+              });
+
+              try {
+                rowData.elemenId = elemenId; // Pass elemenId to rowData
+                acpId = await createACPIfNotExists(
+                  rowData.namaAcp,
+                  elemenId,
+                  rowData
+                );
+                console.log(`✅ ACP created with ID: ${acpId}`);
+              } catch (error) {
+                console.error(`❌ Full error creating ACP:`, error);
+                const errorMsg = `ATP "${cleanText(
+                  row[idx("namaAtp")]
+                )}" gagal diimpor karena gagal membuat ACP "${
+                  rowData.namaAcp
+                }": ${error.message}`;
+                errorMessages.push(errorMsg);
+                console.error(errorMsg);
+                errorCount++;
+                continue;
+              }
+            }
+
+            if (!acpId) {
+              const errorMsg = `ATP "${cleanText(
+                row[idx("namaAtp")]
+              )}" dengan ACP "${
+                rowData.namaAcp
+              }" gagal diimpor karena ACP tidak dapat ditemukan atau dibuat`;
+              errorMessages.push(errorMsg);
+              console.warn(errorMsg);
+              errorCount++;
+              continue;
+            }
+
+            console.log(
+              `✅ STEP 2 COMPLETED: ACP ready with ID: ${acpId} (linked to Elemen ID: ${elemenId})`
+            );
+
+            console.log(`\n🔄 STEP 3/3: ATP PROCESSING`);
+            console.log(`================================================`);
+
+            // STEP 3: Buat ATP (TERAKHIR, SETELAH ELEMEN DAN ACP SELESAI)
             const atpData = {
               idAtp: null,
               namaAtp: cleanText(row[idx("namaAtp")]),
@@ -698,6 +1044,13 @@ const ATP = () => {
             );
 
             await addATP(atpData);
+            console.log(
+              `✅ STEP 3 COMPLETED: ATP "${atpData.namaAtp}" created successfully!`
+            );
+            console.log(
+              `🎉 HIERARCHY COMPLETE: Elemen(${elemenId}) → ACP(${acpId}) → ATP(${atpData.namaAtp})`
+            );
+            console.log(`================================================\n`);
             successCount++;
           } catch (error) {
             console.error(
@@ -1132,12 +1485,23 @@ const ATP = () => {
               &quot;Geo-metri&quot;
               <br />
               <br />
-              <strong>Validasi Khusus:</strong>
-              <br />• Jika Elemen tidak ditemukan, ATP akan dilewati dengan
-              pesan error
-              <br />• Jika ACP tidak ditemukan, ATP akan dilewati dengan pesan
-              error
-              <br />• Import akan berlanjut ke data berikutnya tanpa berhenti
+              <strong>🚀 Fitur Auto-Creation (Baru!):</strong>
+              <br />• <strong>Elemen Otomatis:</strong> Jika Elemen tidak
+              ditemukan, sistem akan membuat Elemen baru secara otomatis
+              <br />• <strong>ACP Otomatis:</strong> Jika ACP tidak ditemukan,
+              sistem akan membuat ACP baru yang terkait dengan Elemen
+              <br />• <strong>Validasi Ketat:</strong> Data master (Tahun
+              Ajaran, Semester, Kelas, Mapel, Konsentrasi Sekolah) harus sudah
+              ada
+              <br />• <strong>Relasi Otomatis:</strong> Elemen, ACP, dan ATP
+              akan saling terkait sesuai hierarki yang benar
+              <br />
+              <br />
+              <strong>Prioritas Pencarian:</strong>
+              <br />• Sistem akan mencari data yang sudah ada terlebih dahulu
+              <br />• Jika tidak ditemukan, baru akan membuat data baru
+              <br />• Proses berlanjut tanpa error untuk menciptakan hierarchi
+              lengkap
               <br />
               <br />
               <strong>Contoh isi data:</strong>
