@@ -3,6 +3,7 @@
 ## Urutan yang Telah Dipastikan Benar
 
 ### 🔄 STEP 1: ELEMEN (First)
+
 ```javascript
 // 1. Cari Elemen yang sudah ada
 let elemenId = mapElemenNameToId(rowData.namaElemen);
@@ -19,6 +20,7 @@ if (!elemenId) {
 ```
 
 ### 🔄 STEP 2: ACP (Second, setelah Elemen siap)
+
 ```javascript
 // 1. Cari ACP yang sudah ada
 let acpId = mapAcpNameToId(rowData.namaAcp);
@@ -28,20 +30,21 @@ if (!acpId && rowData.namaAcp) {
   acpId = await createACPIfNotExists(rowData.namaAcp, elemenId, rowData);
 }
 
-// 3. Validasi ACP tersedia sebelum lanjut  
+// 3. Validasi ACP tersedia sebelum lanjut
 if (!acpId) {
   // Error dan skip ke data berikutnya
 }
 ```
 
 ### 🔄 STEP 3: ATP (Last, setelah Elemen dan ACP siap)
+
 ```javascript
 // Buat ATP dengan relasi lengkap
 const atpData = {
   namaAtp: rowData.namaAtp,
   jumlahJpl: rowData.jumlahJpl,
-  idAcp: acpId,        // ← Link ke ACP
-  idElemen: elemenId,  // ← Link ke Elemen  
+  idAcp: acpId, // ← Link ke ACP
+  idElemen: elemenId, // ← Link ke Elemen
   // ... data master lainnya
 };
 
@@ -73,6 +76,7 @@ await addATP(atpData);
 ## Enhanced Logging untuk Tracking
 
 ### Debug Output per Step:
+
 ```
 🔄 STEP 1/3: ELEMEN PROCESSING
 ================================================
@@ -83,7 +87,7 @@ await addATP(atpData);
 
 🔄 STEP 2/3: ACP PROCESSING
 ================================================
-🔍 Initial ACP search: "Peserta didik memahami..." → ID: null  
+🔍 Initial ACP search: "Peserta didik memahami..." → ID: null
 🔄 Auto-creating ACP: "Peserta didik memahami..."
 ✅ ACP created with ID: 456
 ✅ STEP 2 COMPLETED: ACP ready with ID: 456 (linked to Elemen ID: 123)
@@ -97,30 +101,35 @@ await addATP(atpData);
 ## Validasi Urutan
 
 ### ✅ Yang Sudah Benar:
+
 - **Sequential Processing**: Elemen → ACP → ATP
 - **Dependency Check**: Setiap step memerlukan step sebelumnya berhasil
 - **Proper Linking**: ACP linked ke Elemen, ATP linked ke keduanya
 - **Error Handling**: Skip jika step gagal, tidak lanjut ke step berikutnya
 
 ### ✅ Perbaikan Response Handling:
+
 - Multiple fallback untuk ambil ID dari API response
 - Fallback search by name jika ID tidak tersedia dari response
 - Comprehensive error logging untuk troubleshooting
 
 ### ✅ Enhanced Debugging:
+
 - Step-by-step progress logging
-- Master data mapping validation  
+- Master data mapping validation
 - API request/response details
 - Clear success/failure indicators
 
 ## Expected Behavior
 
 ### Scenario Success:
+
 1. **All New Data**: Create Elemen → Create ACP → Create ATP
-2. **Partial Existing**: Use existing Elemen → Create ACP → Create ATP  
+2. **Partial Existing**: Use existing Elemen → Create ACP → Create ATP
 3. **All Existing**: Use existing Elemen → Use existing ACP → Create ATP
 
 ### Scenario Failure Points:
+
 1. **Master Data Missing**: Skip dengan error detail
 2. **Elemen Creation Failed**: Skip dengan error detail
 3. **ACP Creation Failed**: Skip dengan error detail
