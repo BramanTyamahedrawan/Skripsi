@@ -112,7 +112,10 @@ export function transformHasilUjianData(hasil, index = 0) {
     school:
       hasil.school?.nameSchool ||
       hasil.ujian?.school?.nameSchool ||
-      hasil.peserta?.sekolah?.nama ||
+      "Tidak Diketahui",
+    namaSekolah:
+      hasil.school?.nameSchool ||
+      hasil.ujian?.school?.nameSchool ||
       "Tidak Diketahui",
 
     // Exam information
@@ -140,9 +143,30 @@ export function transformHasilUjianData(hasil, index = 0) {
     soalSalah: hasil.jumlahSalah || 0,
     soalKosong: hasil.jumlahKosong || 0,
 
-    // Time metrics
-    durasi: hasil.durasiPengerjaan || hasil.durasi || 0,
+    // Time metrics - convert seconds to minutes for durasi, or calculate from timestamps
+    durasi: (() => {
+      if (hasil.durasiPengerjaan) {
+        return Math.round(hasil.durasiPengerjaan / 60);
+      } else if (hasil.waktuMulai && hasil.waktuSelesai) {
+        const mulai = new Date(hasil.waktuMulai);
+        const selesai = new Date(hasil.waktuSelesai);
+        const diffMs = selesai - mulai;
+        return Math.round(diffMs / (1000 * 60)); // convert to minutes
+      }
+      return hasil.durasi || 0;
+    })(),
     durasiPengerjaan: hasil.durasiPengerjaan || hasil.durasi || 0,
+    sisaWaktu: (() => {
+      // Calculate sisaWaktu if not provided
+      if (hasil.sisaWaktu) {
+        return hasil.sisaWaktu;
+      } else if (hasil.ujian?.durasiMenit && hasil.durasiPengerjaan) {
+        const durasiUjianDetik = hasil.ujian.durasiMenit * 60;
+        const sisaWaktuDetik = durasiUjianDetik - hasil.durasiPengerjaan;
+        return Math.max(0, sisaWaktuDetik); // tidak boleh negatif
+      }
+      return 0;
+    })(),
     waktuMulai: hasil.waktuMulai,
     waktuSelesai: hasil.waktuSelesai,
     statusPengerjaan: hasil.statusPengerjaan || "SELESAI",

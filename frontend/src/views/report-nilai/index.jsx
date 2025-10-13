@@ -120,11 +120,6 @@ const ReportNilaiSiswa = () => {
           soalMap[soal.idBankSoal] = soal;
         });
         setBankSoalMap(soalMap);
-        console.log(
-          "Bank soal loaded:",
-          Object.keys(soalMap).length,
-          "questions"
-        );
       }
     } catch (error) {
       console.error("Error fetching bank soal:", error);
@@ -192,19 +187,7 @@ const ReportNilaiSiswa = () => {
       const violations =
         response?.data?.data?.violations || response?.data?.violations || [];
 
-      console.log("All Violations API response:", response);
-      console.log("SET ALL VIOLATIONS DATA:", violations);
-      console.log(
-        "Violations structure check:",
-        violations.length > 0 ? violations[0] : "No violations found"
-      );
-
       // NOTE: Tidak lagi menyimpan allViolationsData, menggunakan metadata langsung
-      console.log(
-        "✅ Violations info (sekarang diambil dari metadata):",
-        violations.length,
-        "violations"
-      );
     } catch (error) {
       console.error("Error fetching violations info:", error);
     } finally {
@@ -342,29 +325,10 @@ const ReportNilaiSiswa = () => {
 
         if (result.success && result.data?.content) {
           allReports = result.data.content.map((hasil, index) => {
-            // Debug setiap item sebelum transformasi
-            console.log(`Item ${index} before transform:`, {
-              peserta: hasil.peserta,
-              pesertaName: hasil.peserta?.name,
-              pesertaUsername: hasil.peserta?.username,
-              idPeserta: hasil.idPeserta,
-            });
-
             const transformed = transformHasilUjianData(hasil, index);
-
-            // Debug setelah transformasi
-            console.log(`Item ${index} after transform:`, {
-              peserta: transformed.peserta,
-              pesertaName: transformed.peserta?.name,
-              pesertaUsername: transformed.peserta?.username,
-              idPeserta: transformed.idPeserta,
-            });
 
             // Pastikan data peserta tidak hilang
             if (hasil.peserta && !transformed.peserta) {
-              console.warn(
-                "Peserta data lost during transformation, restoring..."
-              );
               transformed.peserta = hasil.peserta;
             }
 
@@ -388,16 +352,9 @@ const ReportNilaiSiswa = () => {
           with: "peserta,ujian",
         });
 
-        console.log("API Response for all ujian:", result);
-
         if (result.success && result.data?.content) {
           allReports = result.data.content.map((hasil, index) => {
             // Debug yang sama
-            console.log(`All ujian item ${index} before transform:`, {
-              peserta: hasil.peserta,
-              pesertaName: hasil.peserta?.name,
-              pesertaUsername: hasil.peserta?.username,
-            });
 
             const transformed = transformHasilUjianData(hasil, index);
 
@@ -406,18 +363,10 @@ const ReportNilaiSiswa = () => {
               transformed.peserta = hasil.peserta;
             }
 
-            console.log(`Transformed item ${index}:`, {
-              transformedPeserta: transformed.peserta,
-              transformedId: transformed.idHasilUjian,
-            });
-
             return transformed;
           });
         }
       }
-
-      // Debug final data
-      console.log("Final report data sample:", allReports[0]);
 
       // Filter by date range if specified
       if (dateRange.length === 2) {
@@ -447,16 +396,11 @@ const ReportNilaiSiswa = () => {
     });
     setViolationModalVisible(true);
 
-    console.log("showViolationsModal called with record:", record);
-
     // Ambil violations dari metadata langsung
     const violationsFromMetadata = record.metadata?.violations || [];
 
     // Deduplicate violations
     const uniqueViolations = deduplicateViolations(violationsFromMetadata);
-
-    console.log("Violations from metadata:", violationsFromMetadata.length);
-    console.log("Unique violations:", uniqueViolations.length);
 
     setLoadingViolations(false);
     setViolations(uniqueViolations);
@@ -493,32 +437,10 @@ const ReportNilaiSiswa = () => {
   // Show detail modal (for main report table)
   const showDetail = async (record) => {
     let data = { ...record };
-
-    // Enhanced Debug logs
-    console.log("=== MODAL DEBUG INFO ===");
-    console.log("Raw record:", record);
-    console.log("Modal data:", {
-      jawabanPeserta: data.jawabanPeserta,
-      jawabanBenar: data.jawabanBenar,
-      skorPerSoal: data.skorPerSoal,
-      bankSoalMapSize: Object.keys(bankSoalMap).length,
-    });
-    console.log("Full data object keys:", Object.keys(data));
-    console.log("Full data.fullData:", data.fullData);
-
-    // Check if data is in fullData
-    if (data.fullData) {
-      console.log("Checking fullData for answers:", {
-        jawabanPeserta: data.fullData.jawabanPeserta,
-        jawabanBenar: data.fullData.jawabanBenar,
-        skorPerSoal: data.fullData.skorPerSoal,
-      });
-    }
-    console.log("========================");
+    // Check if data is in fullData (fullData provides fallback answer data)
 
     // If bankSoalMap is empty, try to fetch it
     if (Object.keys(bankSoalMap).length === 0) {
-      console.log("Bank soal map is empty, fetching...");
       await fetchBankSoalDetails();
     }
 
@@ -538,7 +460,6 @@ const ReportNilaiSiswa = () => {
       // Jika tidak ada di ujianList, fetch langsung
       if (!ujianData) {
         try {
-          console.log("Fetching ujian details for ID:", idUjian);
           const result = await getUjian();
           if (result.data?.statusCode === 200 && result.data?.content) {
             ujianData = result.data.content.find((u) => u.idUjian === idUjian);
@@ -550,17 +471,11 @@ const ReportNilaiSiswa = () => {
 
       if (ujianData) {
         data.ujian = ujianData;
-        console.log(
-          "Ujian data loaded with bank soal:",
-          ujianData.bankSoalList?.length || 0,
-          "questions"
-        );
       }
     }
 
     // IMPORTANT: Ensure answer data is available - check fullData fallback
     if (!data.jawabanPeserta && data.fullData?.jawabanPeserta) {
-      console.log("Using fullData for answer data");
       data.jawabanPeserta = data.fullData.jawabanPeserta;
       data.jawabanBenar = data.fullData.jawabanBenar;
       data.skorPerSoal = data.fullData.skorPerSoal;
@@ -601,7 +516,7 @@ const ReportNilaiSiswa = () => {
       ellipsis: true,
     },
     {
-      title: "NIM",
+      title: "NISN",
       dataIndex: "studentNIM",
       key: "studentNIM",
       width: 120,
@@ -658,38 +573,6 @@ const ReportNilaiSiswa = () => {
       render: (text) =>
         text ? dayjs(text).format("DD/MM/YYYY HH:mm:ss") : "N/A",
     },
-    // {
-    //   title: "Peserta",
-    //   key: "peserta",
-    //   render: (_, record) => (
-    //     <div>
-    //       <Text strong>
-    //         {record.idPeserta || record.peserta?.username || "Tidak diketahui"}
-    //       </Text>
-    //     </div>
-    //   ),
-    // },
-    // {
-    //   title: "Ujian",
-    //   key: "ujian",
-    //   render: (_, record) => (
-    //     <div>
-    //       <Text strong>
-    //         {record.idUjian || record.ujian?.namaUjian || "Tidak diketahui"}
-    //       </Text>
-    //     </div>
-    //   ),
-    // },
-    // {
-    //   title: "Resolved",
-    //   dataIndex: "resolved",
-    //   key: "resolved",
-    //   render: (text) => (
-    //     <Tag color={text ? "green" : "volcano"}>
-    //       {typeof text === "boolean" ? (text ? "Ya" : "Tidak") : "N/A"}
-    //     </Tag>
-    //   ),
-    // },
   ];
   // ---------------------------------------------------
 
@@ -724,9 +607,6 @@ const ReportNilaiSiswa = () => {
       }
     });
 
-    console.log(
-      `Deduplication: ${violations.length} -> ${uniqueViolations.length} violations`
-    );
     return uniqueViolations;
   };
 
@@ -744,7 +624,7 @@ const ReportNilaiSiswa = () => {
           ...violation,
           // Add student context
           studentName: item.peserta?.name || item.namaSiswa || "-",
-          studentNIM: item.peserta?.username || item.nim || "-",
+          studentNIM: item.peserta?.username || item.nisn || "-",
           idPeserta: item.idPeserta || "-",
           sessionId: item.sessionId || "-",
           ujianNama: item.ujian?.namaUjian || "-",
@@ -767,9 +647,6 @@ const ReportNilaiSiswa = () => {
     // Deduplicate violations
     const uniqueViolations = deduplicateViolations(violations);
 
-    console.log(
-      `Violations count for record ${record.idHasilUjian}: ${violations.length} -> ${uniqueViolations.length} (after deduplication)`
-    );
     return uniqueViolations.length;
   };
 
@@ -905,16 +782,17 @@ const ReportNilaiSiswa = () => {
         No: index + 1,
         "ID Hasil": item.idHasilUjian || "-",
         "Session ID": item.sessionId || "-",
-        NIM: item.peserta?.username || item.username || item.nim || "-",
+        NISN: item.peserta?.username || item.username || item.nisn || "-",
         "Nama Siswa": item.peserta?.name || item.namaSiswa || item.nama || "-",
         "ID Peserta": item.idPeserta || "-",
         Kelas:
           item.ujian?.kelas?.namaKelas || item.namaKelas || "Tidak Diketahui",
         Ujian: item.ujian?.namaUjian || item.namaUjian || "-",
-        "Mata Pelajaran": item.ujian?.mapel?.name || item.mapelNama || "-",
+        "Mata Pelajaran":
+          item.ujian?.mapel?.name || item.mapelNama || item.mapel,
         Semester:
           item.ujian?.semester?.namaSemester || item.semesterNama || "-",
-        Sekolah: item.school?.nameSchool || item.namaSekolah || "-",
+        Sekolah: item.namaSekolah || item.school || "Tidak Diketahui",
         "Percobaan Ke": item.attemptNumber || 1,
         "Status Pengerjaan": item.statusPengerjaan || "-",
         "Auto Submit": item.isAutoSubmit ? "Ya" : "Tidak",
@@ -924,14 +802,38 @@ const ReportNilaiSiswa = () => {
         "Waktu Selesai": item.waktuSelesai
           ? dayjs(item.waktuSelesai).format("DD/MM/YYYY HH:mm:ss")
           : "-",
-        "Durasi Pengerjaan (detik)": item.durasiPengerjaan || "-",
-        "Sisa Waktu (detik)": item.sisaWaktu || "-",
+        "Durasi Ujian": item.ujian?.durasiMenit
+          ? `${item.ujian.durasiMenit} menit`
+          : "-",
+        "Durasi Pengerjaan": item.durasiPengerjaan
+          ? `${Math.floor(item.durasiPengerjaan / 60)}m ${
+              item.durasiPengerjaan % 60
+            }s`
+          : "-",
+        "Sisa Waktu": (() => {
+          const durasiUjianMenit = item.ujian?.durasiMenit || 0;
+          const durasiPengerjaanDetik = item.durasiPengerjaan || 0;
+
+          if (durasiUjianMenit > 0 && durasiPengerjaanDetik > 0) {
+            const durasiUjianDetik = durasiUjianMenit * 60;
+            const sisaWaktuDetik = durasiUjianDetik - durasiPengerjaanDetik;
+
+            if (sisaWaktuDetik > 0) {
+              const menit = Math.floor(sisaWaktuDetik / 60);
+              const detik = sisaWaktuDetik % 60;
+              return `${menit}m ${detik}s`;
+            } else {
+              return "0m 0s (Melebihi batas)";
+            }
+          }
+
+          return "-";
+        })(),
         "Total Skor": item.totalSkor || 0,
         "Skor Maksimal": item.skorMaksimal || 100,
         Persentase: item.persentase
           ? `${parseFloat(item.persentase).toFixed(2)}%`
           : "0%",
-        "Status Kelulusan": item.lulus ? "LULUS" : "TIDAK LULUS",
         "Total Soal": item.totalSoal || item.metadata?.totalQuestions || "-",
         "Soal Terjawab":
           item.metadata?.answeredQuestions ||
@@ -970,7 +872,7 @@ const ReportNilaiSiswa = () => {
           allSoalIds = Object.keys(jawabanData);
         }
 
-        allSoalIds.forEach((soalId, index) => {
+        allSoalIds.forEach((soalId, questionIndex) => {
           const jawaban = jawabanData[soalId];
           const bankSoal =
             bankSoalMap[soalId] ||
@@ -1063,11 +965,17 @@ const ReportNilaiSiswa = () => {
           }
 
           detailAnswers.push({
-            "Nama Siswa": item.peserta?.name || item.namaSiswa || "-",
-            NIM: item.peserta?.username || item.nim || "-",
-            "Session ID": item.sessionId || "-",
-            Ujian: item.ujian?.namaUjian || "-",
-            "No Soal": index + 1,
+            "Nama Siswa":
+              questionIndex === 0
+                ? item.peserta?.name || item.namaSiswa || "-"
+                : "",
+            NISN:
+              questionIndex === 0
+                ? item.peserta?.username || item.nisn || "-"
+                : "",
+            "Session ID": questionIndex === 0 ? item.sessionId || "-" : "",
+            Ujian: questionIndex === 0 ? item.ujian?.namaUjian || "-" : "",
+            "No Soal": questionIndex + 1,
             "ID Soal": soalId,
             "Jenis Soal": bankSoal?.jenisSoal || "-",
             Pertanyaan: bankSoal?.pertanyaan || "-",
@@ -1085,15 +993,74 @@ const ReportNilaiSiswa = () => {
             Status: status,
             "Skor Diperoleh": item.skorPerSoal?.[soalId] || 0,
             "Bobot Soal": bankSoal?.bobot || "-",
-            "Waktu Mulai Ujian": item.waktuMulai
-              ? dayjs(item.waktuMulai).format("DD/MM/YYYY HH:mm:ss")
-              : "-",
+            "Waktu Mulai Ujian":
+              questionIndex === 0
+                ? item.waktuMulai
+                  ? dayjs(item.waktuMulai).format("DD/MM/YYYY HH:mm:ss")
+                  : "-"
+                : "",
           });
         });
       });
 
       if (detailAnswers.length > 0) {
         const detailWs = XLSX.utils.json_to_sheet(detailAnswers);
+
+        // Add merge cells for students with same name and NISN
+        const merges = [];
+        let currentStudentKey = null;
+        let groupStartRow = 1; // Starting from row 2 (after header at row 0)
+        let groupRowCount = 0;
+
+        detailAnswers.forEach((row, index) => {
+          const namaSiswa = row["Nama Siswa"];
+          const nisn = row["NISN"];
+
+          // Only process rows that have actual student data (not empty rows)
+          if (namaSiswa && nisn) {
+            const studentKey = `${namaSiswa}_${nisn}`;
+
+            if (currentStudentKey !== studentKey) {
+              // Finish previous group if it had multiple rows
+              if (groupRowCount > 1) {
+                // Add merges for columns that should be merged
+                [0, 1, 2, 3, 16].forEach((columnIndex) => {
+                  // Nama, NISN, Session, Ujian, Waktu
+                  merges.push({
+                    s: { r: groupStartRow, c: columnIndex },
+                    e: { r: groupStartRow + groupRowCount - 1, c: columnIndex },
+                  });
+                });
+              }
+
+              // Start new group
+              currentStudentKey = studentKey;
+              groupStartRow = index + 1; // +1 because header is at row 0
+              groupRowCount = 1;
+            } else {
+              groupRowCount++;
+            }
+          } else {
+            // This is a continuation row for the same student
+            groupRowCount++;
+          }
+        });
+
+        // Handle the last group
+        if (groupRowCount > 1) {
+          [0, 1, 2, 3, 16].forEach((columnIndex) => {
+            merges.push({
+              s: { r: groupStartRow, c: columnIndex },
+              e: { r: groupStartRow + groupRowCount - 1, c: columnIndex },
+            });
+          });
+        }
+
+        // Apply merges to worksheet
+        if (merges.length > 0) {
+          detailWs["!merges"] = merges;
+        }
+
         XLSX.utils.book_append_sheet(wb, detailWs, "Detail Jawaban");
       }
 
@@ -1127,7 +1094,7 @@ const ReportNilaiSiswa = () => {
 
           violationDetails.push({
             "Nama Siswa": item.peserta?.name || item.namaSiswa || "-",
-            NIM: item.peserta?.username || item.nim || "-",
+            NISN: item.peserta?.username || item.nisn || "-",
             "ID Peserta": item.idPeserta || "-",
             "Session ID": item.sessionId || "-",
             Ujian: item.ujian?.namaUjian || "-",
@@ -1166,11 +1133,12 @@ const ReportNilaiSiswa = () => {
         if (studentViolations.length === 0 && getViolationsCount(item) > 0) {
           violationDetails.push({
             "Nama Siswa": item.peserta?.name || item.namaSiswa || "-",
-            NIM: item.peserta?.username || item.nim || "-",
+            NISN: item.peserta?.username || item.nisn || "-",
             "ID Peserta": item.idPeserta || "-",
             "Session ID": item.sessionId || "-",
             Ujian: item.ujian?.namaUjian || "-",
-            "Mata Pelajaran": item.ujian?.mapel?.name || item.mapelNama || "-",
+            "Mata Pelajaran":
+              item.ujian?.mapel?.name || item.mapelNama || item.mapel || "-",
             "Waktu Ujian": item.waktuMulai
               ? dayjs(item.waktuMulai).format("DD/MM/YYYY HH:mm:ss")
               : "-",
@@ -1230,7 +1198,8 @@ const ReportNilaiSiswa = () => {
 
             masterSoalData.push({
               Ujian: item.ujian?.namaUjian || "-",
-              "Mata Pelajaran": item.ujian?.mapel?.name || "-",
+              "Mata Pelajaran":
+                item.ujian?.mapel?.name || item.mapelNama || item.mapel || "-",
               Kelas: item.ujian?.kelas?.namaKelas || "-",
               Semester: item.ujian?.semester?.namaSemester || "-",
               "No Soal": index + 1,
@@ -1364,37 +1333,40 @@ const ReportNilaiSiswa = () => {
                 record.nama ||
                 "Nama tidak tersedia"}
             </div>
-            <Text type="secondary" style={{ fontSize: "12px" }}>
-              NIM:{" "}
-              {record.peserta?.username ||
-                record.nim ||
-                record.username ||
-                record.idPeserta ||
-                "NIM tidak tersedia"}
-            </Text>
           </div>
         );
       },
     },
     {
+      title: "NISN",
+      key: "nisn",
+      render: (_, record) => {
+        return (
+          <div>
+            <Text Strong>
+              {record.peserta?.username ||
+                record.nisn ||
+                record.username ||
+                record.idPeserta ||
+                "NISN tidak tersedia"}
+            </Text>
+          </div>
+        );
+      },
+    },
+
+    {
       title: "Ujian",
       key: "ujian",
-      render: (_, record) => (
-        <div>
-          <Text strong>
-            {record.ujian?.namaUjian || record.namaUjian || "Tidak tersedia"}
-          </Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: "12px" }}>
-            {record.ujian?.mapel?.name || record.mapelNama || "Mata Pelajaran"}
-          </Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: "11px" }}>
-            {record.ujian?.kelas?.namaKelas || record.namaKelas || ""} -{" "}
-            {record.ujian?.semester?.namaSemester || record.semesterNama || ""}
-          </Text>
-        </div>
-      ),
+      render: (_, record) => {
+        return (
+          <div>
+            <Text strong>
+              {record.ujian?.namaUjian || record.namaUjian || "Tidak tersedia"}
+            </Text>
+          </div>
+        );
+      },
     },
     {
       title: "Waktu Ujian",
@@ -1468,19 +1440,19 @@ const ReportNilaiSiswa = () => {
         );
       },
     },
-    {
-      title: "Status",
-      key: "status",
-      align: "center",
-      render: (_, record) => {
-        const { color, icon, text } = getStatusDisplay(record);
-        return (
-          <Tag color={color} icon={icon}>
-            {text}
-          </Tag>
-        );
-      },
-    },
+    // {
+    //   title: "Status",
+    //   key: "status",
+    //   align: "center",
+    //   render: (_, record) => {
+    //     const { color, icon, text } = getStatusDisplay(record);
+    //     return (
+    //       <Tag color={color} icon={icon}>
+    //         {text}
+    //       </Tag>
+    //     );
+    //   },
+    // },
     {
       title: "Pelanggaran",
       key: "violationCount",
@@ -1672,7 +1644,7 @@ const ReportNilaiSiswa = () => {
             </Col>
             <Col span={6}>
               <Input
-                placeholder="Cari siswa, NIM, ujian..."
+                placeholder="Cari siswa, NISN, ujian..."
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
@@ -1774,9 +1746,9 @@ const ReportNilaiSiswa = () => {
                           "-"}
                       </Text>
                     </Descriptions.Item>
-                    <Descriptions.Item label="Username/NIM">
+                    <Descriptions.Item label="Username/NISN">
                       {detailModal.data.peserta?.username ||
-                        detailModal.data.nim ||
+                        detailModal.data.nisn ||
                         detailModal.data.username ||
                         "-"}
                     </Descriptions.Item>
@@ -1791,14 +1763,14 @@ const ReportNilaiSiswa = () => {
                       <Text code>{detailModal.data.sessionId || "-"}</Text>
                     </Descriptions.Item>
                     <Descriptions.Item label="Sekolah">
-                      {detailModal.data.school?.nameSchool ||
-                        detailModal.data.namaSekolah ||
-                        "-"}
+                      {detailModal.data.namaSekolah ||
+                        detailModal.data.school ||
+                        "Tidak Diketahui"}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Mata Pelajaran">
-                      {detailModal.data.ujian?.mapel?.name ||
-                        detailModal.data.mapelNama ||
-                        "-"}
+                    <Descriptions.Item label="Durasi Ujian">
+                      {detailModal.data.ujian?.durasiMenit
+                        ? `${detailModal.data.ujian.durasiMenit} menit`
+                        : "-"}
                     </Descriptions.Item>
                   </Descriptions>
                 </Col>
@@ -1852,11 +1824,30 @@ const ReportNilaiSiswa = () => {
                   : "-"}
               </Descriptions.Item>
               <Descriptions.Item label="Sisa Waktu">
-                {detailModal.data.sisaWaktu
-                  ? `${Math.floor(detailModal.data.sisaWaktu / 60)}m ${
-                      detailModal.data.sisaWaktu % 60
-                    }s`
-                  : "-"}
+                {(() => {
+                  // Hitung sisa waktu berdasarkan durasi ujian dari API
+                  const durasiUjianMenit =
+                    detailModal.data.ujian?.durasiMenit || 0;
+                  const durasiPengerjaanDetik =
+                    detailModal.data.durasiPengerjaan || 0;
+
+                  if (durasiUjianMenit > 0 && durasiPengerjaanDetik > 0) {
+                    // Konversi durasi ujian ke detik
+                    const durasiUjianDetik = durasiUjianMenit * 60;
+                    const sisaWaktuDetik =
+                      durasiUjianDetik - durasiPengerjaanDetik;
+
+                    if (sisaWaktuDetik > 0) {
+                      const menit = Math.floor(sisaWaktuDetik / 60);
+                      const detik = sisaWaktuDetik % 60;
+                      return `${menit}m ${detik}s`;
+                    } else {
+                      return "0m 0s (Melebihi batas waktu)";
+                    }
+                  }
+
+                  return "-";
+                })()}
               </Descriptions.Item>
               <Descriptions.Item label="Status Pengerjaan">
                 <Tag
@@ -1944,38 +1935,7 @@ const ReportNilaiSiswa = () => {
               </Descriptions.Item>
             </Descriptions>
 
-            {/* Security Information - Only show violation count */}
-            <Divider orientation="left">🔒 Informasi Keamanan</Divider>
-            <Descriptions
-              bordered
-              column={2}
-              size="small"
-              style={{ marginBottom: 16 }}
-            >
-              <Descriptions.Item label="Jumlah Pelanggaran">
-                <Badge
-                  count={getViolationsCount(detailModal.data || {})}
-                  showZero
-                >
-                  <Text>Pelanggaran</Text>
-                </Badge>
-              </Descriptions.Item>
-            </Descriptions>
-
-            {/* Answer Details Section */}
             <Divider orientation="left">📝 Detail Jawaban Per Soal</Divider>
-
-            {/* Debug Info */}
-            <Alert
-              message={`Debug Info: Jawaban (${
-                Object.keys(detailModal.data?.jawabanPeserta || {}).length
-              }), Bank Soal (${
-                Object.keys(bankSoalMap).length
-              }), FullData Available: ${!!detailModal.data?.fullData}`}
-              type="info"
-              closable
-              style={{ marginBottom: 16 }}
-            />
 
             {(detailModal.data?.jawabanPeserta &&
               Object.keys(detailModal.data.jawabanPeserta).length > 0) ||
@@ -2478,8 +2438,8 @@ const ReportNilaiSiswa = () => {
                         jawabanBenarDisplay,
                         benar: jawaban
                           ? isCorrect
-                            ? "Ya"
-                            : "Tidak"
+                            ? "Benar"
+                            : "Salah"
                           : "Tidak dijawab",
                         skor: detailModal.data?.skorPerSoal?.[soalId] || 0,
                         bobot: bankSoal?.bobot || "-",
@@ -2584,8 +2544,8 @@ const ReportNilaiSiswa = () => {
                       align: "center",
                       render: (text) => {
                         const colorMap = {
-                          Ya: "success",
-                          Tidak: "error",
+                          Benar: "success",
+                          Salah: "error",
                           "Tidak dijawab": "warning",
                         };
                         return <Tag color={colorMap[text]}>{text}</Tag>;
