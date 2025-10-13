@@ -133,30 +133,112 @@ const User = () => {
       // Index kolom sesuai header
       const idx = (col) => header.indexOf(col);
 
+      let successCount = 0;
+      let errorCount = 0;
+      let errorMessages = [];
+
       // Loop dan masukkan satu-satu
-      // filepath: e:\Skripsi\Skripsi\frontend\src\views\user\index.jsx
       for (const row of rows) {
         if (!row[idx("username")]) continue;
-        const clean = (val) => (val ?? "").toString().replace(/['"`\s]/g, ""); // hapus petik satu, dua, backtick, dan spasi
 
-        const userData = {
-          name: clean(row[idx("name")]),
-          username: clean(row[idx("username")]),
-          email: row[idx("email")] === "-" ? "" : clean(row[idx("email")]),
-          password: clean(row[idx("password")]),
-          roles: clean(row[idx("roles")]),
-          schoolId: user?.school_id, // Ambil ID sekolah dari user yang login
+        // Fungsi untuk membersihkan data dengan lebih hati-hati
+        const cleanText = (val) => {
+          if (val === null || val === undefined) return "";
+          return val.toString().trim(); // Hanya trim whitespace di awal/akhir
         };
 
+        // Fungsi khusus untuk username dan password (tidak boleh ada spasi)
+        const cleanCredential = (val) => {
+          if (val === null || val === undefined) return "";
+          return val.toString().replace(/\s/g, "").trim(); // Hapus semua spasi untuk credentials
+        };
+
+        // Fungsi untuk role (case-insensitive, standardize)
+        const cleanRole = (val) => {
+          if (val === null || val === undefined) return "";
+          const roleStr = val.toString().trim().toLowerCase();
+
+          // Map common role variations
+          const roleMap = {
+            administrator: "1",
+            admin: "1",
+            operator: "2",
+            guru: "3",
+            teacher: "3",
+            siswa: "5",
+            student: "5",
+            1: "1",
+            2: "2",
+            3: "3",
+            4: "4",
+            5: "5",
+          };
+
+          return roleMap[roleStr] || "4"; // Default ke "Tidak Diketahui"
+        };
+
+        let currentUsername = "Unknown";
         try {
+          const userData = {
+            name: cleanText(row[idx("name")]), // Preserve spaces in name
+            username: cleanCredential(row[idx("username")]), // No spaces in username
+            email:
+              row[idx("email")] === "-" ? "" : cleanText(row[idx("email")]), // Preserve email format
+            password: cleanCredential(row[idx("password")]), // No spaces in password
+            roles: cleanRole(row[idx("roles")]), // Standardize role
+            schoolId: user?.school_id, // Ambil ID sekolah dari user yang login
+          };
+
+          currentUsername = userData.username || "Unknown";
+
+          console.log(`🔄 Processing user: "${userData.username}"`);
+          console.log(`📋 User data:`, {
+            name: userData.name,
+            username: userData.username,
+            email: userData.email,
+            roles: userData.roles,
+            schoolId: userData.schoolId,
+          });
+
+          // Validate required fields
+          if (!userData.username || !userData.name) {
+            throw new Error("Username dan nama wajib diisi");
+          }
+
           await handleAddUserOk(userData);
-        } catch (err) {
-          message.error(
-            `Gagal tambah user ${userData.username}: ${err.message}`
-          );
+          successCount++;
+          console.log(`✅ User "${userData.username}" berhasil diimport`);
+        } catch (error) {
+          errorCount++;
+          const errorMsg = `User "${currentUsername}" gagal diimport: ${error.message}`;
+          errorMessages.push(errorMsg);
+          console.error(errorMsg);
         }
       }
-      message.success("Import selesai");
+
+      // Tampilkan hasil import
+      if (successCount > 0) {
+        message.success(
+          `Import berhasil! ${successCount} user berhasil ditambahkan.`
+        );
+      }
+
+      if (errorCount > 0) {
+        // Tampilkan beberapa error pertama saja
+        const displayErrors = errorMessages.slice(0, 3);
+        const moreErrors =
+          errorMessages.length > 3
+            ? `\n... dan ${errorMessages.length - 3} error lainnya`
+            : "";
+
+        message.error({
+          content: `${errorCount} user gagal diimport:\n${displayErrors.join(
+            "\n"
+          )}${moreErrors}`,
+          duration: 8,
+        });
+      }
+
       setImportModalVisible(false);
       fetchUsers();
     };
@@ -415,7 +497,7 @@ const User = () => {
       )}
 
       <Modal
-        title="Import File"
+        title="Import User"
         open={importModalVisible}
         onCancel={() => setImportModalVisible(false)}
         footer={[
@@ -428,31 +510,123 @@ const User = () => {
             loading={uploading}
             onClick={() => {
               if (importFile) {
+                setUploading(true);
                 handleImportFile(importFile);
+                setUploading(false);
               } else {
                 message.warning("Pilih file terlebih dahulu!");
               }
             }}
           >
-            Upload
+            Import
           </Button>,
         ]}
+        width={600}
       >
-        <Upload
-          beforeUpload={(file) => {
-            setImportFile(file);
-            return false; // Jangan auto-upload
+        <div style={{ marginBottom: 16 }}>
+          <label
+            style={{ display: "block", marginBottom: 8, fontWeight: "bold" }}
+          >
+            Upload File CSV/Excel:
+          </label>
+          <Upload
+            beforeUpload={(file) => {
+              setImportFile(file);
+              return false; // Jangan auto-upload
+            }}
+            accept=".csv,.xlsx,.xls"
+            showUploadList={false}
+            maxCount={1}
+          >
+            <Button icon={<UploadOutlined />}>Pilih File</Button>
+          </Upload>
+          {importFile && (
+            <div
+              style={{
+                marginTop: 8,
+                padding: 8,
+                backgroundColor: "#f0f2f5",
+                borderRadius: 4,
+              }}
+            >
+              <strong>File terpilih:</strong> {importFile.name}
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            padding: 12,
+            backgroundColor: "#e6f7ff",
+            borderRadius: 4,
+            fontSize: "12px",
           }}
-          accept=".csv,.xlsx,.xls"
-          showUploadList={false}
         >
-          <Button>Pilih File</Button>
-        </Upload>
-        {importFile && (
+          <strong>
+            💡 Disarankan menggunakan format CSV untuk menghindari file corrupt!
+          </strong>
+          <br />
+          <br />
+          <strong>Format CSV/Excel yang diperlukan:</strong>
+          <br />
+          <strong>Kolom Wajib:</strong> name, username, email, password, roles
+          <br />
+          <br />
+          <strong>🔧 Perbaikan Import:</strong>
+          <br />• <strong>Preserve Spaces:</strong> Spasi dalam nama akan
+          dipertahankan (contoh: &quot;John Doe&quot;)
+          <br />• <strong>Clean Credentials:</strong> Username dan password akan
+          dibersihkan dari spasi
+          <br />• <strong>Case Insensitive Roles:</strong> Role dapat ditulis
+          dalam format apapun
+          <br />• <strong>Smart Role Mapping:</strong> Otomatis convert nama
+          role ke ID yang benar
+          <br />
+          <br />
+          <strong>Role Mapping:</strong>
+          <br />• <strong>Administrator/Admin:</strong> ID = 1
+          <br />• <strong>Operator:</strong> ID = 2
+          <br />• <strong>Guru/Teacher:</strong> ID = 3
+          <br />• <strong>Siswa/Student:</strong> ID = 5
+          <br />• <strong>Lainnya:</strong> ID = 4 (Tidak Diketahui)
+          <br />
+          <br />
+          <strong>Contoh data yang benar:</strong>
+          <br />• <strong>name:</strong> &quot;John Doe&quot;, &quot;Maria
+          Santos&quot; (spasi dipertahankan)
+          <br />• <strong>username:</strong> &quot;johndoe&quot;,
+          &quot;maria123&quot; (tanpa spasi)
+          <br />• <strong>email:</strong> &quot;john@example.com&quot; atau
+          &quot;-&quot; untuk kosong
+          <br />• <strong>password:</strong> &quot;password123&quot; (tanpa
+          spasi)
+          <br />• <strong>roles:</strong> &quot;Administrator&quot;,
+          &quot;guru&quot;, &quot;SISWA&quot;, &quot;3&quot; (fleksibel format)
+          <br />
+          <br />
+          <strong>Error Handling:</strong>
+          <br />
+          • Username dan nama wajib diisi
+          <br />
+          • User yang gagal akan di-skip dengan pesan error
+          <br />
+          • Import berlanjut ke data berikutnya
+          <br />
+          • Summary hasil import akan ditampilkan
+          <br />
+          <br />
+          <strong>Download Template:</strong>
+          <br />
           <div style={{ marginTop: 8 }}>
-            <b>File terpilih:</b> {importFile.name}
+            <a
+              href="/templates/import-template-user.csv"
+              download
+              style={{ color: "#1890ff" }}
+            >
+              📄 Template User (CSV)
+            </a>
           </div>
-        )}
+        </div>
       </Modal>
     </div>
   );
