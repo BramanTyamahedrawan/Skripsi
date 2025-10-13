@@ -856,10 +856,41 @@ const ReportNilaiSiswa = () => {
       };
 
       // Helper: Format jawaban untuk export
-      const formatJawaban = (jawaban) => {
+      const formatJawaban = (jawaban, bankSoal = null) => {
         if (Array.isArray(jawaban)) {
           return jawaban.join(", ");
         } else if (typeof jawaban === "object" && jawaban !== null) {
+          // Khusus untuk soal COCOK, format dengan nama pasangan
+          if (bankSoal?.jenisSoal === "COCOK" && bankSoal?.pasangan) {
+            const pasanganMap = {};
+
+            // Buat mapping dari pasangan
+            Object.entries(bankSoal.pasangan).forEach(([key, value]) => {
+              if (key.includes("_kiri")) {
+                const index = key.replace("_kiri", "");
+                pasanganMap[index] = { kiri: value };
+              } else if (key.includes("_kanan")) {
+                const index = key.replace("_kanan", "");
+                if (pasanganMap[index]) {
+                  pasanganMap[index].kanan = value;
+                } else {
+                  pasanganMap[index] = { kanan: value };
+                }
+              }
+            });
+
+            // Format jawaban dengan nama pasangan
+            return Object.entries(jawaban)
+              .map(([kiriIndex, kananIndex]) => {
+                const kiri =
+                  pasanganMap[kiriIndex]?.kiri || `Item ${kiriIndex}`;
+                const kanan =
+                  pasanganMap[kananIndex]?.kanan || `Item ${kananIndex}`;
+                return `${kiri} = ${kanan}`;
+              })
+              .join(", ");
+          }
+          // Fallback untuk object lainnya
           return JSON.stringify(jawaban);
         } else {
           return String(jawaban || "-");
@@ -973,9 +1004,41 @@ const ReportNilaiSiswa = () => {
           } else if (Array.isArray(jawaban)) {
             jawabanSiswaFormatted = jawaban.join(", ");
           } else if (typeof jawaban === "object" && jawaban !== null) {
-            jawabanSiswaFormatted = Object.entries(jawaban)
-              .map(([k, v]) => `${k}: ${v}`)
-              .join(", ");
+            // Khusus untuk soal COCOK, format dengan nama pasangan
+            if (bankSoal?.jenisSoal === "COCOK" && bankSoal?.pasangan) {
+              const pasanganMap = {};
+
+              // Buat mapping dari pasangan
+              Object.entries(bankSoal.pasangan).forEach(([key, value]) => {
+                if (key.includes("_kiri")) {
+                  const index = key.replace("_kiri", "");
+                  pasanganMap[index] = { kiri: value };
+                } else if (key.includes("_kanan")) {
+                  const index = key.replace("_kanan", "");
+                  if (pasanganMap[index]) {
+                    pasanganMap[index].kanan = value;
+                  } else {
+                    pasanganMap[index] = { kanan: value };
+                  }
+                }
+              });
+
+              // Format jawaban dengan nama pasangan
+              jawabanSiswaFormatted = Object.entries(jawaban)
+                .map(([kiriIndex, kananIndex]) => {
+                  const kiri =
+                    pasanganMap[kiriIndex]?.kiri || `Item ${kiriIndex}`;
+                  const kanan =
+                    pasanganMap[kananIndex]?.kanan || `Item ${kananIndex}`;
+                  return `${kiri} = ${kanan}`;
+                })
+                .join(", ");
+            } else {
+              // Fallback untuk object lainnya
+              jawabanSiswaFormatted = Object.entries(jawaban)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(", ");
+            }
           } else {
             jawabanSiswaFormatted = String(jawaban);
           }
@@ -1657,7 +1720,7 @@ const ReportNilaiSiswa = () => {
             <span>Detail Hasil Ujian Siswa</span>
           </Space>
         }
-        visible={detailModal.visible}
+        open={detailModal.visible}
         onCancel={() => setDetailModal({ visible: false, data: null })}
         footer={[
           <Button
@@ -2043,6 +2106,57 @@ const ReportNilaiSiswa = () => {
                           ([k]) => k.includes("_kanan")
                         );
 
+                        // Parse jawaban siswa dan jawaban benar
+                        const jawabanSiswa = record.jawabanSiswa || {};
+                        const jawabanBenar = record.jawabanBenar || [];
+
+                        // Buat mapping jawaban benar untuk mudah lookup
+                        const jawabanBenarMap = {};
+                        jawabanBenar.forEach((jawab) => {
+                          const parts = jawab.split("=");
+                          if (parts.length === 2) {
+                            const [kiriText, kananText] = parts;
+                            // Cari indeks dari text
+                            const kiriIndex = kiri
+                              .find(
+                                ([k, v]) => v.trim() === kiriText.trim()
+                              )?.[0]
+                              ?.replace("_kiri", "");
+                            const kananIndex = kanan
+                              .find(
+                                ([k, v]) => v.trim() === kananText.trim()
+                              )?.[0]
+                              ?.replace("_kanan", "");
+                            if (kiriIndex && kananIndex) {
+                              jawabanBenarMap[kiriIndex] = kananIndex;
+                            }
+                          }
+                        });
+
+                        // Generate warna tipis yang konsisten untuk setiap pasangan yang dipilih
+                        const generatePairColor = (pairKey) => {
+                          const colors = [
+                            "#ffeee6", // orange muda
+                            "#e6f7ff", // biru muda
+                            "#f6ffed", // hijau muda
+                            "#fff7e6", // kuning muda
+                            "#f9f0ff", // ungu muda
+                            "#e6fffb", // cyan muda
+                            "#fff0f6", // pink muda
+                            "#f0f5ff", // indigo muda
+                            "#fcffe6", // lime muda
+                            "#fff2e8", // peach muda
+                            "#f4f1ff", // lavender muda
+                            "#e8f5e8", // mint muda
+                          ];
+                          // Buat hash dari pairKey untuk konsistensi warna
+                          let hash = 0;
+                          for (let i = 0; i < pairKey.length; i++) {
+                            hash = pairKey.charCodeAt(i) + ((hash << 5) - hash);
+                          }
+                          return colors[Math.abs(hash) % colors.length];
+                        };
+
                         return (
                           <div style={{ padding: "8px 0" }}>
                             <Text
@@ -2051,38 +2165,182 @@ const ReportNilaiSiswa = () => {
                             >
                               Pasangan untuk Mencocokkan:
                             </Text>
+
+                            {/* Tampilkan pasangan yang dipilih siswa */}
+                            {Object.keys(jawabanSiswa).length > 0 && (
+                              <div
+                                style={{
+                                  marginBottom: "16px",
+                                  padding: "8px",
+                                  backgroundColor: "#f0f8ff",
+                                  borderRadius: "4px",
+                                }}
+                              >
+                                <Text strong style={{ color: "#1890ff" }}>
+                                  Jawaban Siswa:
+                                </Text>
+                                <div style={{ marginTop: "4px" }}>
+                                  {Object.entries(jawabanSiswa).map(
+                                    ([kiriIdx, kananIdx]) => {
+                                      const kiriText =
+                                        kiri.find(
+                                          ([k]) =>
+                                            k.replace("_kiri", "") === kiriIdx
+                                        )?.[1] || `Item ${kiriIdx}`;
+                                      const kananText =
+                                        kanan.find(
+                                          ([k]) =>
+                                            k.replace("_kanan", "") === kananIdx
+                                        )?.[1] || `Item ${kananIdx}`;
+                                      const isBenar =
+                                        jawabanBenarMap[kiriIdx] === kananIdx;
+                                      // Warna berdasarkan pasangan yang dipilih
+                                      const pairKey = `${kiriIdx}-${kananIdx}`;
+                                      const pairColor =
+                                        generatePairColor(pairKey);
+
+                                      return (
+                                        <Tag
+                                          key={pairKey}
+                                          style={{
+                                            margin: "2px",
+                                            backgroundColor: pairColor,
+                                            border: `1px solid ${
+                                              isBenar ? "#52c41a" : "#ff4d4f"
+                                            }`,
+                                            color: "#000",
+                                          }}
+                                        >
+                                          {kiriText} = {kananText}
+                                          {isBenar && (
+                                            <Text
+                                              style={{
+                                                color: "#52c41a",
+                                                marginLeft: 4,
+                                              }}
+                                            >
+                                              ✓
+                                            </Text>
+                                          )}
+                                          {!isBenar && (
+                                            <Text
+                                              style={{
+                                                color: "#ff4d4f",
+                                                marginLeft: 4,
+                                              }}
+                                            >
+                                              ✗
+                                            </Text>
+                                          )}
+                                        </Tag>
+                                      );
+                                    }
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             <Row gutter={24}>
                               <Col span={12}>
                                 <Text strong>Kolom Kiri:</Text>
-                                {kiri.map(([key, value]) => (
-                                  <div
-                                    key={key}
-                                    style={{
-                                      margin: "4px 0",
-                                      padding: "4px",
-                                      border: "1px solid #d9d9d9",
-                                      borderRadius: "4px",
-                                    }}
-                                  >
-                                    {value}
-                                  </div>
-                                ))}
+                                {kiri.map(([key, value]) => {
+                                  const index = key.replace("_kiri", "");
+                                  const isSelected =
+                                    jawabanSiswa[index] !== undefined;
+                                  const selectedKananIndex =
+                                    jawabanSiswa[index];
+                                  // Warna berdasarkan pasangan yang dipilih
+                                  let pairColor = "#fafafa";
+                                  if (isSelected) {
+                                    const pairKey = `${index}-${selectedKananIndex}`;
+                                    pairColor = generatePairColor(pairKey);
+                                  }
+
+                                  return (
+                                    <div
+                                      key={key}
+                                      style={{
+                                        margin: "4px 0",
+                                        padding: "4px 8px",
+                                        border: `1px solid ${
+                                          isSelected ? "#1890ff" : "#d9d9d9"
+                                        }`,
+                                        borderRadius: "4px",
+                                        backgroundColor: pairColor,
+                                        fontWeight: isSelected
+                                          ? "bold"
+                                          : "normal",
+                                      }}
+                                    >
+                                      <Text>{value}</Text>
+                                      {isSelected && (
+                                        <Tag
+                                          color="blue"
+                                          size="small"
+                                          style={{ marginLeft: "8px" }}
+                                        >
+                                          Dipilih →{" "}
+                                          {kanan.find(
+                                            ([k]) =>
+                                              k.replace("_kanan", "") ===
+                                              selectedKananIndex
+                                          )?.[1] || "Unknown"}
+                                        </Tag>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </Col>
                               <Col span={12}>
                                 <Text strong>Kolom Kanan:</Text>
-                                {kanan.map(([key, value]) => (
-                                  <div
-                                    key={key}
-                                    style={{
-                                      margin: "4px 0",
-                                      padding: "4px",
-                                      border: "1px solid #d9d9d9",
-                                      borderRadius: "4px",
-                                    }}
-                                  >
-                                    {value}
-                                  </div>
-                                ))}
+                                {kanan.map(([key, value]) => {
+                                  const index = key.replace("_kanan", "");
+                                  const selectedByKiri = Object.entries(
+                                    jawabanSiswa
+                                  ).find(([k, v]) => v === index)?.[0];
+                                  const isSelected =
+                                    selectedByKiri !== undefined;
+                                  // Warna berdasarkan pasangan yang dipilih
+                                  let pairColor = "#fafafa";
+                                  if (isSelected) {
+                                    const pairKey = `${selectedByKiri}-${index}`;
+                                    pairColor = generatePairColor(pairKey);
+                                  }
+
+                                  return (
+                                    <div
+                                      key={key}
+                                      style={{
+                                        margin: "4px 0",
+                                        padding: "4px 8px",
+                                        border: `1px solid ${
+                                          isSelected ? "#1890ff" : "#d9d9d9"
+                                        }`,
+                                        borderRadius: "4px",
+                                        backgroundColor: pairColor,
+                                        fontWeight: isSelected
+                                          ? "bold"
+                                          : "normal",
+                                      }}
+                                    >
+                                      <Text>{value}</Text>
+                                      {isSelected && (
+                                        <Tag
+                                          color="blue"
+                                          size="small"
+                                          style={{ marginLeft: "8px" }}
+                                        >
+                                          ← Dipilih oleh{" "}
+                                          {kiri.find(
+                                            ([k]) =>
+                                              k.replace("_kiri", "") ===
+                                              selectedByKiri
+                                          )?.[1] || "Unknown"}
+                                        </Tag>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </Col>
                             </Row>
                             <div style={{ marginTop: "12px" }}>
@@ -2141,10 +2399,48 @@ const ReportNilaiSiswa = () => {
                         typeof jawaban === "object" &&
                         jawaban !== null
                       ) {
-                        // For COCOK type questions
-                        jawabanDisplay = Object.entries(jawaban)
-                          .map(([k, v]) => `${k}: ${v}`)
-                          .join(", ");
+                        // For COCOK type questions - format dengan nama pasangan
+                        if (
+                          bankSoal?.jenisSoal === "COCOK" &&
+                          bankSoal?.pasangan
+                        ) {
+                          const pasanganMap = {};
+
+                          // Buat mapping dari pasangan
+                          Object.entries(bankSoal.pasangan).forEach(
+                            ([key, value]) => {
+                              if (key.includes("_kiri")) {
+                                const index = key.replace("_kiri", "");
+                                pasanganMap[index] = { kiri: value };
+                              } else if (key.includes("_kanan")) {
+                                const index = key.replace("_kanan", "");
+                                if (pasanganMap[index]) {
+                                  pasanganMap[index].kanan = value;
+                                } else {
+                                  pasanganMap[index] = { kanan: value };
+                                }
+                              }
+                            }
+                          );
+
+                          // Format jawaban dengan nama pasangan
+                          jawabanDisplay = Object.entries(jawaban)
+                            .map(([kiriIndex, kananIndex]) => {
+                              const kiri =
+                                pasanganMap[kiriIndex]?.kiri ||
+                                `Item ${kiriIndex}`;
+                              const kanan =
+                                pasanganMap[kananIndex]?.kanan ||
+                                `Item ${kananIndex}`;
+                              return `${kiri} = ${kanan}`;
+                            })
+                            .join(", ");
+                        } else {
+                          // Fallback untuk object lainnya
+                          jawabanDisplay = Object.entries(jawaban)
+                            .map(([k, v]) => `${k}: ${v}`)
+                            .join(", ");
+                        }
                         jawabanSiswa = jawaban;
                       } else {
                         jawabanDisplay = String(jawaban || "Tidak dijawab");
