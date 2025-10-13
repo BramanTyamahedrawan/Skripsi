@@ -166,6 +166,29 @@ export function transformHasilUjianData(hasil, index = 0) {
     securityFlags: hasil.securityFlags || {},
     metadata: hasil.metadata || {},
 
+    // Answer data - IMPORTANT: Preserve original answer structures
+    jawabanPeserta: hasil.jawabanPeserta || {},
+    jawabanBenar: hasil.jawabanBenar || {},
+    skorPerSoal: hasil.skorPerSoal || {},
+
+    // Additional exam data
+    sessionId: hasil.sessionId,
+    idHasilUjian: hasil.idHasilUjian,
+    idPeserta: hasil.idPeserta,
+    idUjian: hasil.idUjian,
+    attemptNumber: hasil.attemptNumber || 1,
+    isAutoSubmit: hasil.isAutoSubmit || false,
+
+    // Preserve peserta object
+    peserta: hasil.peserta || {
+      id: hasil.idPeserta,
+      name: hasil.peserta?.name || hasil.idPeserta,
+      username: hasil.peserta?.username || hasil.idPeserta,
+    },
+
+    // Preserve ujian object
+    ujian: hasil.ujian || {},
+
     // Full data for detail view and legacy compatibility
     fullData: hasil,
   };

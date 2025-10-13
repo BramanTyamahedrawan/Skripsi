@@ -61,6 +61,7 @@ import {
   applySearchFilter,
 } from "@/utils/safeHasilUjianApi";
 import { deleteHasilUjian } from "@/api/hasilUjian";
+import { getBankSoal } from "@/api/bankSoal"; // Import untuk mengambil detail soal
 import { useAuth } from "@/contexts/AuthContext";
 import TypingCard from "@/components/TypingCard";
 // -------------------
@@ -72,8 +73,7 @@ const { RangePicker } = DatePicker;
 const ReportNilaiSiswa = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  // Renamed `violation` to `allViolationsData` for clarity
-  const [allViolationsData, setAllViolationsData] = useState([]);
+  // NOTE: allViolationsData sudah tidak digunakan, violations diambil dari metadata
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [ujianList, setUjianList] = useState([]);
@@ -99,7 +99,38 @@ const ReportNilaiSiswa = () => {
   // --- NEW STATE FOR GLOBAL VIOLATIONS MODAL ---
   const [showAllViolationsModal, setShowAllViolationsModal] = useState(false);
   const [loadingAllViolations, setLoadingAllViolations] = useState(false);
+
+  // --- NEW STATE FOR EXPORT MODAL ---
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [selectedUjianForExport, setSelectedUjianForExport] = useState(null);
+  const [loadingExport, setLoadingExport] = useState(false);
+
+  // State untuk menyimpan data bank soal (untuk detail pertanyaan)
+  const [bankSoalMap, setBankSoalMap] = useState({});
   // ---------------------------------------------
+
+  // Fetch bank soal details untuk mapping pertanyaan dengan jawaban
+  const fetchBankSoalDetails = useCallback(async () => {
+    try {
+      const response = await getBankSoal();
+      if (response.data.statusCode === 200 && response.data.content) {
+        // Convert array to map dengan key idBankSoal
+        const soalMap = {};
+        response.data.content.forEach((soal) => {
+          soalMap[soal.idBankSoal] = soal;
+        });
+        setBankSoalMap(soalMap);
+        console.log(
+          "Bank soal loaded:",
+          Object.keys(soalMap).length,
+          "questions"
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching bank soal:", error);
+      message.error("Gagal memuat data bank soal untuk detail pertanyaan");
+    }
+  }, []);
 
   // ...existing code...
 
@@ -163,20 +194,19 @@ const ReportNilaiSiswa = () => {
 
       console.log("All Violations API response:", response);
       console.log("SET ALL VIOLATIONS DATA:", violations);
+      console.log(
+        "Violations structure check:",
+        violations.length > 0 ? violations[0] : "No violations found"
+      );
 
-      if (violations.length > 0) {
-        setAllViolationsData(violations);
-        message.success(
-          `Berhasil memuat ${violations.length} total pelanggaran.`
-        );
-      } else {
-        setAllViolationsData([]);
-        message.info("Tidak ada data pelanggaran di seluruh database.");
-      }
+      // NOTE: Tidak lagi menyimpan allViolationsData, menggunakan metadata langsung
+      console.log(
+        "✅ Violations info (sekarang diambil dari metadata):",
+        violations.length,
+        "violations"
+      );
     } catch (error) {
-      console.error("Error fetching all violations:", error);
-      message.error("Gagal memuat seluruh data pelanggaran");
-      setAllViolationsData([]);
+      console.error("Error fetching violations info:", error);
     } finally {
       setLoadingAllViolations(false);
     }
@@ -409,7 +439,7 @@ const ReportNilaiSiswa = () => {
     }
   }, [selectedUjian, dateRange]);
 
-  // Show violations modal (for specific student's exam)
+  // Show violations modal (for specific student's exam dengan deduplication)
   const showViolationsModal = (record) => {
     setDetailModal({
       visible: false, // Hide detail modal if it's open
@@ -417,91 +447,22 @@ const ReportNilaiSiswa = () => {
     });
     setViolationModalVisible(true);
 
-    // --- PEMBARUAN: Menggunakan sessionId untuk matching pelanggaran ---
-    const sessionId = record.sessionId || record.fullData?.sessionId; // Ambil sessionId dari record atau fullData
-    const pesertaId =
-      record.peserta?.id ||
-      record.idPeserta ||
-      record.siswaId ||
-      // Tambahkan log parameter untuk debugging yang lebih detail
-      console.log("showViolationsModal called with:", {
-        sessionId, // Log the derived sessionId
-        pesertaId, // Log the derived pesertaId
-        record, // Log the full record object
-      });
+    console.log("showViolationsModal called with record:", record);
 
-    if (!sessionId || !pesertaId) {
-      // Periksa sessionId dan pesertaId
-      message.error(
-        "Informasi sesi ujian atau peserta tidak lengkap untuk melihat pelanggaran."
-      );
-      setViolations([]);
-      setLoadingViolations(false);
-      return;
-    }
+    // Ambil violations dari metadata langsung
+    const violationsFromMetadata = record.metadata?.violations || [];
 
-    // Panggil fetchViolations dengan sessionId dan pesertaId
-    fetchViolations(sessionId, pesertaId);
-  };
+    // Deduplicate violations
+    const uniqueViolations = deduplicateViolations(violationsFromMetadata);
 
-  // Fetch violations for specific session and peserta
-  const fetchViolations = async (sessionId, pesertaId) => {
-    setLoadingViolations(true);
-    try {
-      console.log("Fetching violations for:", { sessionId, pesertaId });
-      const response = await getCheatDetectionByStudent({
-        sessionId: sessionId,
-        idPeserta: pesertaId,
-      });
-      console.log("Violations API response (for single student):", response);
+    console.log("Violations from metadata:", violationsFromMetadata.length);
+    console.log("Unique violations:", uniqueViolations.length);
 
-      if (!response || !response.data) {
-        message.error("Gagal mendapatkan data pelanggaran dari server.");
-        setViolations([]);
-        return;
-      }
+    setLoadingViolations(false);
+    setViolations(uniqueViolations);
 
-      // --- FIX: Ambil dari response.data.data.violations ---
-      let violationsArray = [];
-      if (response.data.data && Array.isArray(response.data.data.violations)) {
-        violationsArray = response.data.data.violations;
-      } else if (
-        response.data.violations &&
-        Array.isArray(response.data.violations)
-      ) {
-        violationsArray = response.data.violations;
-      } else if (
-        response.data.content &&
-        Array.isArray(response.data.content)
-      ) {
-        response.data.content.forEach((item) => {
-          if (
-            item.metadata?.violations &&
-            Array.isArray(item.metadata.violations)
-          ) {
-            violationsArray = violationsArray.concat(item.metadata.violations);
-          }
-        });
-      }
-      // ----------------------------------------------------
-
-      const cleanedViolations = violationsArray;
-
-      console.log(
-        "Setting violations for single student modal:",
-        cleanedViolations
-      );
-
-      if (cleanedViolations.length === 0) {
-        message.info("Tidak ada pelanggaran ditemukan untuk siswa ini.");
-      }
-      setViolations(cleanedViolations);
-    } catch (error) {
-      console.error("Error fetching violations:", error);
-      message.error("Terjadi kesalahan saat mengambil data pelanggaran.");
-      setViolations([]);
-    } finally {
-      setLoadingViolations(false);
+    if (uniqueViolations.length === 0) {
+      message.info("Tidak ada pelanggaran ditemukan untuk siswa ini.");
     }
   };
 
@@ -509,9 +470,15 @@ const ReportNilaiSiswa = () => {
   useEffect(() => {
     fetchUjianList();
     fetchKelasList();
+    fetchBankSoalDetails(); // Fetch bank soal untuk detail export
     // Call the new function to fetch ALL violations initially
     fetchAllViolationDetection();
-  }, [fetchUjianList, fetchKelasList, fetchAllViolationDetection]);
+  }, [
+    fetchUjianList,
+    fetchKelasList,
+    fetchBankSoalDetails,
+    fetchAllViolationDetection,
+  ]);
 
   useEffect(() => {
     fetchReportData();
@@ -527,16 +494,76 @@ const ReportNilaiSiswa = () => {
   const showDetail = async (record) => {
     let data = { ...record };
 
+    // Enhanced Debug logs
+    console.log("=== MODAL DEBUG INFO ===");
+    console.log("Raw record:", record);
+    console.log("Modal data:", {
+      jawabanPeserta: data.jawabanPeserta,
+      jawabanBenar: data.jawabanBenar,
+      skorPerSoal: data.skorPerSoal,
+      bankSoalMapSize: Object.keys(bankSoalMap).length,
+    });
+    console.log("Full data object keys:", Object.keys(data));
+    console.log("Full data.fullData:", data.fullData);
+
+    // Check if data is in fullData
+    if (data.fullData) {
+      console.log("Checking fullData for answers:", {
+        jawabanPeserta: data.fullData.jawabanPeserta,
+        jawabanBenar: data.fullData.jawabanBenar,
+        skorPerSoal: data.fullData.skorPerSoal,
+      });
+    }
+    console.log("========================");
+
+    // If bankSoalMap is empty, try to fetch it
+    if (Object.keys(bankSoalMap).length === 0) {
+      console.log("Bank soal map is empty, fetching...");
+      await fetchBankSoalDetails();
+    }
+
     // Cari id ujian dari beberapa kemungkinan field
     const idUjian =
       data.idUjian || data.ujianId || data.ujian?.idUjian || data.ujian_id;
 
-    // Merge data ujian dari ujianList jika ada
-    if (idUjian && ujianList.length > 0) {
-      const found = ujianList.find((u) => u.idUjian === idUjian);
-      if (found) {
-        data.ujian = found;
+    // Merge data ujian dari ujianList jika ada, atau fetch jika tidak ada
+    if (idUjian) {
+      let ujianData = null;
+
+      // Cari di ujianList dulu
+      if (ujianList.length > 0) {
+        ujianData = ujianList.find((u) => u.idUjian === idUjian);
       }
+
+      // Jika tidak ada di ujianList, fetch langsung
+      if (!ujianData) {
+        try {
+          console.log("Fetching ujian details for ID:", idUjian);
+          const result = await getUjian();
+          if (result.data?.statusCode === 200 && result.data?.content) {
+            ujianData = result.data.content.find((u) => u.idUjian === idUjian);
+          }
+        } catch (error) {
+          console.error("Error fetching ujian details:", error);
+        }
+      }
+
+      if (ujianData) {
+        data.ujian = ujianData;
+        console.log(
+          "Ujian data loaded with bank soal:",
+          ujianData.bankSoalList?.length || 0,
+          "questions"
+        );
+      }
+    }
+
+    // IMPORTANT: Ensure answer data is available - check fullData fallback
+    if (!data.jawabanPeserta && data.fullData?.jawabanPeserta) {
+      console.log("Using fullData for answer data");
+      data.jawabanPeserta = data.fullData.jawabanPeserta;
+      data.jawabanBenar = data.fullData.jawabanBenar;
+      data.skorPerSoal = data.fullData.skorPerSoal;
     }
 
     setDetailModal({
@@ -563,6 +590,33 @@ const ReportNilaiSiswa = () => {
       render: (text) => (
         <Tooltip title={text || "N/A"}>
           {text ? `${text.substring(0, 8)}...` : "N/A"}
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Nama Siswa",
+      dataIndex: "studentName",
+      key: "studentName",
+      width: 150,
+      ellipsis: true,
+    },
+    {
+      title: "NIM",
+      dataIndex: "studentNIM",
+      key: "studentNIM",
+      width: 120,
+    },
+    {
+      title: "Nama Ujian",
+      dataIndex: "ujianNama",
+      key: "ujianNama",
+      width: 200,
+      ellipsis: true,
+      render: (text) => (
+        <Tooltip title={text || "Tidak tersedia"}>
+          <Text strong style={{ color: "#1890ff" }}>
+            {text || "Tidak tersedia"}
+          </Text>
         </Tooltip>
       ),
     },
@@ -639,112 +693,583 @@ const ReportNilaiSiswa = () => {
   ];
   // ---------------------------------------------------
 
-  // Export to Excel for the main report table
-  const exportToExcel = () => {
+  // Helper: Deduplicate violations based on detectedAt and typeViolation
+  const deduplicateViolations = (violations) => {
+    if (!violations || !Array.isArray(violations)) return [];
+
+    const uniqueViolations = [];
+    const seen = new Set();
+
+    violations.forEach((violation) => {
+      // Create unique key based on detection time and violation type
+      const detectedAt =
+        violation.detectedAt || violation.timestamp || violation.detectionTime;
+      const typeViolation =
+        violation.typeViolation || violation.violationType || violation.type;
+
+      // Format waktu untuk konsistensi (gunakan ISO string atau timestamp)
+      const normalizedTime = detectedAt
+        ? new Date(detectedAt).toISOString()
+        : "";
+      const uniqueKey = `${normalizedTime}_${typeViolation}`;
+
+      // Jika belum ada di set, tambahkan ke unique violations
+      if (!seen.has(uniqueKey)) {
+        seen.add(uniqueKey);
+        uniqueViolations.push({
+          ...violation,
+          // Hilangkan violationCount untuk menghindari kebingungan
+          violationCount: undefined,
+        });
+      }
+    });
+
+    console.log(
+      `Deduplication: ${violations.length} -> ${uniqueViolations.length} violations`
+    );
+    return uniqueViolations;
+  };
+
+  // Helper: Get all violations from metadata across all records
+  const getAllViolationsFromMetadata = () => {
+    const allViolations = [];
+
+    filteredData.forEach((item) => {
+      const violations = item.metadata?.violations || [];
+      // Deduplicate violations untuk setiap siswa
+      const uniqueViolations = deduplicateViolations(violations);
+
+      uniqueViolations.forEach((violation) => {
+        allViolations.push({
+          ...violation,
+          // Add student context
+          studentName: item.peserta?.name || item.namaSiswa || "-",
+          studentNIM: item.peserta?.username || item.nim || "-",
+          idPeserta: item.idPeserta || "-",
+          sessionId: item.sessionId || "-",
+          ujianNama: item.ujian?.namaUjian || "-",
+          mapelNama: item.ujian?.mapel?.name || "-",
+        });
+      });
+    });
+
+    return allViolations;
+  };
+
+  // Helper: Get violations count for a record (dari metadata dengan deduplication)
+  const getViolationsCount = (record) => {
+    // Add null check
+    if (!record) return 0;
+
+    // Ambil violations dari metadata langsung
+    const violations = record.metadata?.violations || [];
+
+    // Deduplicate violations
+    const uniqueViolations = deduplicateViolations(violations);
+
+    console.log(
+      `Violations count for record ${record.idHasilUjian}: ${violations.length} -> ${uniqueViolations.length} (after deduplication)`
+    );
+    return uniqueViolations.length;
+  };
+
+  // Show export modal
+  const showExportModalHandler = () => {
     if (filteredData.length === 0) {
       message.warning("Tidak ada data untuk diekspor");
       return;
     }
+    setShowExportModal(true);
+  };
 
-    // Merge ujian detail ke setiap item, selalu update agar data terbaru
-    const mergedData = filteredData.map((item) => {
-      const idUjian =
-        item.idUjian || item.ujianId || item.ujian?.idUjian || item.ujian_id;
-      const found = ujianList.find((u) => u.idUjian === idUjian);
-      return found ? { ...item, ujian: found } : item;
-    });
+  // Enhanced Export to Excel with detailed answers (dengan filter ujian)
+  const exportToExcel = (selectedUjian = null) => {
+    setLoadingExport(true);
 
-    // Helper: Ambil pelanggaran dari record (jika ada di metadata/violations)
-    const getViolationsList = (record) => {
-      const sessionId = String(
-        record.sessionId || record.fullData?.sessionId || ""
-      );
-      // Cek semua kemungkinan pesertaId
-      const pesertaIdCandidates = [
-        record.peserta?.id,
-        record.idPeserta,
-        record.siswaId,
-        record.fullData?.idPeserta,
-      ].map(String);
+    try {
+      let dataToExport = filteredData;
 
-      // Debug log
-      console.log("EXPORT VIOLATION CHECK:", {
-        sessionId,
-        pesertaIdCandidates,
-        record,
+      // Filter berdasarkan ujian yang dipilih jika ada
+      if (selectedUjian) {
+        dataToExport = filteredData.filter((item) => {
+          const idUjian =
+            item.idUjian ||
+            item.ujianId ||
+            item.ujian?.idUjian ||
+            item.ujian_id;
+          return idUjian === selectedUjian.idUjian;
+        });
+
+        if (dataToExport.length === 0) {
+          message.warning(
+            `Tidak ada data untuk ujian "${selectedUjian.namaUjian}"`
+          );
+          return;
+        }
+
+        console.log(
+          `Exporting ${dataToExport.length} records for ujian: ${selectedUjian.namaUjian}`
+        );
+      } else {
+        console.log(`Exporting all ${dataToExport.length} records`);
+      }
+
+      // Merge ujian detail ke setiap item
+      const mergedData = dataToExport.map((item) => {
+        const idUjian =
+          item.idUjian || item.ujianId || item.ujian?.idUjian || item.ujian_id;
+        const found = ujianList.find((u) => u.idUjian === idUjian);
+        return found ? { ...item, ujian: found } : item;
       });
 
-      const violationsArr = allViolationsData.filter(
-        (v) =>
-          String(v.sessionId) === sessionId &&
-          pesertaIdCandidates.includes(String(v.idPeserta))
-      );
+      // Helper: Get violations list (dari metadata dengan deduplication)
+      const getViolationsList = (record) => {
+        // Ambil violations dari metadata langsung
+        const violations = record.metadata?.violations || [];
 
-      console.log("VIOLATIONS FOUND:", violationsArr);
+        // Deduplicate violations
+        const uniqueViolations = deduplicateViolations(violations);
 
-      if (!violationsArr.length) return "";
+        console.log("=== VIOLATIONS FROM METADATA (DEDUPLICATED) ===");
+        console.log("Record ID:", record.idHasilUjian);
+        console.log("Original violations:", violations.length);
+        console.log("Unique violations:", uniqueViolations.length);
 
-      return violationsArr
-        .map(
-          (v) =>
-            `[waktu deteksi: ${
-              v.detectedAt
-                ? dayjs(v.detectedAt).format("DD/MM/YYYY HH:mm:ss")
-                : "-"
-            }, type : ${v.typeViolation || "-"}]`
-        )
-        .join(", ");
-    };
-    const exportData = mergedData.map((item, index) => ({
-      No: index + 1,
-      NIM: item.peserta?.username || item.username || item.nim || "-",
-      "Nama Siswa": item.namaSiswa || item.nama || "-",
-      Kelas:
-        item.ujian?.kelas?.namaKelas || item.namaKelas || "Tidak Diketahui",
-      Ujian: item.ujian?.namaUjian || item.namaUjian || "-",
-      "Mata Pelajaran": item.ujian?.mapel?.name || item.mapelNama || "-",
-      Semester: item.ujian?.semester?.namaSemester || item.semesterNama || "-",
-      Nilai: item.nilai || item.skor || 0,
-      Status: (() => {
-        const { text } = getStatusDisplay(item);
-        return text;
-      })(),
-      "Waktu Mulai": item.waktuMulai
-        ? dayjs(item.waktuMulai).format("DD/MM/YYYY HH:mm")
-        : "-",
-      "Waktu Selesai": item.waktuSelesai
-        ? dayjs(item.waktuSelesai).format("DD/MM/YYYY HH:mm")
-        : "-",
-      "Durasi (menit)": item.durasi || item.ujian?.durasiMenit || "-",
-      "Jumlah Soal":
-        item.jumlahSoal || item.totalSoal || item.ujian?.jumlahSoal || "-",
-      "Soal Terjawab": item.soalTerjawab || item.jumlahTerjawab || "-",
-      "Soal Benar": item.soalBenar || item.jumlahBenar || "-",
-      "Soal Salah": item.soalSalah || item.jumlahSalah || "-",
-      "Soal Kosong": item.soalKosong || item.jumlahKosong || "-",
-      Pelanggaran: getViolationsList(item),
-    }));
+        if (uniqueViolations.length === 0) {
+          return "";
+        }
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Report Nilai Siswa");
+        return uniqueViolations
+          .map(
+            (v) =>
+              `[waktu deteksi: ${
+                v.detectedAt || v.timestamp || v.detectionTime
+                  ? dayjs(
+                      v.detectedAt || v.timestamp || v.detectionTime
+                    ).format("DD/MM/YYYY HH:mm:ss")
+                  : "-"
+              }, type : ${
+                v.typeViolation || v.violationType || v.type || "UNKNOWN"
+              }]`
+          )
+          .join(", ");
+      };
 
-    // Auto-size columns
-    const colWidths = [];
-    Object.keys(exportData[0] || {}).forEach((key) => {
-      const maxLength = Math.max(
-        key.length,
-        ...exportData.map((row) => String(row[key] || "").length)
-      );
-      colWidths.push({ wch: Math.min(maxLength + 2, 50) });
-    });
-    ws["!cols"] = colWidths;
+      // Helper: Format jawaban untuk export
+      const formatJawaban = (jawaban) => {
+        if (Array.isArray(jawaban)) {
+          return jawaban.join(", ");
+        } else if (typeof jawaban === "object" && jawaban !== null) {
+          return JSON.stringify(jawaban);
+        } else {
+          return String(jawaban || "-");
+        }
+      };
 
-    const fileName = `Report_Nilai_Siswa_${dayjs().format(
-      "YYYY-MM-DD_HH-mm"
-    )}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-    message.success("Data berhasil diekspor ke Excel");
+      // Create workbook with multiple sheets
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Summary Report
+      const summaryData = mergedData.map((item, index) => ({
+        No: index + 1,
+        "ID Hasil": item.idHasilUjian || "-",
+        "Session ID": item.sessionId || "-",
+        NIM: item.peserta?.username || item.username || item.nim || "-",
+        "Nama Siswa": item.peserta?.name || item.namaSiswa || item.nama || "-",
+        "ID Peserta": item.idPeserta || "-",
+        Kelas:
+          item.ujian?.kelas?.namaKelas || item.namaKelas || "Tidak Diketahui",
+        Ujian: item.ujian?.namaUjian || item.namaUjian || "-",
+        "Mata Pelajaran": item.ujian?.mapel?.name || item.mapelNama || "-",
+        Semester:
+          item.ujian?.semester?.namaSemester || item.semesterNama || "-",
+        Sekolah: item.school?.nameSchool || item.namaSekolah || "-",
+        "Percobaan Ke": item.attemptNumber || 1,
+        "Status Pengerjaan": item.statusPengerjaan || "-",
+        "Auto Submit": item.isAutoSubmit ? "Ya" : "Tidak",
+        "Waktu Mulai": item.waktuMulai
+          ? dayjs(item.waktuMulai).format("DD/MM/YYYY HH:mm:ss")
+          : "-",
+        "Waktu Selesai": item.waktuSelesai
+          ? dayjs(item.waktuSelesai).format("DD/MM/YYYY HH:mm:ss")
+          : "-",
+        "Durasi Pengerjaan (detik)": item.durasiPengerjaan || "-",
+        "Sisa Waktu (detik)": item.sisaWaktu || "-",
+        "Total Skor": item.totalSkor || 0,
+        "Skor Maksimal": item.skorMaksimal || 100,
+        Persentase: item.persentase
+          ? `${parseFloat(item.persentase).toFixed(2)}%`
+          : "0%",
+        "Status Kelulusan": item.lulus ? "LULUS" : "TIDAK LULUS",
+        "Total Soal": item.totalSoal || item.metadata?.totalQuestions || "-",
+        "Soal Terjawab":
+          item.metadata?.answeredQuestions ||
+          Object.keys(item.jawabanPeserta || {}).length ||
+          0,
+        "Soal Benar": item.jumlahBenar || 0,
+        "Soal Salah": item.jumlahSalah || 0,
+        "Soal Kosong": item.jumlahKosong || 0,
+        "Jumlah Pelanggaran": getViolationsCount(item),
+        "Detail Pelanggaran": getViolationsList(item),
+      }));
+
+      const summaryWs = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summaryWs, "Ringkasan Hasil");
+
+      // Sheet 2: Detailed Answers with Question Details (ENHANCED)
+      const detailAnswers = [];
+      mergedData.forEach((item) => {
+        // Get all possible questions (answered + unanswered) like in modal
+        const jawabanData = item.jawabanPeserta || {};
+        const bankSoalFromUjian = item.ujian?.bankSoalList || [];
+
+        // Prioritize ujian's bankSoalList to ensure all questions are included
+        let allSoalIds = [];
+        if (bankSoalFromUjian.length > 0) {
+          // Use ujian order as primary
+          allSoalIds = bankSoalFromUjian.map((soal) => soal.idBankSoal);
+          // Add any answered questions not in ujian list
+          Object.keys(jawabanData).forEach((id) => {
+            if (!allSoalIds.includes(id)) {
+              allSoalIds.push(id);
+            }
+          });
+        } else {
+          // Fallback to answered questions only
+          allSoalIds = Object.keys(jawabanData);
+        }
+
+        allSoalIds.forEach((soalId, index) => {
+          const jawaban = jawabanData[soalId];
+          const bankSoal =
+            bankSoalMap[soalId] ||
+            bankSoalFromUjian.find((s) => s.idBankSoal === soalId);
+
+          // Enhanced formatting functions
+          const formatOpsiJawaban = (opsi) => {
+            if (!opsi || typeof opsi !== "object") return "-";
+            return Object.entries(opsi)
+              .map(([key, value]) => `${key}. ${value}`)
+              .join(" | ");
+          };
+
+          const formatPasangan = (pasangan) => {
+            if (!pasangan || typeof pasangan !== "object") return "-";
+            const kiri = Object.entries(pasangan).filter(([k]) =>
+              k.includes("_kiri")
+            );
+            const kanan = Object.entries(pasangan).filter(([k]) =>
+              k.includes("_kanan")
+            );
+            return `KIRI: ${kiri.map(([k, v]) => v).join(", ")} | KANAN: ${kanan
+              .map(([k, v]) => v)
+              .join(", ")}`;
+          };
+
+          // Format jawaban siswa
+          let jawabanSiswaFormatted = "";
+          if (!jawaban) {
+            jawabanSiswaFormatted = "TIDAK DIJAWAB";
+          } else if (Array.isArray(jawaban)) {
+            jawabanSiswaFormatted = jawaban.join(", ");
+          } else if (typeof jawaban === "object" && jawaban !== null) {
+            jawabanSiswaFormatted = Object.entries(jawaban)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", ");
+          } else {
+            jawabanSiswaFormatted = String(jawaban);
+          }
+
+          // Format jawaban benar
+          let jawabanBenarFormatted = "";
+          if (bankSoal?.jawabanBenar) {
+            if (Array.isArray(bankSoal.jawabanBenar)) {
+              jawabanBenarFormatted = bankSoal.jawabanBenar.join(", ");
+            } else {
+              jawabanBenarFormatted = String(bankSoal.jawabanBenar);
+            }
+          } else {
+            jawabanBenarFormatted = "-";
+          }
+
+          // Determine status
+          let status = "TIDAK DIJAWAB";
+          if (jawaban) {
+            const isCorrect = item.skorPerSoal?.[soalId] > 0;
+            status = isCorrect ? "BENAR" : "SALAH";
+          }
+
+          detailAnswers.push({
+            "Nama Siswa": item.peserta?.name || item.namaSiswa || "-",
+            NIM: item.peserta?.username || item.nim || "-",
+            "Session ID": item.sessionId || "-",
+            Ujian: item.ujian?.namaUjian || "-",
+            "No Soal": index + 1,
+            "ID Soal": soalId,
+            "Jenis Soal": bankSoal?.jenisSoal || "-",
+            Pertanyaan: bankSoal?.pertanyaan || "-",
+            "Pilihan Jawaban PG/MULTI":
+              bankSoal?.jenisSoal === "PG" || bankSoal?.jenisSoal === "MULTI"
+                ? formatOpsiJawaban(bankSoal?.opsi)
+                : "-",
+            "Pasangan COCOK":
+              bankSoal?.jenisSoal === "COCOK"
+                ? formatPasangan(bankSoal?.pasangan)
+                : "-",
+            "Toleransi Typo": bankSoal?.toleransiTypo || "-",
+            "Jawaban Benar": jawabanBenarFormatted,
+            "Jawaban Siswa": jawabanSiswaFormatted,
+            Status: status,
+            "Skor Diperoleh": item.skorPerSoal?.[soalId] || 0,
+            "Bobot Soal": bankSoal?.bobot || "-",
+            "Waktu Mulai Ujian": item.waktuMulai
+              ? dayjs(item.waktuMulai).format("DD/MM/YYYY HH:mm:ss")
+              : "-",
+          });
+        });
+      });
+
+      if (detailAnswers.length > 0) {
+        const detailWs = XLSX.utils.json_to_sheet(detailAnswers);
+        XLSX.utils.book_append_sheet(wb, detailWs, "Detail Jawaban");
+      }
+
+      // Sheet 3: Violations Detail (dari metadata)
+      const violationDetails = [];
+
+      // Ambil violations dari metadata setiap record dengan deduplication
+      mergedData.forEach((item) => {
+        // Ambil violations dari metadata langsung
+        const violationsFromMetadata = item.metadata?.violations || [];
+
+        // Deduplicate violations
+        const studentViolations = deduplicateViolations(violationsFromMetadata);
+
+        console.log(
+          `Excel Export - Student ${
+            item.peserta?.name || item.namaSiswa
+          }: Found ${violationsFromMetadata.length} -> ${
+            studentViolations.length
+          } violations (after deduplication)`
+        );
+
+        // Add violations to details
+        studentViolations.forEach((violation, violationIndex) => {
+          console.log(
+            `Processing violation ${violationIndex + 1} for ${
+              item.peserta?.name
+            }:`,
+            violation
+          );
+
+          violationDetails.push({
+            "Nama Siswa": item.peserta?.name || item.namaSiswa || "-",
+            NIM: item.peserta?.username || item.nim || "-",
+            "ID Peserta": item.idPeserta || "-",
+            "Session ID": item.sessionId || "-",
+            Ujian: item.ujian?.namaUjian || "-",
+            "Mata Pelajaran": item.ujian?.mapel?.name || item.mapelNama || "-",
+            "Waktu Ujian": item.waktuMulai
+              ? dayjs(item.waktuMulai).format("DD/MM/YYYY HH:mm:ss")
+              : "-",
+            "No Pelanggaran": violationIndex + 1,
+            "ID Detection": violation.idDetection || "-",
+            "Jenis Pelanggaran":
+              violation.typeViolation ||
+              violation.violationType ||
+              violation.type ||
+              "Tidak Diketahui",
+            "Tingkat Keparahan":
+              violation.severity || violation.level || "Tidak Diketahui",
+            "Waktu Deteksi":
+              violation.detectedAt ||
+              violation.detectionTime ||
+              violation.timestamp
+                ? dayjs(
+                    violation.detectedAt ||
+                      violation.detectionTime ||
+                      violation.timestamp
+                  ).format("DD/MM/YYYY HH:mm:ss")
+                : "Tidak Tersedia",
+            "Detail Evidence": violation.evidence
+              ? JSON.stringify(violation.evidence).substring(0, 200) + "..."
+              : "Tidak Ada",
+            Resolved: violation.resolved ? "Ya" : "Tidak",
+            "Action Taken": violation.actionTaken || "Tidak Ada",
+          });
+        });
+
+        // If no violations found but student has violation count, add placeholder
+        if (studentViolations.length === 0 && getViolationsCount(item) > 0) {
+          violationDetails.push({
+            "Nama Siswa": item.peserta?.name || item.namaSiswa || "-",
+            NIM: item.peserta?.username || item.nim || "-",
+            "ID Peserta": item.idPeserta || "-",
+            "Session ID": item.sessionId || "-",
+            Ujian: item.ujian?.namaUjian || "-",
+            "Mata Pelajaran": item.ujian?.mapel?.name || item.mapelNama || "-",
+            "Waktu Ujian": item.waktuMulai
+              ? dayjs(item.waktuMulai).format("DD/MM/YYYY HH:mm:ss")
+              : "-",
+            "No Pelanggaran": 1,
+            "ID Detection": "-",
+            "Jenis Pelanggaran":
+              "Pelanggaran Terdeteksi (Detail Tidak Tersedia)",
+            "Tingkat Keparahan": "Tidak Diketahui",
+            "Jumlah Pelanggaran": getViolationsCount(item),
+            "Waktu Deteksi": "Tidak Tersedia",
+            "Detail Evidence":
+              "Data pelanggaran ada tapi detail tidak dapat dimuat",
+            Resolved: "Tidak Diketahui",
+            "Action Taken": "Tidak Ada",
+          });
+        }
+      });
+
+      if (violationDetails.length > 0) {
+        const violationWs = XLSX.utils.json_to_sheet(violationDetails);
+        XLSX.utils.book_append_sheet(wb, violationWs, "Detail Pelanggaran");
+      }
+
+      // Sheet 4: Master Data Soal (NEW)
+      const masterSoalData = [];
+      const processedUjian = new Set();
+
+      mergedData.forEach((item) => {
+        const ujianId = item.ujian?.idUjian;
+        if (
+          ujianId &&
+          !processedUjian.has(ujianId) &&
+          item.ujian?.bankSoalList
+        ) {
+          processedUjian.add(ujianId);
+
+          item.ujian.bankSoalList.forEach((soal, index) => {
+            const formatOpsi = (opsi) => {
+              if (!opsi || typeof opsi !== "object") return "-";
+              return Object.entries(opsi)
+                .map(([key, value]) => `${key}. ${value}`)
+                .join(" | ");
+            };
+
+            const formatPasangan = (pasangan) => {
+              if (!pasangan || typeof pasangan !== "object") return "-";
+              const kiri = Object.entries(pasangan).filter(([k]) =>
+                k.includes("_kiri")
+              );
+              const kanan = Object.entries(pasangan).filter(([k]) =>
+                k.includes("_kanan")
+              );
+              return `KIRI: ${kiri
+                .map(([k, v]) => v)
+                .join(", ")} | KANAN: ${kanan.map(([k, v]) => v).join(", ")}`;
+            };
+
+            masterSoalData.push({
+              Ujian: item.ujian?.namaUjian || "-",
+              "Mata Pelajaran": item.ujian?.mapel?.name || "-",
+              Kelas: item.ujian?.kelas?.namaKelas || "-",
+              Semester: item.ujian?.semester?.namaSemester || "-",
+              "No Soal": index + 1,
+              "ID Bank Soal": soal.idBankSoal || "-",
+              "Jenis Soal": soal.jenisSoal || "-",
+              Pertanyaan: soal.pertanyaan || "-",
+              "Opsi PG/MULTI":
+                soal.jenisSoal === "PG" || soal.jenisSoal === "MULTI"
+                  ? formatOpsi(soal.opsi)
+                  : "-",
+              "Pasangan COCOK":
+                soal.jenisSoal === "COCOK"
+                  ? formatPasangan(soal.pasangan)
+                  : "-",
+              "Jawaban Benar": Array.isArray(soal.jawabanBenar)
+                ? soal.jawabanBenar.join(", ")
+                : soal.jawabanBenar || "-",
+              Bobot: soal.bobot || "-",
+              "Toleransi Typo": soal.toleransiTypo || "-",
+            });
+          });
+        }
+      });
+
+      if (masterSoalData.length > 0) {
+        const masterSoalWs = XLSX.utils.json_to_sheet(masterSoalData);
+        XLSX.utils.book_append_sheet(wb, masterSoalWs, "Master Data Soal");
+      }
+
+      // Auto-size all sheets
+      [
+        summaryWs,
+        detailAnswers.length > 0
+          ? XLSX.utils.json_to_sheet(detailAnswers)
+          : null,
+        violationDetails.length > 0
+          ? XLSX.utils.json_to_sheet(violationDetails)
+          : null,
+        masterSoalData.length > 0
+          ? XLSX.utils.json_to_sheet(masterSoalData)
+          : null,
+      ]
+        .filter(Boolean)
+        .forEach((ws) => {
+          if (ws && ws["!ref"]) {
+            const range = XLSX.utils.decode_range(ws["!ref"]);
+            const cols = [];
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+              let maxWidth = 10;
+              for (let R = range.s.r; R <= range.e.r; ++R) {
+                const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                const cell = ws[cellAddress];
+                if (cell && cell.v) {
+                  const cellLength = String(cell.v).length;
+                  maxWidth = Math.max(maxWidth, cellLength);
+                }
+              }
+              cols[C] = { width: Math.min(maxWidth + 2, 50) };
+            }
+            ws["!cols"] = cols;
+          }
+        });
+
+      // Generate filename dengan info ujian jika ada filter
+      const ujianInfo = selectedUjian
+        ? `_${selectedUjian.namaUjian.replace(/[^\w\s]/gi, "")}`
+        : "";
+      const fileName = `Report_Lengkap_Nilai_Siswa${ujianInfo}_${dayjs().format(
+        "YYYY-MM-DD_HH-mm"
+      )}.xlsx`;
+
+      XLSX.writeFile(wb, fileName);
+
+      const successMsg = selectedUjian
+        ? `Data ujian "${selectedUjian.namaUjian}" berhasil diekspor dengan ${wb.SheetNames.length} sheet`
+        : `Data berhasil diekspor ke Excel dengan ${wb.SheetNames.length} sheet`;
+
+      message.success(successMsg);
+
+      // Tutup modal export jika berhasil
+      setShowExportModal(false);
+      setSelectedUjianForExport(null);
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      message.error("Terjadi kesalahan saat mengekspor data ke Excel");
+    } finally {
+      setLoadingExport(false);
+    }
+  };
+
+  // Handle export dengan ujian yang dipilih
+  const handleExportWithSelectedUjian = () => {
+    if (!selectedUjianForExport) {
+      message.warning("Silakan pilih ujian terlebih dahulu");
+      return;
+    }
+    exportToExcel(selectedUjianForExport);
+  };
+
+  // Export semua data (tanpa filter ujian)
+  const handleExportAllData = () => {
+    exportToExcel(null);
   };
 
   // Reset filters for the main report table
@@ -898,12 +1423,8 @@ const ReportNilaiSiswa = () => {
       key: "violationCount",
       align: "center",
       render: (_, record) => {
-        // Prioritize securityFlags.violationCount if available, otherwise fallback to metadata.violations.length
-        const violationCount = parseInt(
-          record.securityFlags?.violationCount ||
-            record.metadata?.violations?.length ||
-            0
-        );
+        // Use the new helper function to get accurate violation count
+        const violationCount = getViolationsCount(record);
 
         if (violationCount > 0) {
           return (
@@ -1026,7 +1547,7 @@ const ReportNilaiSiswa = () => {
             <Button
               type="primary"
               icon={<FileExcelOutlined />}
-              onClick={exportToExcel}
+              onClick={showExportModalHandler}
               disabled={false}
             >
               Export Excel
@@ -1140,29 +1661,97 @@ const ReportNilaiSiswa = () => {
         onCancel={() => setDetailModal({ visible: false, data: null })}
         footer={[
           <Button
+            key="violations"
+            icon={<WarningOutlined />}
+            onClick={() => showViolationsModal(detailModal.data)}
+            disabled={getViolationsCount(detailModal.data || {}) === 0}
+          >
+            Lihat Pelanggaran ({getViolationsCount(detailModal.data || {})})
+          </Button>,
+          <Button
             key="close"
             onClick={() => setDetailModal({ visible: false, data: null })}
           >
             Tutup
           </Button>,
         ]}
-        width={800}
+        width={1200}
       >
         {detailModal.data && (
           <div>
-            <Descriptions bordered column={2}>
-              <Descriptions.Item label="Nama Siswa" span={2}>
-                <strong>
-                  {detailModal.data.namaSiswa ||
-                    detailModal.data.nama ||
-                    detailModal.data.peserta?.name ||
-                    "-"}
-                </strong>
-              </Descriptions.Item>
-              <Descriptions.Item label="ID">
-                {detailModal.data.nim ||
-                  detailModal.data.username ||
-                  detailModal.data.peserta?.username ||
+            {/* Nama Ujian - Tengah, Besar, Bold */}
+            <div
+              style={{
+                textAlign: "center",
+                marginBottom: 20,
+                padding: "10px 0",
+                borderBottom: "2px solid #f0f0f0",
+              }}
+            >
+              <Typography.Title
+                level={2}
+                style={{ margin: 0, fontWeight: "bold", color: "#1890ff" }}
+              >
+                {detailModal.data.ujian?.namaUjian ||
+                  detailModal.data.namaUjian ||
+                  "Nama Ujian Tidak Tersedia"}
+              </Typography.Title>
+            </div>
+
+            {/* Header Information */}
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Descriptions size="small" column={1}>
+                    <Descriptions.Item label="Nama Siswa">
+                      <Text strong>
+                        {detailModal.data.peserta?.name ||
+                          detailModal.data.namaSiswa ||
+                          detailModal.data.nama ||
+                          "-"}
+                      </Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Username/NIM">
+                      {detailModal.data.peserta?.username ||
+                        detailModal.data.nim ||
+                        detailModal.data.username ||
+                        "-"}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="ID Peserta">
+                      {detailModal.data.idPeserta || "-"}
+                    </Descriptions.Item>
+                  </Descriptions>
+                </Col>
+                <Col span={12}>
+                  <Descriptions size="small" column={1}>
+                    <Descriptions.Item label="Session ID">
+                      <Text code>{detailModal.data.sessionId || "-"}</Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Sekolah">
+                      {detailModal.data.school?.nameSchool ||
+                        detailModal.data.namaSekolah ||
+                        "-"}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Mata Pelajaran">
+                      {detailModal.data.ujian?.mapel?.name ||
+                        detailModal.data.mapelNama ||
+                        "-"}
+                    </Descriptions.Item>
+                  </Descriptions>
+                </Col>
+              </Row>
+            </Card>
+
+            {/* Main Information */}
+            <Descriptions
+              bordered
+              column={2}
+              size="small"
+              style={{ marginBottom: 16 }}
+            >
+              <Descriptions.Item label="Mata Pelajaran">
+                {detailModal.data.mapelNama ||
+                  detailModal.data.ujian?.mapel?.name ||
                   "-"}
               </Descriptions.Item>
               <Descriptions.Item label="Kelas">
@@ -1170,182 +1759,713 @@ const ReportNilaiSiswa = () => {
                   detailModal.data.namaKelas ||
                   "-"}
               </Descriptions.Item>
-              <Descriptions.Item label="Ujian" span={2}>
-                {detailModal.data.namaUjian ||
-                  detailModal.data.ujian?.namaUjian ||
-                  "-"}
-              </Descriptions.Item>
-              <Descriptions.Item label="Mata Pelajaran">
-                {detailModal.data.mapelNama ||
-                  detailModal.data.ujian?.mapel?.name ||
-                  "-"}
-              </Descriptions.Item>
               <Descriptions.Item label="Semester">
                 {detailModal.data.semesterNama ||
                   detailModal.data.ujian?.semester?.namaSemester ||
                   "-"}
               </Descriptions.Item>
+              <Descriptions.Item label="Percobaan Ke">
+                {detailModal.data.attemptNumber || 1}
+              </Descriptions.Item>
+              <Descriptions.Item label="Waktu Mulai">
+                {detailModal.data.waktuMulai
+                  ? dayjs(detailModal.data.waktuMulai).format(
+                      "DD/MM/YYYY HH:mm:ss"
+                    )
+                  : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Waktu Selesai">
+                {detailModal.data.waktuSelesai
+                  ? dayjs(detailModal.data.waktuSelesai).format(
+                      "DD/MM/YYYY HH:mm:ss"
+                    )
+                  : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Durasi Pengerjaan">
+                {detailModal.data.durasiPengerjaan
+                  ? `${Math.floor(detailModal.data.durasiPengerjaan / 60)}m ${
+                      detailModal.data.durasiPengerjaan % 60
+                    }s`
+                  : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Sisa Waktu">
+                {detailModal.data.sisaWaktu
+                  ? `${Math.floor(detailModal.data.sisaWaktu / 60)}m ${
+                      detailModal.data.sisaWaktu % 60
+                    }s`
+                  : "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Status Pengerjaan">
+                <Tag
+                  color={
+                    detailModal.data.statusPengerjaan === "SELESAI"
+                      ? "green"
+                      : "orange"
+                  }
+                >
+                  {detailModal.data.statusPengerjaan || "TIDAK DIKETAHUI"}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Auto Submit">
+                <Tag color={detailModal.data.isAutoSubmit ? "red" : "green"}>
+                  {detailModal.data.isAutoSubmit ? "Ya" : "Tidak"}
+                </Tag>
+              </Descriptions.Item>
+
               {/* Display score only if allowed */}
               {detailModal.data.ujian?.tampilkanNilai !== false && (
                 <>
-                  <Descriptions.Item label="Waktu Mulai Pengerjaan">
-                    {detailModal.data.waktuMulai
-                      ? dayjs(detailModal.data.waktuMulai).format(
-                          "DD/MM/YYYY HH:mm:ss"
+                  <Descriptions.Item label="Total Skor">
+                    <Text strong style={{ fontSize: "16px" }}>
+                      {detailModal.data.totalSkor || 0} /{" "}
+                      {detailModal.data.skorMaksimal || 100}
+                    </Text>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Persentase">
+                    <Text strong style={{ fontSize: "16px" }}>
+                      {parseFloat(detailModal.data.persentase || 0).toFixed(1)}%
+                    </Text>
+                  </Descriptions.Item>
+
+                  <Descriptions.Item label="Status Kelulusan">
+                    <Tag
+                      color={detailModal.data.lulus ? "green" : "red"}
+                      icon={
+                        detailModal.data.lulus ? (
+                          <CheckCircleOutlined />
+                        ) : (
+                          <CloseCircleOutlined />
                         )
-                      : "-"}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Waktu Selesai Pengerjaan">
-                    {detailModal.data.waktuSelesai
-                      ? dayjs(detailModal.data.waktuSelesai).format(
-                          "DD/MM/YYYY HH:mm:ss"
-                        )
-                      : "-"}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Durasi Ujian">
-                    {detailModal.data.durasi ||
-                      detailModal.data.ujian?.durasiMenit ||
-                      "Tidak dibatasi"}{" "}
-                    {detailModal.data.durasi ? "menit" : ""}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Jumlah Soal">
-                    {detailModal.data.jumlahSoal ||
-                      detailModal.data.totalSoal ||
-                      detailModal.data.ujian?.jumlahSoal ||
-                      "-"}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Soal Terjawab">
-                    {detailModal.data.soalTerjawab ||
-                      detailModal.data.jumlahTerjawab ||
-                      0}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Soal Benar">
-                    {detailModal.data.soalBenar ||
-                      detailModal.data.jumlahBenar ||
-                      0}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Soal Salah">
-                    {detailModal.data.soalSalah ||
-                      detailModal.data.jumlahSalah ||
-                      0}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Soal Kosong">
-                    {detailModal.data.soalKosong ||
-                      detailModal.data.jumlahKosong ||
-                      0}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Nilai Akhir">
-                    <div style={{ textAlign: "center" }}>
-                      <div
-                        style={{
-                          fontSize: "24px",
-                          fontWeight: "bold",
-                          color:
-                            parseFloat(
-                              detailModal.data.nilai ||
-                                detailModal.data.skor ||
-                                0
-                            ) >= 75
-                              ? "#52c41a"
-                              : "#ff4d4f",
-                        }}
-                      >
-                        {parseFloat(
-                          detailModal.data.nilai || detailModal.data.skor || 0
-                        ).toFixed(1)}
-                      </div>
-                      <div style={{ fontSize: "14px", color: "#666" }}>
-                        Persentase:{" "}
-                        {parseFloat(detailModal.data.persentase || 0).toFixed(
-                          1
-                        )}{" "}
-                        %
-                      </div>
-                      {detailModal.data.nilaiHuruf && (
-                        <div style={{ fontSize: "12px", color: "#666" }}>
-                          Grade: {detailModal.data.nilaiHuruf}
-                        </div>
-                      )}
-                    </div>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Akurasi">
-                    {(detailModal.data.soalTerjawab ||
-                      detailModal.data.jumlahTerjawab) > 0
-                      ? `${Math.round(
-                          ((detailModal.data.soalBenar ||
-                            detailModal.data.jumlahBenar) /
-                            (detailModal.data.soalTerjawab ||
-                              detailModal.data.jumlahTerjawab)) *
-                            100
-                        )}%`
-                      : "0%"}
+                      }
+                    >
+                      {detailModal.data.lulus ? "LULUS" : "TIDAK LULUS"}
+                    </Tag>
                   </Descriptions.Item>
                 </>
               )}
-              <Descriptions.Item label="Status">
-                {(() => {
-                  const { color, icon, text } = getStatusDisplay(
-                    detailModal.data
-                  );
-                  return (
-                    <Tag color={color} icon={icon}>
-                      {text}
-                    </Tag>
-                  );
-                })()}
-              </Descriptions.Item>{" "}
-              {detailModal.data.catatan && (
-                <Descriptions.Item label="Catatan" span={2}>
-                  {detailModal.data.catatan}
-                </Descriptions.Item>
-              )}
+
+              {/* Statistics */}
+              <Descriptions.Item label="Total Soal">
+                {detailModal.data.totalSoal ||
+                  detailModal.data.metadata?.totalQuestions ||
+                  "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="Soal Terjawab">
+                {detailModal.data.metadata?.answeredQuestions ||
+                  Object.keys(detailModal.data.jawabanPeserta || {}).length ||
+                  0}
+              </Descriptions.Item>
+              <Descriptions.Item label="Soal Benar">
+                <Text style={{ color: "#52c41a", fontWeight: "bold" }}>
+                  {detailModal.data.jumlahBenar || 0}
+                </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Soal Salah">
+                <Text style={{ color: "#ff4d4f", fontWeight: "bold" }}>
+                  {detailModal.data.jumlahSalah || 0}
+                </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Soal Kosong">
+                <Text style={{ color: "#faad14", fontWeight: "bold" }}>
+                  {detailModal.data.jumlahKosong || 0}
+                </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Akurasi Jawaban">
+                {detailModal.data.metadata?.answeredQuestions > 0
+                  ? `${Math.round(
+                      (detailModal.data.jumlahBenar /
+                        detailModal.data.metadata.answeredQuestions) *
+                        100
+                    )}%`
+                  : "0%"}
+              </Descriptions.Item>
             </Descriptions>
 
-            {/* Analytics Section */}
-            {(detailModal.data.rataRataKelas ||
-              detailModal.data.persentilSiswa ||
-              detailModal.data.tingkatKesulitan) && (
-              <>
-                <Divider orientation="left">Analisis Kelas</Divider>
-                <Row gutter={16}>
-                  {detailModal.data.rataRataKelas && (
-                    <Col span={8}>
-                      <Card size="small">
-                        <Statistic
-                          title="Rata-rata Kelas"
-                          value={parseFloat(
-                            detailModal.data.rataRataKelas
-                          ).toFixed(1)}
-                          precision={1}
-                        />
-                      </Card>
-                    </Col>
-                  )}
-                  {detailModal.data.persentilSiswa && (
-                    <Col span={8}>
-                      <Card size="small">
-                        <Statistic
-                          title="Persentil Siswa"
-                          value={parseFloat(
-                            detailModal.data.persentilSiswa
-                          ).toFixed(0)}
-                          suffix="%"
-                        />
-                      </Card>
-                    </Col>
-                  )}
-                  {detailModal.data.tingkatKesulitan && (
-                    <Col span={8}>
-                      <Card size="small">
-                        <Statistic
-                          title="Tingkat Kesulitan"
-                          value={detailModal.data.tingkatKesulitan}
-                        />
-                      </Card>
-                    </Col>
-                  )}
-                </Row>
-              </>
+            {/* Security Information - Only show violation count */}
+            <Divider orientation="left">🔒 Informasi Keamanan</Divider>
+            <Descriptions
+              bordered
+              column={2}
+              size="small"
+              style={{ marginBottom: 16 }}
+            >
+              <Descriptions.Item label="Jumlah Pelanggaran">
+                <Badge
+                  count={getViolationsCount(detailModal.data || {})}
+                  showZero
+                >
+                  <Text>Pelanggaran</Text>
+                </Badge>
+              </Descriptions.Item>
+            </Descriptions>
+
+            {/* Answer Details Section */}
+            <Divider orientation="left">📝 Detail Jawaban Per Soal</Divider>
+
+            {/* Debug Info */}
+            <Alert
+              message={`Debug Info: Jawaban (${
+                Object.keys(detailModal.data?.jawabanPeserta || {}).length
+              }), Bank Soal (${
+                Object.keys(bankSoalMap).length
+              }), FullData Available: ${!!detailModal.data?.fullData}`}
+              type="info"
+              closable
+              style={{ marginBottom: 16 }}
+            />
+
+            {(detailModal.data?.jawabanPeserta &&
+              Object.keys(detailModal.data.jawabanPeserta).length > 0) ||
+            (detailModal.data?.ujian?.bankSoalList &&
+              detailModal.data.ujian.bankSoalList.length > 0) ? (
+              <div style={{ maxHeight: "500px", overflow: "auto" }}>
+                <Table
+                  size="small"
+                  pagination={false}
+                  expandable={{
+                    expandedRowRender: (record) => {
+                      if (record.jenisSoal === "PG" && record.opsi) {
+                        return (
+                          <div style={{ padding: "8px 0" }}>
+                            <Text
+                              strong
+                              style={{ display: "block", marginBottom: "8px" }}
+                            >
+                              Pilihan Jawaban:
+                            </Text>
+                            <Row gutter={[16, 8]}>
+                              {Object.entries(record.opsi).map(
+                                ([key, value]) => (
+                                  <Col span={12} key={key}>
+                                    <div
+                                      style={{
+                                        padding: "4px 8px",
+                                        border: "1px solid #d9d9d9",
+                                        borderRadius: "4px",
+                                        backgroundColor:
+                                          record.jawabanSiswa === key
+                                            ? "#e6f7ff"
+                                            : record.jawabanBenar?.includes(key)
+                                            ? "#f6ffed"
+                                            : "#fafafa",
+                                      }}
+                                    >
+                                      <Text strong>{key}.</Text> {value}
+                                      {record.jawabanSiswa === key && (
+                                        <Tag
+                                          color="blue"
+                                          size="small"
+                                          style={{ marginLeft: "8px" }}
+                                        >
+                                          Dipilih
+                                        </Tag>
+                                      )}
+                                      {record.jawabanBenar?.includes(key) && (
+                                        <Tag
+                                          color="green"
+                                          size="small"
+                                          style={{ marginLeft: "8px" }}
+                                        >
+                                          Benar
+                                        </Tag>
+                                      )}
+                                    </div>
+                                  </Col>
+                                )
+                              )}
+                            </Row>
+                          </div>
+                        );
+                      } else if (record.jenisSoal === "MULTI" && record.opsi) {
+                        return (
+                          <div style={{ padding: "8px 0" }}>
+                            <Text
+                              strong
+                              style={{ display: "block", marginBottom: "8px" }}
+                            >
+                              Pilihan Jawaban (Multiple Choice):
+                            </Text>
+                            <Row gutter={[16, 8]}>
+                              {Object.entries(record.opsi).map(
+                                ([key, value]) => (
+                                  <Col span={12} key={key}>
+                                    <div
+                                      style={{
+                                        padding: "4px 8px",
+                                        border: "1px solid #d9d9d9",
+                                        borderRadius: "4px",
+                                        backgroundColor:
+                                          record.jawabanSiswaArray?.includes(
+                                            key
+                                          )
+                                            ? "#e6f7ff"
+                                            : record.jawabanBenar?.includes(key)
+                                            ? "#f6ffed"
+                                            : "#fafafa",
+                                      }}
+                                    >
+                                      <Text strong>{key}.</Text> {value}
+                                      {record.jawabanSiswaArray?.includes(
+                                        key
+                                      ) && (
+                                        <Tag
+                                          color="blue"
+                                          size="small"
+                                          style={{ marginLeft: "8px" }}
+                                        >
+                                          Dipilih
+                                        </Tag>
+                                      )}
+                                      {record.jawabanBenar?.includes(key) && (
+                                        <Tag
+                                          color="green"
+                                          size="small"
+                                          style={{ marginLeft: "8px" }}
+                                        >
+                                          Benar
+                                        </Tag>
+                                      )}
+                                    </div>
+                                  </Col>
+                                )
+                              )}
+                            </Row>
+                          </div>
+                        );
+                      } else if (
+                        record.jenisSoal === "COCOK" &&
+                        record.pasangan
+                      ) {
+                        const kiri = Object.entries(record.pasangan).filter(
+                          ([k]) => k.includes("_kiri")
+                        );
+                        const kanan = Object.entries(record.pasangan).filter(
+                          ([k]) => k.includes("_kanan")
+                        );
+
+                        return (
+                          <div style={{ padding: "8px 0" }}>
+                            <Text
+                              strong
+                              style={{ display: "block", marginBottom: "8px" }}
+                            >
+                              Pasangan untuk Mencocokkan:
+                            </Text>
+                            <Row gutter={24}>
+                              <Col span={12}>
+                                <Text strong>Kolom Kiri:</Text>
+                                {kiri.map(([key, value]) => (
+                                  <div
+                                    key={key}
+                                    style={{
+                                      margin: "4px 0",
+                                      padding: "4px",
+                                      border: "1px solid #d9d9d9",
+                                      borderRadius: "4px",
+                                    }}
+                                  >
+                                    {value}
+                                  </div>
+                                ))}
+                              </Col>
+                              <Col span={12}>
+                                <Text strong>Kolom Kanan:</Text>
+                                {kanan.map(([key, value]) => (
+                                  <div
+                                    key={key}
+                                    style={{
+                                      margin: "4px 0",
+                                      padding: "4px",
+                                      border: "1px solid #d9d9d9",
+                                      borderRadius: "4px",
+                                    }}
+                                  >
+                                    {value}
+                                  </div>
+                                ))}
+                              </Col>
+                            </Row>
+                            <div style={{ marginTop: "12px" }}>
+                              <Text strong>Jawaban Benar:</Text>
+                              <div style={{ marginTop: "4px" }}>
+                                {record.jawabanBenar?.map((jawab, idx) => (
+                                  <Tag
+                                    key={idx}
+                                    color="green"
+                                    style={{ margin: "2px" }}
+                                  >
+                                    {jawab}
+                                  </Tag>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    },
+                    rowExpandable: (record) =>
+                      record.jenisSoal === "PG" ||
+                      record.jenisSoal === "MULTI" ||
+                      record.jenisSoal === "COCOK",
+                  }}
+                  dataSource={(() => {
+                    // Create comprehensive data source from both answered and unanswered questions
+                    const jawabanData = detailModal.data?.jawabanPeserta || {};
+                    const bankSoalFromUjian =
+                      detailModal.data?.ujian?.bankSoalList || [];
+                    const allSoalIds = new Set([
+                      ...Object.keys(jawabanData),
+                      ...bankSoalFromUjian.map((soal) => soal.idBankSoal),
+                    ]);
+
+                    return Array.from(allSoalIds).map((soalId, index) => {
+                      const jawaban = jawabanData[soalId];
+                      const bankSoal =
+                        bankSoalMap[soalId] ||
+                        bankSoalFromUjian.find((s) => s.idBankSoal === soalId);
+
+                      // Format jawaban display
+                      let jawabanDisplay = "";
+                      let jawabanSiswaArray = [];
+                      let jawabanSiswa = "";
+
+                      if (!jawaban) {
+                        jawabanDisplay = "Tidak dijawab";
+                        jawabanSiswa = null;
+                      } else if (Array.isArray(jawaban)) {
+                        jawabanDisplay = jawaban.join(", ");
+                        jawabanSiswaArray = jawaban;
+                        jawabanSiswa = jawaban[0];
+                      } else if (
+                        typeof jawaban === "object" &&
+                        jawaban !== null
+                      ) {
+                        // For COCOK type questions
+                        jawabanDisplay = Object.entries(jawaban)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(", ");
+                        jawabanSiswa = jawaban;
+                      } else {
+                        jawabanDisplay = String(jawaban || "Tidak dijawab");
+                        jawabanSiswa = jawaban;
+                      }
+
+                      // Format jawaban benar
+                      let jawabanBenarDisplay = "";
+                      if (bankSoal?.jawabanBenar) {
+                        if (Array.isArray(bankSoal.jawabanBenar)) {
+                          jawabanBenarDisplay =
+                            bankSoal.jawabanBenar.join(", ");
+                        } else {
+                          jawabanBenarDisplay = String(bankSoal.jawabanBenar);
+                        }
+                      }
+
+                      // Determine correctness
+                      const isCorrect =
+                        detailModal.data?.skorPerSoal?.[soalId] > 0;
+
+                      return {
+                        key: soalId,
+                        no: index + 1,
+                        soalId,
+                        pertanyaan:
+                          bankSoal?.pertanyaan || "Pertanyaan tidak ditemukan",
+                        jenisSoal: bankSoal?.jenisSoal || "Unknown",
+                        opsi: bankSoal?.opsi,
+                        pasangan: bankSoal?.pasangan,
+                        jawaban: jawabanDisplay,
+                        jawabanSiswa,
+                        jawabanSiswaArray,
+                        jawabanBenar: bankSoal?.jawabanBenar,
+                        jawabanBenarDisplay,
+                        benar: jawaban
+                          ? isCorrect
+                            ? "Ya"
+                            : "Tidak"
+                          : "Tidak dijawab",
+                        skor: detailModal.data?.skorPerSoal?.[soalId] || 0,
+                        bobot: bankSoal?.bobot || "-",
+                        toleransiTypo: bankSoal?.toleransiTypo,
+                      };
+                    });
+                  })()}
+                  columns={[
+                    {
+                      title: "No",
+                      dataIndex: "no",
+                      width: 50,
+                      align: "center",
+                    },
+                    {
+                      title: "Pertanyaan",
+                      dataIndex: "pertanyaan",
+                      width: 300,
+                      ellipsis: true,
+                      render: (text) => (
+                        <Tooltip title={text}>
+                          <div
+                            dangerouslySetInnerHTML={{
+                              __html:
+                                text.length > 100
+                                  ? `${text.substring(0, 100)}...`
+                                  : text,
+                            }}
+                            style={{ fontSize: "12px" }}
+                          />
+                        </Tooltip>
+                      ),
+                    },
+                    {
+                      title: "Jenis",
+                      dataIndex: "jenisSoal",
+                      width: 80,
+                      align: "center",
+                      render: (text) => {
+                        const colorMap = {
+                          PG: "blue",
+                          MULTI: "green",
+                          COCOK: "orange",
+                          ISIAN: "purple",
+                        };
+                        return (
+                          <Tag color={colorMap[text] || "default"}>{text}</Tag>
+                        );
+                      },
+                    },
+                    {
+                      title: "Jawaban Siswa",
+                      dataIndex: "jawaban",
+                      width: 180,
+                      ellipsis: true,
+                      render: (text, record) => (
+                        <Tooltip title={text}>
+                          <div>
+                            <Text
+                              style={{
+                                fontSize: "12px",
+                                color:
+                                  text === "Tidak dijawab"
+                                    ? "#ff4d4f"
+                                    : "inherit",
+                              }}
+                            >
+                              {text.length > 40
+                                ? `${text.substring(0, 40)}...`
+                                : text}
+                            </Text>
+                            {record.toleransiTypo && (
+                              <div>
+                                <Tag size="small" color="cyan">
+                                  Toleransi: {record.toleransiTypo}
+                                </Tag>
+                              </div>
+                            )}
+                          </div>
+                        </Tooltip>
+                      ),
+                    },
+                    {
+                      title: "Jawaban Benar",
+                      dataIndex: "jawabanBenarDisplay",
+                      width: 180,
+                      ellipsis: true,
+                      render: (text) => (
+                        <Tooltip title={text}>
+                          <Text style={{ fontSize: "12px", color: "#52c41a" }}>
+                            {text.length > 40
+                              ? `${text.substring(0, 40)}...`
+                              : text || "-"}
+                          </Text>
+                        </Tooltip>
+                      ),
+                    },
+                    {
+                      title: "Status",
+                      dataIndex: "benar",
+                      width: 100,
+                      align: "center",
+                      render: (text) => {
+                        const colorMap = {
+                          Ya: "success",
+                          Tidak: "error",
+                          "Tidak dijawab": "warning",
+                        };
+                        return <Tag color={colorMap[text]}>{text}</Tag>;
+                      },
+                    },
+                    {
+                      title: "Skor",
+                      dataIndex: "skor",
+                      width: 80,
+                      align: "center",
+                      render: (skor, record) => (
+                        <div style={{ textAlign: "center" }}>
+                          <Text
+                            strong
+                            style={{
+                              color: skor > 0 ? "#52c41a" : "#ff4d4f",
+                              fontSize: "14px",
+                            }}
+                          >
+                            {skor}
+                          </Text>
+                          <br />
+                          <Text type="secondary" style={{ fontSize: "10px" }}>
+                            /{record.bobot}
+                          </Text>
+                        </div>
+                      ),
+                    },
+                  ]}
+                  scroll={{ x: 1000 }}
+                />
+              </div>
+            ) : detailModal.data?.fullData?.jawabanPeserta ? (
+              <div style={{ marginBottom: 16 }}>
+                <Alert
+                  message="Menggunakan data fallback dari fullData"
+                  type="warning"
+                  closable
+                  style={{ marginBottom: 16 }}
+                />
+                <div style={{ maxHeight: "400px", overflow: "auto" }}>
+                  <Table
+                    size="small"
+                    pagination={false}
+                    dataSource={Object.entries(
+                      detailModal.data.fullData.jawabanPeserta || {}
+                    ).map(([soalId, jawaban], index) => {
+                      // Find question details from bankSoalMap
+                      const bankSoal = bankSoalMap[soalId];
+                      const jawabanBenar =
+                        detailModal.data?.fullData?.jawabanBenar?.[soalId];
+                      const skorSoal =
+                        detailModal.data?.fullData?.skorPerSoal?.[soalId] || 0;
+
+                      return {
+                        key: soalId,
+                        no: index + 1,
+                        pertanyaan:
+                          bankSoal?.pertanyaan || `Soal ID: ${soalId}`,
+                        jawaban: jawaban || "-",
+                        jawabanBenar: jawabanBenar || "-",
+                        skor: skorSoal,
+                        bobot: bankSoal?.bobot || 1,
+                        tipe: bankSoal?.tipeSoal || "Unknown",
+                      };
+                    })}
+                    columns={[
+                      {
+                        title: "No",
+                        dataIndex: "no",
+                        width: 50,
+                        align: "center",
+                      },
+                      {
+                        title: "Tipe",
+                        dataIndex: "tipe",
+                        width: 80,
+                        render: (type) => (
+                          <Tag
+                            color={
+                              type === "PILIHAN_GANDA"
+                                ? "blue"
+                                : type === "ESSAY"
+                                ? "green"
+                                : type === "COCOK"
+                                ? "orange"
+                                : "default"
+                            }
+                          >
+                            {type}
+                          </Tag>
+                        ),
+                      },
+                      {
+                        title: "Pertanyaan",
+                        dataIndex: "pertanyaan",
+                        width: 300,
+                        ellipsis: true,
+                        render: (text) => (
+                          <Tooltip title={text}>
+                            <div
+                              dangerouslySetInnerHTML={{
+                                __html:
+                                  text.length > 100
+                                    ? `${text.substring(0, 100)}...`
+                                    : text,
+                              }}
+                            />
+                          </Tooltip>
+                        ),
+                      },
+                      {
+                        title: "Jawaban Siswa",
+                        dataIndex: "jawaban",
+                        width: 150,
+                        ellipsis: true,
+                        render: (text) => (
+                          <Tooltip title={text}>
+                            <Text style={{ fontSize: "12px" }}>
+                              {text.length > 30
+                                ? `${text.substring(0, 30)}...`
+                                : text}
+                            </Text>
+                          </Tooltip>
+                        ),
+                      },
+                      {
+                        title: "Jawaban Benar",
+                        dataIndex: "jawabanBenar",
+                        width: 150,
+                        ellipsis: true,
+                        render: (text) => (
+                          <Tooltip title={text}>
+                            <Text style={{ fontSize: "12px" }}>
+                              {text.length > 30
+                                ? `${text.substring(0, 30)}...`
+                                : text}
+                            </Text>
+                          </Tooltip>
+                        ),
+                      },
+                      {
+                        title: "Skor",
+                        dataIndex: "skor",
+                        width: 80,
+                        align: "center",
+                        render: (skor, record) => (
+                          <div>
+                            <Text
+                              strong
+                              style={{
+                                color: skor > 0 ? "#52c41a" : "#ff4d4f",
+                                fontSize: "14px",
+                              }}
+                            >
+                              {skor}
+                            </Text>
+                            <br />
+                            <Text type="secondary" style={{ fontSize: "10px" }}>
+                              /{record.bobot}
+                            </Text>
+                          </div>
+                        ),
+                      },
+                    ]}
+                    scroll={{ x: 800 }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <Alert
+                message="Tidak ada data jawaban tersedia"
+                description="Data jawaban peserta tidak ditemukan untuk ujian ini."
+                type="info"
+                showIcon
+              />
             )}
 
             {/* Notice for score and review */}
@@ -1437,9 +2557,7 @@ const ReportNilaiSiswa = () => {
                           )
                         : "Tidak tersedia"}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Jumlah Pelanggaran">
-                      <Text strong>{violation.violationCount || 1}</Text>
-                    </Descriptions.Item>
+                    {/* Jumlah Pelanggaran dihapus karena sudah di-deduplicate */}
                     {(violation.details ||
                       Object.keys(violation.evidence || {}).length > 0) && (
                       <Descriptions.Item label="Detail">
@@ -1481,7 +2599,7 @@ const ReportNilaiSiswa = () => {
             Tutup
           </Button>,
         ]}
-        width={1000}
+        width={1200}
         style={{ top: 20 }}
         bodyStyle={{ maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}
       >
@@ -1498,10 +2616,12 @@ const ReportNilaiSiswa = () => {
         ) : (
           <Table
             columns={allViolationsColumns}
-            dataSource={allViolationsData}
-            rowKey="idDetection"
+            dataSource={getAllViolationsFromMetadata()}
+            rowKey={(record, index) =>
+              record.idDetection || `violation-${index}`
+            }
             pagination={{
-              total: allViolationsData.length,
+              total: getAllViolationsFromMetadata().length,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
@@ -1513,6 +2633,138 @@ const ReportNilaiSiswa = () => {
             }}
           />
         )}
+      </Modal>
+      {/* --------------------------------------------------- */}
+
+      {/* Modal Export Excel dengan Filter Ujian */}
+      <Modal
+        title={
+          <Space>
+            <FileExcelOutlined style={{ color: "#52c41a" }} />
+            <span>Export Data ke Excel</span>
+          </Space>
+        }
+        visible={showExportModal}
+        onCancel={() => {
+          setShowExportModal(false);
+          setSelectedUjianForExport(null);
+        }}
+        footer={[
+          <Button
+            key="export-all"
+            onClick={handleExportAllData}
+            loading={loadingExport}
+          >
+            Export Semua Data
+          </Button>,
+          <Button
+            key="export-selected"
+            type="primary"
+            onClick={handleExportWithSelectedUjian}
+            disabled={!selectedUjianForExport}
+            loading={loadingExport}
+          >
+            Export Data Terpilih
+          </Button>,
+          <Button
+            key="cancel"
+            onClick={() => {
+              setShowExportModal(false);
+              setSelectedUjianForExport(null);
+            }}
+          >
+            Batal
+          </Button>,
+        ]}
+        width={600}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Alert
+            message="Pilih Ujian untuk Export"
+            description="Anda dapat memilih ujian tertentu untuk di-export, atau export semua data yang tersedia."
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <Typography.Text strong>Pilih Ujian:</Typography.Text>
+          <Select
+            style={{ width: "100%", marginTop: 8 }}
+            placeholder="Pilih ujian yang akan di-export..."
+            value={selectedUjianForExport?.idUjian}
+            onChange={(value) => {
+              const selected = ujianList.find(
+                (ujian) => ujian.idUjian === value
+              );
+              setSelectedUjianForExport(selected);
+            }}
+            showSearch
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+            }
+            allowClear
+            onClear={() => setSelectedUjianForExport(null)}
+          >
+            {ujianList.map((ujian) => (
+              <Select.Option key={ujian.idUjian} value={ujian.idUjian}>
+                <div>
+                  <div style={{ fontWeight: "bold" }}>{ujian.namaUjian}</div>
+                  <div style={{ fontSize: "12px", color: "#666" }}>
+                    {ujian.mapel?.name} • {ujian.kelas?.namaKelas} •{" "}
+                    {ujian.semester?.namaSemester}
+                  </div>
+                </div>
+              </Select.Option>
+            ))}
+          </Select>
+        </div>
+
+        {selectedUjianForExport && (
+          <div
+            style={{
+              padding: 12,
+              backgroundColor: "#f6ffed",
+              border: "1px solid #b7eb8f",
+              borderRadius: 6,
+              marginBottom: 16,
+            }}
+          >
+            <Typography.Text strong style={{ color: "#52c41a" }}>
+              Ujian Terpilih: {selectedUjianForExport.namaUjian}
+            </Typography.Text>
+            <br />
+            <Typography.Text type="secondary">
+              Mata Pelajaran: {selectedUjianForExport.mapel?.name || "-"} |
+              Kelas: {selectedUjianForExport.kelas?.namaKelas || "-"} |
+              Semester: {selectedUjianForExport.semester?.namaSemester || "-"}
+            </Typography.Text>
+          </div>
+        )}
+
+        <div
+          style={{
+            padding: 12,
+            backgroundColor: "#fff7e6",
+            border: "1px solid #ffd591",
+            borderRadius: 6,
+          }}
+        >
+          <Typography.Text strong>Informasi Export:</Typography.Text>
+          <ul style={{ margin: "8px 0 0 0", paddingLeft: 20 }}>
+            <li>
+              File akan berisi 4 sheet: Ringkasan, Detail Jawaban, Detail
+              Pelanggaran, Master Soal
+            </li>
+            <li>
+              Data violations akan di-deduplicate berdasarkan waktu dan jenis
+              pelanggaran
+            </li>
+            <li>Format file: Excel (.xlsx)</li>
+          </ul>
+        </div>
       </Modal>
       {/* --------------------------------------------------- */}
     </div>
