@@ -28,7 +28,6 @@ import {
   BulbOutlined,
   BarChartOutlined,
   EyeOutlined,
-  ShieldOutlined,
 } from "@ant-design/icons";
 import { getAnalysisByUjian } from "@/api/ujianAnalysis";
 import { getViolationsByUjian } from "@/api/cheatDetection";
@@ -493,7 +492,7 @@ const DetailAnalysis = () => {
           <TabPane
             tab={
               <span>
-                <ShieldOutlined />
+                <SafetyOutlined />
                 Analisis Keamanan
               </span>
             }
